@@ -6,11 +6,10 @@ A very small self-hosted page for your web links. Paste a link, and it shows up 
 
 - **Add a link by pasting it.** Title, description and thumbnail are fetched automatically.
 - **Thumbnails** come from the page's preview image (for YouTube, Vimeo and TikTok from their official embed info), falling back to the site icon, then to a letter tile. They are stored locally, so the page stays fast.
-- **Groups** with colours. Click a group to filter, drag a card onto a group to move it, and use "Open all in tabs" to open a whole group at once.
+- **Groups** with colours, listed in a column on the left. Click a group and its links appear beside it as a compact list, one under the other. Drag a card onto a group to move it, and use "Open all in tabs" to open a whole group at once.
 - **Import everything in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
 - **Export** to a standard bookmarks file that can be imported back here or into any browser.
-- **Everything on one page, divided by group.** The "All" view shows each group as its own section that starts collapsed and that you can expand or collapse individually (or all at once); the groups you opened are remembered per browser.
-- **Your own group order.** Drag a group (its chip or its section header) onto another group to move it, or pick a position in the group's edit dialog.
+- **Your own group order.** Drag a group onto another group in the left column to move it, or pick a position in the group's edit dialog.
 - **Search** across titles, addresses and groups.
 - Light and dark mode, follows your system.
 - One container, one SQLite file. No account, no external services.

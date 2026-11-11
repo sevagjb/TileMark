@@ -90,6 +90,39 @@ main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 .section.collapsed .grid { display: none; }
 .section.collapsed { margin-bottom: 8px; }
 .section.collapsed .sec-head { margin-bottom: 0; }
+.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
+.side { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 2px 4px 2px 2px; }
+.gitem { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 9px; cursor: pointer; user-select: none; border: 1px solid transparent; }
+.gitem:hover { background: color-mix(in srgb, var(--c, var(--accent)) 10%, transparent); }
+.gitem:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.gitem.on { background: color-mix(in srgb, var(--c, var(--accent)) 18%, var(--panel)); border-color: color-mix(in srgb, var(--c, var(--accent)) 60%, var(--line)); font-weight: 600; }
+.gitem.drop { outline: 2px dashed var(--c, var(--accent)); outline-offset: -2px; }
+.gitem .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
+.gitem .gname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gitem .n { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+.gitem .edit { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 2px; display: none; }
+.gitem.on .edit { display: inline; }
+.gitem.ghost { color: var(--muted); border: 1px dashed var(--line); margin-top: 8px; justify-content: center; }
+.side hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; width: auto; align-self: stretch; }
+.ptitle { font-weight: 650; font-size: 17px; color: var(--text); display: inline-flex; align-items: center; gap: 8px; }
+.ptitle i { width: 11px; height: 11px; border-radius: 50%; background: var(--c); }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.list .card { flex-direction: row; align-items: stretch; }
+.list .card:hover { transform: none; }
+.list .thumb { flex: 0 0 150px; border-bottom: 0; border-right: 1px solid var(--line); }
+.list .thumb .letter { font-size: 30px; }
+.list .thumb img.icon { width: 40px; height: 40px; }
+.list .body { flex: 1; padding: 9px 118px 9px 14px; display: flex; flex-direction: column; justify-content: center; }
+.list .title { -webkit-line-clamp: 1; }
+.list .actions { top: 50%; right: 10px; transform: translateY(-50%); }
+.desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .side { position: static; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 6px; }
+  .side hr { display: none; }
+  .gitem { flex: none; } .gitem.ghost { margin-top: 0; }
+  .list .thumb { flex-basis: 104px; }
+}
 .empty { text-align: center; color: var(--muted); padding: 70px 20px; }
 .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
 dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
@@ -125,16 +158,18 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <button class="btn" id="importBtn">Import</button>
     <a class="btn" href="/api/export" style="text-decoration:none">Export</a>
   </div>
-  <div class="chips" id="chips"></div>
 </header>
 
 <main>
-  <div class="tools"><span id="count"></span><span class="spacer"></span>
-    <button class="btn" id="foldAll" hidden>Collapse all</button>
-    <button class="btn" id="unfoldAll" hidden>Expand all</button>
-    <button class="btn" id="openAll" hidden>Open all in tabs</button></div>
-  <div id="board"></div>
-  <div class="empty" id="empty" hidden></div>
+  <div class="layout">
+    <nav class="side" id="side" aria-label="Groups"></nav>
+    <section>
+      <div class="tools"><span class="ptitle" id="ptitle"></span><span id="count"></span><span class="spacer"></span>
+        <button class="btn" id="openAll" hidden>Open all in tabs</button></div>
+      <div id="board"></div>
+      <div class="empty" id="empty" hidden></div>
+    </section>
+  </div>
 </main>
 
 <dialog id="linkDlg"><form method="dialog">
@@ -172,10 +207,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 const COLORS = ["#4c8bf5","#e5534b","#e0a31b","#3fa55a","#d6589f","#8e6ad8","#2aa7b8","#e8793a","#7d8590"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
-let expanded = new Set();  // groups start collapsed; only the opened ones are remembered
-try { expanded = new Set(JSON.parse(localStorage.getItem("lb.expanded") || "[]")); } catch {}
-const saveExpanded = () => { try { localStorage.setItem("lb.expanded", JSON.stringify([...expanded])); } catch {} };
-let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "all", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
+let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
 
 async function api(method, path, body) {
   const opt = { method };
@@ -191,7 +223,8 @@ const group = id => S.groups.find(g => g.id === id);
 
 async function load() {
   try { S = await api("GET", "/api/state"); } catch (e) { toast(e.message); return; }
-  if (filter !== "all" && filter !== "none" && !group(+filter)) filter = "all";
+  if (filter === "none" ? !S.links.some(l => l.group_id === null) : filter !== "all" && !group(+filter))
+    filter = S.groups.length ? String(S.groups[0].id) : "all";  // nothing (valid) chosen yet: open the first group
   render();
   clearTimeout(timer);
   if (S.links.some(l => l.status === "pending")) timer = setTimeout(load, 2000);
@@ -201,26 +234,25 @@ function setFilter(f) { filter = String(f); localStorage.setItem("lb.filter", fi
 function visible() {
   const needle = q.trim().toLowerCase();
   return S.links.filter(l => {
-    if (filter === "none" ? l.group_id !== null : filter !== "all" && l.group_id !== +filter) return false;
-    if (!needle) return true;
+    if (!needle) return filter === "all" || (filter === "none" ? l.group_id === null : l.group_id === +filter);
     const g = group(l.group_id);
     return (l.title + " " + l.url + " " + l.description + " " + (g ? g.name : "")).toLowerCase().includes(needle);
   });
 }
 
-function chip(label, key, color, n, g) {
-  const c = el("div", { className: "chip" + (filter === String(key) ? " on" : ""), tabIndex: 0, role: "button" });
+function sideItem(label, key, color, n, g) {
+  const c = el("div", { className: "gitem" + (filter === String(key) && !q.trim() ? " on" : ""), tabIndex: 0, role: "button" });
   if (color) c.style.setProperty("--c", color);
-  if (color) c.append(el("span", { className: "dot" }));
-  c.append(el("span", { textContent: label }), el("span", { className: "n", textContent: n }));
+  c.append(el("span", { className: "dot" }), el("span", { className: "gname", textContent: label }), el("span", { className: "n", textContent: n }));
   if (g) { const b = el("button", { className: "edit", title: "Edit group", textContent: "✎" });
            b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); dragGroup(c, g); }
-  c.onclick = () => setFilter(key);
-  c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter(key); } };
+  const pick = () => { if (q) { q = ""; $("search").value = ""; } setFilter(key); };
+  c.onclick = pick;
+  c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
   if (key !== "all") makeDrop(c, key);
   return c;
 }
-function makeDrop(c, key) {  // drop a card on a chip or a section header to move it
+function makeDrop(c, key) {  // drop a card on a group to move it; drop a group on a group to reorder
   c.ondragover = e => { e.preventDefault(); c.classList.add("drop"); };
   c.ondragleave = () => c.classList.remove("drop");
   c.ondrop = async e => { e.preventDefault(); c.classList.remove("drop");
@@ -243,24 +275,6 @@ function openMany(list) {
   if (list.length > 8 && !confirm("Open " + list.length + " tabs?")) return;
   let blocked = 0; for (const l of list) if (!window.open(l.url, "_blank", "noopener")) blocked++;
   if (blocked) toast("Your browser blocked " + blocked + " tabs. Allow pop-ups for this page to open them all.");
-}
-const grid = links => el("div", { className: "grid" }, ...links.map(card));
-function section(key, name, color, links) {
-  const k = String(key), isC = !expanded.has(k) && !q.trim();
-  const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color);
-  const open = el("button", { className: "open", type: "button", textContent: "Open all", title: "Open all links of this group in tabs" });
-  open.onclick = e => { e.stopPropagation(); openMany(links); };
-  const head = el("div", { className: "sec-head", tabIndex: 0, role: "button", title: isC ? "Expand" : "Collapse" },
-    el("span", { className: "chev", textContent: "▾" }), el("span", { className: "dot" }),
-    el("span", { className: "sec-name", textContent: name }), el("span", { className: "n", textContent: links.length }), open);
-  head.setAttribute("aria-expanded", String(!isC));
-  const toggle = () => { expanded.has(k) ? expanded.delete(k) : expanded.add(k); saveExpanded(); render(); };
-  head.onclick = toggle;
-  head.onkeydown = e => { if (e.target === head && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } };
-  makeDrop(head, key);
-  const g = group(key); if (g) dragGroup(head, g);
-  sec.append(head, grid(links));
-  return sec;
 }
 
 function fillSelect(sel, value, noneLabel) {
@@ -290,41 +304,40 @@ function card(l) {
   act.append(btn("✎", "Edit", () => openLink(l)),
              btn("↻", "Refresh thumbnail", async () => { await api("POST", "/api/links/" + l.id + "/refresh"); load(); }),
              btn("✕", "Delete", () => removeLink(l)));
-  a.append(th, el("div", { className: "body" }, el("div", { className: "title", textContent: l.title || host(l.url) }), meta), act);
+  if (g && (filter === "all" || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
+  const body = el("div", { className: "body" }, el("div", { className: "title", textContent: l.title || host(l.url) }));
+  if (l.description) body.append(el("div", { className: "desc", textContent: l.description }));
+  body.append(meta);
+  a.append(th, body, act);
   return a;
 }
 
 function render() {
-  const chips = $("chips"), ungrouped = S.links.filter(l => l.group_id === null).length;
-  chips.replaceChildren(chip("All", "all", null, S.links.length));
-  for (const g of S.groups) chips.append(chip(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
-  if (S.groups.length && ungrouped) chips.append(chip("Ungrouped", "none", "#9aa3b2", ungrouped));
-  const add = el("div", { className: "chip ghost", textContent: "+ New group", tabIndex: 0, role: "button" });
+  const side = $("side"), ungrouped = S.links.filter(l => l.group_id === null).length, searching = !!q.trim();
+  side.replaceChildren();
+  for (const g of S.groups) side.append(sideItem(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
+  if (ungrouped && S.groups.length) side.append(sideItem("Ungrouped", "none", "#9aa3b2", ungrouped));
+  if (S.groups.length) side.append(el("hr"));
+  side.append(sideItem("All links", "all", null, S.links.length));
+  const add = el("div", { className: "gitem ghost", textContent: "+ New group", tabIndex: 0, role: "button" });
   add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
-  chips.append(add);
+  side.append(add);
 
   const keep = $("addGroup").value;
   fillSelect($("addGroup"), filter !== "all" && filter !== "none" ? filter : keep, "No group");
 
-  const list = visible();
-  let keys = [];
-  if (filter === "all" && S.groups.length) {  // everything, divided into collapsible groups
-    const secs = [];
-    for (const g of S.groups) { const ls = list.filter(l => l.group_id === g.id); if (ls.length) { secs.push(section(g.id, g.name, g.color, ls)); keys.push(String(g.id)); } }
-    const un = list.filter(l => l.group_id === null);
-    if (un.length) { secs.push(section("none", "Ungrouped", "#9aa3b2", un)); keys.push("none"); }
-    $("board").replaceChildren(...secs);
-  } else $("board").replaceChildren(grid(list));
-  const sectioned = filter === "all" && S.groups.length > 0;  // both buttons are always there in the grouped view
-  $("foldAll").hidden = $("unfoldAll").hidden = !sectioned;
-  $("foldAll").disabled = $("unfoldAll").disabled = !!q.trim();
-  $("foldAll").onclick = () => { expanded.clear(); saveExpanded(); render(); };
-  $("unfoldAll").onclick = () => { for (const k of keys) expanded.add(k); saveExpanded(); render(); };
+  const list = visible(), g = group(+filter), pt = $("ptitle");
+  pt.replaceChildren();
+  if (searching) pt.append("Search results");
+  else if (g) { pt.style.setProperty("--c", g.color); pt.append(el("i"), g.name); }
+  else pt.append(filter === "none" ? "Ungrouped" : "All links");
+  $("board").replaceChildren(el("div", { className: "list" }, ...list.map(card)));
   $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
-  $("openAll").hidden = !(list.length > 1 && (filter !== "all" || q.trim()));
+  $("openAll").hidden = list.length < 2;
   const empty = $("empty"); empty.hidden = list.length > 0;
   if (!list.length) empty.replaceChildren(el("b", { textContent: S.links.length ? "Nothing here" : "No links yet" }),
-    S.links.length ? "Try another group or search." : "Paste a link above, or use Import to bring in your bookmarks all at once.");
+    searching ? "No link matches your search." : S.links.length ? "This group is empty. Paste a link above, or drag a card onto the group."
+      : "Paste a link above, or use Import to bring in your bookmarks all at once.");
 }
 
 async function removeLink(l) {
@@ -368,13 +381,14 @@ $("gSave").onclick = async () => {
     if (gid) await api("PATCH", "/api/groups/" + gid, { name, color: pickedColor });
     else gid = (await api("POST", "/api/groups", { name, color: pickedColor })).id;
     if ($("gPos").value !== $("gPos").dataset.was) await moveGroup(gid, +$("gPos").value);
+    if (!editingGroup) { filter = String(gid); localStorage.setItem("lb.filter", filter); }
     $("groupDlg").close(); load();
   } catch (e) { toast(e.message); }
 };
 $("gName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("gSave").click(); } };
 $("gDelete").onclick = async () => {
   if (!confirm('Delete the group "' + editingGroup.name + '"?\nIts links are kept and become ungrouped.')) return;
-  try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); setFilter("all"); load(); } catch (e) { toast(e.message); }
+  try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
 };
 
 // import

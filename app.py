@@ -134,9 +134,20 @@ def add_link(c, url, group_id=None, title=""):
 
 
 # ------------------------------------------------------- metadata fetching
+# Google/YouTube show EU visitors a "Before you continue" consent page instead of
+# the real one. This cookie is what the "Reject all" button sets (no tracking).
+CONSENT_HOSTS = ("youtube.com", "youtu.be", "google.com")
+CONSENT_COOKIES = {"SOCS": "CAI", "CONSENT": "YES+cb"}
+
+
 def _download(url, limit, headers=UA):
-    r = requests.get(url, headers=headers, timeout=12, stream=True)
+    host = (urlparse(url).hostname or "").lower()
+    cookies = CONSENT_COOKIES if host.endswith(CONSENT_HOSTS) else None
+    r = requests.get(url, headers=headers, cookies=cookies, timeout=12, stream=True)
     r.raise_for_status()
+    if (urlparse(r.url).hostname or "").lower().startswith("consent."):
+        r.close()
+        raise RuntimeError("consent wall")
     data = r.raw.read(limit + 1, decode_content=True)
     ctype = r.headers.get("Content-Type", "").lower()
     final = r.url

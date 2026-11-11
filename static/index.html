@@ -19,6 +19,8 @@
 body { margin: 0; background: var(--bg); color: var(--text);
        font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 button, input, select, textarea { font: inherit; color: inherit; }
+select { background-color: var(--panel); color: var(--text); }
+option, optgroup { background-color: var(--panel); color: var(--text); }
 header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent);
          backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
@@ -27,7 +29,7 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
        border-radius: 10px; overflow: hidden; }
 .add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .add input { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 12px; outline: none; }
-.add select { border: 0; border-left: 1px solid var(--line); background: none; padding: 0 8px; max-width: 150px; outline: none; }
+.add select { border: 0; border-left: 1px solid var(--line); background-color: var(--panel); padding: 0 8px; max-width: 170px; outline: none; cursor: pointer; }
 .add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
 .search { flex: 0 1 200px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
 .search:focus { border-color: var(--accent); }
@@ -170,9 +172,9 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 const COLORS = ["#4c8bf5","#e5534b","#e0a31b","#3fa55a","#d6589f","#8e6ad8","#2aa7b8","#e8793a","#7d8590"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
-let collapsed = new Set();
-try { collapsed = new Set(JSON.parse(localStorage.getItem("lb.collapsed") || "[]")); } catch {}
-const saveCollapsed = () => { try { localStorage.setItem("lb.collapsed", JSON.stringify([...collapsed])); } catch {} };
+let expanded = new Set();  // groups start collapsed; only the opened ones are remembered
+try { expanded = new Set(JSON.parse(localStorage.getItem("lb.expanded") || "[]")); } catch {}
+const saveExpanded = () => { try { localStorage.setItem("lb.expanded", JSON.stringify([...expanded])); } catch {} };
 let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "all", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
 
 async function api(method, path, body) {
@@ -244,7 +246,7 @@ function openMany(list) {
 }
 const grid = links => el("div", { className: "grid" }, ...links.map(card));
 function section(key, name, color, links) {
-  const k = String(key), isC = collapsed.has(k) && !q.trim();
+  const k = String(key), isC = !expanded.has(k) && !q.trim();
   const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color);
   const open = el("button", { className: "open", type: "button", textContent: "Open all", title: "Open all links of this group in tabs" });
   open.onclick = e => { e.stopPropagation(); openMany(links); };
@@ -252,7 +254,7 @@ function section(key, name, color, links) {
     el("span", { className: "chev", textContent: "▾" }), el("span", { className: "dot" }),
     el("span", { className: "sec-name", textContent: name }), el("span", { className: "n", textContent: links.length }), open);
   head.setAttribute("aria-expanded", String(!isC));
-  const toggle = () => { collapsed.has(k) ? collapsed.delete(k) : collapsed.add(k); saveCollapsed(); render(); };
+  const toggle = () => { expanded.has(k) ? expanded.delete(k) : expanded.add(k); saveExpanded(); render(); };
   head.onclick = toggle;
   head.onkeydown = e => { if (e.target === head && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } };
   makeDrop(head, key);
@@ -316,8 +318,8 @@ function render() {
   const sectioned = filter === "all" && S.groups.length > 0;  // both buttons are always there in the grouped view
   $("foldAll").hidden = $("unfoldAll").hidden = !sectioned;
   $("foldAll").disabled = $("unfoldAll").disabled = !!q.trim();
-  $("foldAll").onclick = () => { for (const k of keys) collapsed.add(k); saveCollapsed(); render(); };
-  $("unfoldAll").onclick = () => { collapsed.clear(); saveCollapsed(); render(); };
+  $("foldAll").onclick = () => { expanded.clear(); saveExpanded(); render(); };
+  $("unfoldAll").onclick = () => { for (const k of keys) expanded.add(k); saveExpanded(); render(); };
   $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
   $("openAll").hidden = !(list.length > 1 && (filter !== "all" || q.trim()));
   const empty = $("empty"); empty.hidden = list.length > 0;

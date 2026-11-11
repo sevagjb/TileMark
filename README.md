@@ -9,7 +9,7 @@ A very small self-hosted page for your web links. Paste a link, and it shows up 
 - **Groups** with colours. Click a group to filter, drag a card onto a group to move it, and use "Open all in tabs" to open a whole group at once.
 - **Import everything in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
 - **Export** to a standard bookmarks file that can be imported back here or into any browser.
-- **Everything on one page, divided by group.** The "All" view shows each group as its own section that you can collapse or expand individually (or all at once); the state is remembered per browser.
+- **Everything on one page, divided by group.** The "All" view shows each group as its own section that starts collapsed and that you can expand or collapse individually (or all at once); the groups you opened are remembered per browser.
 - **Your own group order.** Drag a group (its chip or its section header) onto another group to move it, or pick a position in the group's edit dialog.
 - **Search** across titles, addresses and groups.
 - Light and dark mode, follows your system.

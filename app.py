@@ -25,6 +25,19 @@ UA = {
     "Accept": "text/html,application/xhtml+xml,image/*;q=0.9,*/*;q=0.8",
     "Accept-Language": "en,nl;q=0.8,ar;q=0.6",
 }
+# Many sites (YouTube in the EU, Instagram, X, ...) answer a normal browser with a
+# consent or login page, but give link-preview crawlers the real title and image.
+BOT_UA = {
+    "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "Accept": "text/html,application/xhtml+xml,image/*;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en",
+}
+OEMBED = [
+    (re.compile(r"^https?://((www|m|music)\.)?youtube\.com/(watch|shorts/|live/|playlist)|^https?://youtu\.be/", re.I),
+     "https://www.youtube.com/oembed"),
+    (re.compile(r"^https?://(www\.)?vimeo\.com/", re.I), "https://vimeo.com/api/oembed.json"),
+    (re.compile(r"^https?://(www\.|vm\.)?tiktok\.com/", re.I), "https://www.tiktok.com/oembed"),
+]
 COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2aa7b8", "#e8793a", "#7d8590"]
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -62,6 +75,10 @@ def init_db():
             created_at INTEGER NOT NULL
         );
         """)
+        cols = [r["name"] for r in c.execute("PRAGMA table_info(groups)")]
+        if "position" not in cols:
+            c.execute("ALTER TABLE groups ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
+            c.execute("UPDATE groups SET position = id")
 
 
 def _is_local(hostish):
@@ -100,9 +117,9 @@ def get_or_create_group(c, name):
     row = c.execute("SELECT id FROM groups WHERE name = ?", (name,)).fetchone()
     if row:
         return row["id"]
-    n = c.execute("SELECT COUNT(*) FROM groups").fetchone()[0]
-    return c.execute("INSERT INTO groups (name, color) VALUES (?, ?)",
-                     (name, COLORS[n % len(COLORS)])).lastrowid
+    n, last = c.execute("SELECT COUNT(*), COALESCE(MAX(position), 0) FROM groups").fetchone()
+    return c.execute("INSERT INTO groups (name, color, position) VALUES (?, ?, ?)",
+                     (name, COLORS[n % len(COLORS)], last + 1)).lastrowid
 
 
 def add_link(c, url, group_id=None, title=""):
@@ -117,8 +134,8 @@ def add_link(c, url, group_id=None, title=""):
 
 
 # ------------------------------------------------------- metadata fetching
-def _download(url, limit):
-    r = requests.get(url, headers=UA, timeout=12, stream=True)
+def _download(url, limit, headers=UA):
+    r = requests.get(url, headers=headers, timeout=12, stream=True)
     r.raise_for_status()
     data = r.raw.read(limit + 1, decode_content=True)
     ctype = r.headers.get("Content-Type", "").lower()
@@ -159,36 +176,66 @@ def _meta(soup, *keys):
     return ""
 
 
+def _oembed(url):
+    """Title and thumbnail from the site's official embed API, where one exists."""
+    for rx, endpoint in OEMBED:
+        if rx.search(url):
+            try:
+                r = requests.get(endpoint, params={"url": url, "format": "json"}, headers=UA, timeout=10)
+                r.raise_for_status()
+                d = r.json()
+                return (d.get("title") or "").strip(), (d.get("thumbnail_url") or "").strip()
+            except Exception:
+                return "", ""
+    return "", ""
+
+
+def _scrape(url, headers):
+    data, ctype, final = _download(url, 2_000_000, headers)
+    out = {"title": "", "desc": "", "images": [], "icons": [], "final": final}
+    if ctype.startswith("image/"):
+        out["images"].append(final)
+        return out
+    soup = BeautifulSoup(data, "html.parser")
+    out["title"] = _meta(soup, "og:title", "twitter:title") or (soup.title.get_text(strip=True) if soup.title else "")
+    out["desc"] = _meta(soup, "og:description", "twitter:description", "description")
+    for key in ("og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"):
+        v = _meta(soup, key)
+        if v:
+            out["images"].append(urljoin(final, v))
+    for tag in soup.find_all("link", href=True):
+        rel = " ".join(tag.get("rel") or []).lower()
+        if "apple-touch-icon" in rel:
+            out["icons"].insert(0, urljoin(final, tag["href"]))
+        elif "icon" in rel:
+            out["icons"].append(urljoin(final, tag["href"]))
+    return out
+
+
 def fetch_meta(link_id):
     with db() as c:
         row = c.execute("SELECT * FROM links WHERE id = ?", (link_id,)).fetchone()
     if not row:
         return
     url = row["url"]
-    title, desc, status = "", "", "ok"
-    images, icons = [], []
-    try:
-        data, ctype, final = _download(url, 2_000_000)
-        if ctype.startswith("image/"):
-            images.append(final)
-        else:
-            soup = BeautifulSoup(data, "html.parser")
-            title = _meta(soup, "og:title", "twitter:title") or (soup.title.get_text(strip=True) if soup.title else "")
-            desc = _meta(soup, "og:description", "twitter:description", "description")
-            for key in ("og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"):
-                v = _meta(soup, key)
-                if v:
-                    images.append(urljoin(final, v))
-            for tag in soup.find_all("link", href=True):
-                rel = " ".join(tag.get("rel") or []).lower()
-                if "apple-touch-icon" in rel:
-                    icons.insert(0, urljoin(final, tag["href"]))
-                elif "icon" in rel:
-                    icons.append(urljoin(final, tag["href"]))
-        icons.append(urljoin(final, "/favicon.ico"))
-    except Exception:
-        status = "error"
-        icons.append(urljoin(url, "/favicon.ico"))
+    info = None
+    for headers in (UA, BOT_UA):  # second try only when the first gave no picture
+        try:
+            cur = _scrape(url, headers)
+        except Exception:
+            continue
+        if info is None or cur["images"]:
+            if info and not cur["icons"]:
+                cur["icons"] = info["icons"]
+            info = cur
+        if info["images"]:
+            break
+    o_title, o_image = _oembed(url)
+    status = "ok" if (info or o_title or o_image) else "error"
+    info = info or {"title": "", "desc": "", "images": [], "icons": [], "final": url}
+    title, desc = o_title or info["title"], info["desc"]
+    images = ([o_image] if o_image else []) + info["images"]
+    icons = info["icons"] + [urljoin(info["final"], "/favicon.ico")]
 
     thumb, kind = None, ""
     for candidates, k in ((images, "image"), (icons, "icon")):
@@ -302,7 +349,7 @@ def thumbs(name):
 @app.get("/api/state")
 def state():
     with db() as c:
-        groups = [dict(r) for r in c.execute("SELECT * FROM groups ORDER BY id")]
+        groups = [dict(r) for r in c.execute("SELECT * FROM groups ORDER BY position, id")]
         links = [dict(r) for r in c.execute("SELECT * FROM links ORDER BY id DESC")]
     return jsonify(groups=groups, links=links)
 
@@ -381,6 +428,19 @@ def create_group():
     return jsonify(id=gid), 201
 
 
+@app.post("/api/groups/order")
+def order_groups():
+    """Body: {"ids": [3, 1, 2]} - the group ids in the order they should appear."""
+    d = request.get_json(force=True, silent=True) or {}
+    ids = [int(i) for i in d.get("ids", []) if str(i).isdigit()]
+    with db() as c:
+        known = [r["id"] for r in c.execute("SELECT id FROM groups ORDER BY position, id")]
+        ordered = [i for i in dict.fromkeys(ids) if i in known] + [i for i in known if i not in ids]
+        for pos, gid in enumerate(ordered, 1):
+            c.execute("UPDATE groups SET position=? WHERE id=?", (pos, gid))
+    return jsonify(ok=True)
+
+
 @app.patch("/api/groups/<int:gid>")
 def update_group(gid):
     d = request.get_json(force=True, silent=True) or {}
@@ -444,7 +504,7 @@ def export_links():
            '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
            "<TITLE>Bookmarks</TITLE>", "<H1>Bookmarks</H1>", "<DL><p>"]
     with db() as c:
-        groups = c.execute("SELECT * FROM groups ORDER BY id").fetchall()
+        groups = c.execute("SELECT * FROM groups ORDER BY position, id").fetchall()
         links = c.execute("SELECT * FROM links ORDER BY id").fetchall()
 
     def rows(gid, pad):

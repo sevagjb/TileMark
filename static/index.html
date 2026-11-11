@@ -129,6 +129,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 <main>
   <div class="tools"><span id="count"></span><span class="spacer"></span>
     <button class="btn" id="foldAll" hidden>Collapse all</button>
+    <button class="btn" id="unfoldAll" hidden>Expand all</button>
     <button class="btn" id="openAll" hidden>Open all in tabs</button></div>
   <div id="board"></div>
   <div class="empty" id="empty" hidden></div>
@@ -147,6 +148,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <h2 id="gHead">New group</h2>
   <label for="gName">Name</label><input id="gName" type="text" maxlength="60">
   <label>Colour</label><div class="swatches" id="gColors"></div>
+  <div id="gPosWrap"><label for="gPos">Position</label><select id="gPos"></select></div>
   <div class="row"><button class="btn danger left" type="button" id="gDelete">Delete group</button>
     <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="gSave">Save</button></div>
 </form></dialog>
@@ -210,7 +212,7 @@ function chip(label, key, color, n, g) {
   if (color) c.append(el("span", { className: "dot" }));
   c.append(el("span", { textContent: label }), el("span", { className: "n", textContent: n }));
   if (g) { const b = el("button", { className: "edit", title: "Edit group", textContent: "✎" });
-           b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); }
+           b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); dragGroup(c, g); }
   c.onclick = () => setFilter(key);
   c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter(key); } };
   if (key !== "all") makeDrop(c, key);
@@ -220,9 +222,21 @@ function makeDrop(c, key) {  // drop a card on a chip or a section header to mov
   c.ondragover = e => { e.preventDefault(); c.classList.add("drop"); };
   c.ondragleave = () => c.classList.remove("drop");
   c.ondrop = async e => { e.preventDefault(); c.classList.remove("drop");
-    const id = +e.dataTransfer.getData("text/linkboard"); if (!id) return;
-    try { await api("PATCH", "/api/links/" + id, { group_id: key === "none" ? null : key }); load(); } catch (err) { toast(err.message); } };
+    const gid = +e.dataTransfer.getData("text/linkboard-group"), id = +e.dataTransfer.getData("text/linkboard");
+    try {
+      if (gid) { if (key !== "none" && gid !== key) await moveGroup(gid, S.groups.findIndex(g => g.id === key)); }
+      else if (id) await api("PATCH", "/api/links/" + id, { group_id: key === "none" ? null : key });
+      else return;
+      load();
+    } catch (err) { toast(err.message); } };
 }
+// put group `gid` at position `index` (0 = first) and save the new order
+async function moveGroup(gid, index) {
+  const ids = S.groups.map(g => g.id).filter(i => i !== gid);
+  ids.splice(Math.max(0, Math.min(index, ids.length)), 0, gid);
+  await api("POST", "/api/groups/order", { ids });
+}
+const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => { e.dataTransfer.setData("text/linkboard-group", g.id); e.dataTransfer.effectAllowed = "move"; }; };
 function openMany(list) {
   if (list.length > 8 && !confirm("Open " + list.length + " tabs?")) return;
   let blocked = 0; for (const l of list) if (!window.open(l.url, "_blank", "noopener")) blocked++;
@@ -242,6 +256,7 @@ function section(key, name, color, links) {
   head.onclick = toggle;
   head.onkeydown = e => { if (e.target === head && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } };
   makeDrop(head, key);
+  const g = group(key); if (g) dragGroup(head, g);
   sec.append(head, grid(links));
   return sec;
 }
@@ -256,6 +271,11 @@ function card(l) {
   const a = el("a", { className: "card", href: l.url, target: "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
   if (g) a.style.setProperty("--c", g.color);
   a.ondragstart = e => e.dataTransfer.setData("text/linkboard", l.id);
+  a.onclick = e => {  // plain click: open a fresh, independent tab
+    if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    const w = window.open(l.url, "_blank", "noopener,noreferrer");
+    if (w !== undefined) e.preventDefault();
+  };
   const th = el("div", { className: "thumb" });
   const letter = () => el("span", { className: "letter", textContent: (host(l.url)[0] || "?") });
   if (l.thumb) { const img = el("img", { className: l.thumb_kind === "image" ? "full" : "icon", src: "/thumbs/" + l.thumb, alt: "", loading: "lazy", draggable: false });
@@ -293,10 +313,11 @@ function render() {
     if (un.length) { secs.push(section("none", "Ungrouped", "#9aa3b2", un)); keys.push("none"); }
     $("board").replaceChildren(...secs);
   } else $("board").replaceChildren(grid(list));
-  const fold = $("foldAll"), allFolded = keys.length > 0 && keys.every(k => collapsed.has(k));
-  fold.hidden = keys.length < 2 || !!q.trim();
-  fold.textContent = allFolded ? "Expand all" : "Collapse all";
-  fold.onclick = () => { for (const k of keys) allFolded ? collapsed.delete(k) : collapsed.add(k); saveCollapsed(); render(); };
+  const sectioned = filter === "all" && S.groups.length > 0;  // both buttons are always there in the grouped view
+  $("foldAll").hidden = $("unfoldAll").hidden = !sectioned;
+  $("foldAll").disabled = $("unfoldAll").disabled = !!q.trim();
+  $("foldAll").onclick = () => { for (const k of keys) collapsed.add(k); saveCollapsed(); render(); };
+  $("unfoldAll").onclick = () => { collapsed.clear(); saveCollapsed(); render(); };
   $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
   $("openAll").hidden = !(list.length > 1 && (filter !== "all" || q.trim()));
   const empty = $("empty"); empty.hidden = list.length > 0;
@@ -331,6 +352,9 @@ $("lDelete").onclick = async () => { $("linkDlg").close(); removeLink(editing); 
 function openGroup(g) {
   editingGroup = g; $("gHead").textContent = g ? "Edit group" : "New group"; $("gName").value = g ? g.name : "";
   pickedColor = g ? g.color : COLORS[S.groups.length % COLORS.length]; $("gDelete").hidden = !g;
+  const n = S.groups.length + (g ? 0 : 1), at = g ? S.groups.findIndex(x => x.id === g.id) : n - 1;
+  $("gPos").replaceChildren(...Array.from({ length: n }, (_, i) => el("option", { value: i, textContent: (i + 1) + (i === 0 ? " (first)" : i === n - 1 ? " (last)" : "") })));
+  $("gPos").value = String(at); $("gPos").dataset.was = String(at);
   const draw = () => $("gColors").replaceChildren(...COLORS.map(c => { const b = el("button", { type: "button", className: c === pickedColor ? "on" : "" });
     b.style.setProperty("--c", c); b.setAttribute("aria-label", "Colour " + c); b.onclick = () => { pickedColor = c; draw(); }; return b; }));
   draw(); $("groupDlg").showModal(); $("gName").focus();
@@ -338,8 +362,10 @@ function openGroup(g) {
 $("gSave").onclick = async () => {
   const name = $("gName").value.trim(); if (!name) return toast("Give the group a name.");
   try {
-    if (editingGroup) await api("PATCH", "/api/groups/" + editingGroup.id, { name, color: pickedColor });
-    else { const r = await api("POST", "/api/groups", { name, color: pickedColor }); filter = String(r.id); localStorage.setItem("lb.filter", filter); }
+    let gid = editingGroup && editingGroup.id;
+    if (gid) await api("PATCH", "/api/groups/" + gid, { name, color: pickedColor });
+    else gid = (await api("POST", "/api/groups", { name, color: pickedColor })).id;
+    if ($("gPos").value !== $("gPos").dataset.was) await moveGroup(gid, +$("gPos").value);
     $("groupDlg").close(); load();
   } catch (e) { toast(e.message); }
 };

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinkBoard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234c8bf5'/><rect x='6' y='7' width='9' height='8' rx='2' fill='white'/><rect x='17' y='7' width='9' height='8' rx='2' fill='white' opacity='.7'/><rect x='6' y='17' width='9' height='8' rx='2' fill='white' opacity='.7'/><rect x='17' y='17' width='9' height='8' rx='2' fill='white'/></svg>">
+<style>
+:root {
+  --bg: #f3f4f7; --panel: #ffffff; --line: #dfe2e8; --text: #1b1f27; --muted: #667085;
+  --accent: #2f6fe4; --danger: #d6453d; --shadow: 0 1px 2px rgba(20,25,40,.06), 0 6px 18px rgba(20,25,40,.06);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3;
+          --accent: #6ea0ff; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+       font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent);
+         backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
+.brand { font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-right: 6px; }
+.add { flex: 1 1 320px; display: flex; background: var(--panel); border: 1px solid var(--line);
+       border-radius: 10px; overflow: hidden; }
+.add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.add input { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 12px; outline: none; }
+.add select { border: 0; border-left: 1px solid var(--line); background: none; padding: 0 8px; max-width: 150px; outline: none; }
+.add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
+.search { flex: 0 1 200px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
+.search:focus { border-color: var(--accent); }
+.btn { color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 13px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.btn.danger { color: var(--danger); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; max-width: 1500px; margin: 10px auto 0; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--panel);
+        border-radius: 999px; padding: 5px 12px; cursor: pointer; user-select: none; }
+.chip .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); }
+.chip .n { color: var(--muted); font-size: 12.5px; }
+.chip.on { border-color: var(--c, var(--accent)); background: color-mix(in srgb, var(--c, var(--accent)) 16%, var(--panel)); font-weight: 600; }
+.chip.drop { outline: 2px dashed var(--c, var(--accent)); outline-offset: 2px; }
+.chip.ghost { border-style: dashed; color: var(--muted); }
+.chip .edit { border: 0; background: none; padding: 0 0 0 2px; cursor: pointer; color: var(--muted); display: none; }
+.chip.on .edit { display: inline; }
+main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
+.tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--muted); font-size: 13.5px; }
+.tools .spacer { flex: 1; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.card { position: relative; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; box-shadow: var(--shadow);
+        transition: transform .12s ease, border-color .12s ease; }
+.card:hover { transform: translateY(-2px); border-color: var(--c, var(--accent)); }
+.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.thumb { aspect-ratio: 16 / 9; background: color-mix(in srgb, var(--c, var(--muted)) 18%, var(--panel));
+         display: grid; place-items: center; overflow: hidden; border-bottom: 1px solid var(--line); }
+.thumb img.full { width: 100%; height: 100%; object-fit: cover; }
+.thumb img.icon { width: 56px; height: 56px; object-fit: contain; border-radius: 10px; }
+.thumb .letter { font-size: 44px; font-weight: 700; color: color-mix(in srgb, var(--c, var(--muted)) 75%, var(--text)); text-transform: uppercase; }
+.thumb .spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.body { padding: 10px 12px 12px; min-width: 0; }
+.title { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.meta { margin-top: 5px; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; min-width: 0; }
+.meta .host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta .tag { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; max-width: 50%; overflow: hidden; text-overflow: ellipsis; }
+.meta .tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+.card:hover .actions, .card:focus-within .actions { opacity: 1; }
+@media (hover: none) { .actions { opacity: 1; } }
+.actions button { width: 30px; height: 30px; border-radius: 8px; border: 0; cursor: pointer; background: rgba(15,18,25,.72); color: #fff; font-size: 14px; }
+.actions button:hover { background: rgba(15,18,25,.92); }
+.empty { text-align: center; color: var(--muted); padding: 70px 20px; }
+.empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
+         padding: 22px; width: min(520px, calc(100vw - 30px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+dialog::backdrop { background: rgba(10,12,18,.5); }
+dialog h2 { margin: 0 0 14px; font-size: 18px; }
+dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
+dialog input[type=text], dialog input[type=url], dialog select, dialog textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
+dialog textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+dialog :is(input, select, textarea):focus { border-color: var(--accent); }
+.row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
+.row .left { margin-right: auto; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; background: var(--c); cursor: pointer; }
+.swatches button.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--panel) inset; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1b1f27; color: #fff;
+         padding: 10px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; max-width: 90vw; }
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">LinkBoard</div>
+    <form class="add" id="addForm">
+      <input id="addUrl" type="text" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
+      <select id="addGroup" aria-label="Group"></select>
+      <button type="submit">Add</button>
+    </form>
+    <input class="search" id="search" type="search" placeholder="Search" aria-label="Search links">
+    <button class="btn" id="importBtn">Import</button>
+    <a class="btn" href="/api/export" style="text-decoration:none">Export</a>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main>
+  <div class="tools"><span id="count"></span><span class="spacer"></span>
+    <button class="btn" id="openAll" hidden>Open all in tabs</button></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden></div>
+</main>
+
+<dialog id="linkDlg"><form method="dialog">
+  <h2>Edit link</h2>
+  <label for="lUrl">Address</label><input id="lUrl" type="text">
+  <label for="lTitle">Title <span style="font-weight:400">(leave empty to use the page title)</span></label><input id="lTitle" type="text">
+  <label for="lGroup">Group</label><select id="lGroup"></select>
+  <div class="row"><button class="btn danger left" type="button" id="lDelete">Delete</button>
+    <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="lSave">Save</button></div>
+</form></dialog>
+
+<dialog id="groupDlg"><form method="dialog">
+  <h2 id="gHead">New group</h2>
+  <label for="gName">Name</label><input id="gName" type="text" maxlength="60">
+  <label>Colour</label><div class="swatches" id="gColors"></div>
+  <div class="row"><button class="btn danger left" type="button" id="gDelete">Delete group</button>
+    <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="gSave">Save</button></div>
+</form></dialog>
+
+<dialog id="importDlg"><form method="dialog">
+  <h2>Import links</h2>
+  <label for="iText">Paste links, one per line</label>
+  <textarea id="iText" placeholder="https://example.com&#10;https://another.example/page"></textarea>
+  <label for="iFile">Or choose a file</label>
+  <input id="iFile" type="file" accept=".html,.htm,.txt,.csv">
+  <p class="hint">A bookmarks/favorites export from Edge, Chrome or Firefox works: folders become groups. A plain text file with links works too.</p>
+  <label for="iGroup">Put everything in</label><select id="iGroup"></select>
+  <div class="row"><button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="iGo">Import</button></div>
+</form></dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+const COLORS = ["#4c8bf5","#e5534b","#e0a31b","#3fa55a","#d6589f","#8e6ad8","#2aa7b8","#e8793a","#7d8590"];
+const $ = id => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "all", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
+
+async function api(method, path, body) {
+  const opt = { method };
+  if (body instanceof FormData) opt.body = body;
+  else if (body) { opt.headers = { "Content-Type": "application/json" }; opt.body = JSON.stringify(body); }
+  const r = await fetch(path, opt), d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "Something went wrong (" + r.status + ")");
+  return d;
+}
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 3200); }
+const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+const group = id => S.groups.find(g => g.id === id);
+
+async function load() {
+  try { S = await api("GET", "/api/state"); } catch (e) { toast(e.message); return; }
+  if (filter !== "all" && filter !== "none" && !group(+filter)) filter = "all";
+  render();
+  clearTimeout(timer);
+  if (S.links.some(l => l.status === "pending")) timer = setTimeout(load, 2000);
+}
+function setFilter(f) { filter = String(f); localStorage.setItem("lb.filter", filter); render(); }
+
+function visible() {
+  const needle = q.trim().toLowerCase();
+  return S.links.filter(l => {
+    if (filter === "none" ? l.group_id !== null : filter !== "all" && l.group_id !== +filter) return false;
+    if (!needle) return true;
+    const g = group(l.group_id);
+    return (l.title + " " + l.url + " " + l.description + " " + (g ? g.name : "")).toLowerCase().includes(needle);
+  });
+}
+
+function chip(label, key, color, n, g) {
+  const c = el("div", { className: "chip" + (filter === String(key) ? " on" : ""), tabIndex: 0, role: "button" });
+  if (color) c.style.setProperty("--c", color);
+  if (color) c.append(el("span", { className: "dot" }));
+  c.append(el("span", { textContent: label }), el("span", { className: "n", textContent: n }));
+  if (g) { const b = el("button", { className: "edit", title: "Edit group", textContent: "✎" });
+           b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); }
+  c.onclick = () => setFilter(key);
+  c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFilter(key); } };
+  if (key !== "all") {  // drop a card on a chip to move it
+    c.ondragover = e => { e.preventDefault(); c.classList.add("drop"); };
+    c.ondragleave = () => c.classList.remove("drop");
+    c.ondrop = async e => { e.preventDefault(); c.classList.remove("drop");
+      const id = +e.dataTransfer.getData("text/linkboard"); if (!id) return;
+      try { await api("PATCH", "/api/links/" + id, { group_id: key === "none" ? null : key }); load(); } catch (err) { toast(err.message); } };
+  }
+  return c;
+}
+
+function fillSelect(sel, value, noneLabel) {
+  sel.replaceChildren(el("option", { value: "", textContent: noneLabel }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })));
+  sel.value = value == null ? "" : String(value);
+}
+
+function card(l) {
+  const g = group(l.group_id);
+  const a = el("a", { className: "card", href: l.url, target: "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
+  if (g) a.style.setProperty("--c", g.color);
+  a.ondragstart = e => e.dataTransfer.setData("text/linkboard", l.id);
+  const th = el("div", { className: "thumb" });
+  const letter = () => el("span", { className: "letter", textContent: (host(l.url)[0] || "?") });
+  if (l.thumb) { const img = el("img", { className: l.thumb_kind === "image" ? "full" : "icon", src: "/thumbs/" + l.thumb, alt: "", loading: "lazy", draggable: false });
+                 img.onerror = () => img.replaceWith(letter()); th.append(img); }
+  else th.append(l.status === "pending" ? el("span", { className: "spin" }) : letter());
+  const meta = el("div", { className: "meta" }, el("span", { className: "host", textContent: host(l.url) }));
+  if (g && filter !== String(g.id)) meta.append(el("span", { className: "tag" }, el("i"), g.name));
+  const act = el("div", { className: "actions" });
+  const btn = (txt, tip, fn) => { const b = el("button", { type: "button", textContent: txt, title: tip }); b.setAttribute("aria-label", tip);
+    b.onclick = e => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
+  act.append(btn("✎", "Edit", () => openLink(l)),
+             btn("↻", "Refresh thumbnail", async () => { await api("POST", "/api/links/" + l.id + "/refresh"); load(); }),
+             btn("✕", "Delete", () => removeLink(l)));
+  a.append(th, el("div", { className: "body" }, el("div", { className: "title", textContent: l.title || host(l.url) }), meta), act);
+  return a;
+}
+
+function render() {
+  const chips = $("chips"), ungrouped = S.links.filter(l => l.group_id === null).length;
+  chips.replaceChildren(chip("All", "all", null, S.links.length));
+  for (const g of S.groups) chips.append(chip(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
+  if (S.groups.length && ungrouped) chips.append(chip("Ungrouped", "none", "#9aa3b2", ungrouped));
+  const add = el("div", { className: "chip ghost", textContent: "+ New group", tabIndex: 0, role: "button" });
+  add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
+  chips.append(add);
+
+  const keep = $("addGroup").value;
+  fillSelect($("addGroup"), filter !== "all" && filter !== "none" ? filter : keep, "No group");
+
+  const list = visible();
+  $("grid").replaceChildren(...list.map(card));
+  $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
+  $("openAll").hidden = !(list.length > 1 && (filter !== "all" || q.trim()));
+  const empty = $("empty"); empty.hidden = list.length > 0;
+  if (!list.length) empty.replaceChildren(el("b", { textContent: S.links.length ? "Nothing here" : "No links yet" }),
+    S.links.length ? "Try another group or search." : "Paste a link above, or use Import to bring in your bookmarks all at once.");
+}
+
+async function removeLink(l) {
+  if (!confirm("Delete this link?\n" + (l.title || l.url))) return;
+  try { await api("DELETE", "/api/links/" + l.id); load(); } catch (e) { toast(e.message); }
+}
+
+// add
+$("addForm").onsubmit = async e => {
+  e.preventDefault();
+  const url = $("addUrl").value.trim(); if (!url) return;
+  try { await api("POST", "/api/links", { url, group_id: +$("addGroup").value || null }); $("addUrl").value = ""; load(); }
+  catch (err) { toast(err.message); }
+};
+$("search").oninput = e => { q = e.target.value; render(); };
+$("openAll").onclick = () => {
+  const list = visible();
+  if (list.length > 8 && !confirm("Open " + list.length + " tabs?")) return;
+  let blocked = 0; for (const l of list) if (!window.open(l.url, "_blank", "noopener")) blocked++;
+  if (blocked) toast("Your browser blocked " + blocked + " tabs. Allow pop-ups for this page to open them all.");
+};
+
+// edit link
+function openLink(l) { editing = l; $("lUrl").value = l.url; $("lTitle").value = l.title; fillSelect($("lGroup"), l.group_id, "No group"); $("linkDlg").showModal(); }
+$("lSave").onclick = async () => {
+  try { await api("PATCH", "/api/links/" + editing.id, { url: $("lUrl").value, title: $("lTitle").value, group_id: +$("lGroup").value || null });
+        $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
+};
+$("lDelete").onclick = async () => { $("linkDlg").close(); removeLink(editing); };
+
+// groups
+function openGroup(g) {
+  editingGroup = g; $("gHead").textContent = g ? "Edit group" : "New group"; $("gName").value = g ? g.name : "";
+  pickedColor = g ? g.color : COLORS[S.groups.length % COLORS.length]; $("gDelete").hidden = !g;
+  const draw = () => $("gColors").replaceChildren(...COLORS.map(c => { const b = el("button", { type: "button", className: c === pickedColor ? "on" : "" });
+    b.style.setProperty("--c", c); b.setAttribute("aria-label", "Colour " + c); b.onclick = () => { pickedColor = c; draw(); }; return b; }));
+  draw(); $("groupDlg").showModal(); $("gName").focus();
+}
+$("gSave").onclick = async () => {
+  const name = $("gName").value.trim(); if (!name) return toast("Give the group a name.");
+  try {
+    if (editingGroup) await api("PATCH", "/api/groups/" + editingGroup.id, { name, color: pickedColor });
+    else { const r = await api("POST", "/api/groups", { name, color: pickedColor }); filter = String(r.id); localStorage.setItem("lb.filter", filter); }
+    $("groupDlg").close(); load();
+  } catch (e) { toast(e.message); }
+};
+$("gName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("gSave").click(); } };
+$("gDelete").onclick = async () => {
+  if (!confirm('Delete the group "' + editingGroup.name + '"?\nIts links are kept and become ungrouped.')) return;
+  try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); setFilter("all"); load(); } catch (e) { toast(e.message); }
+};
+
+// import
+$("importBtn").onclick = () => { $("iText").value = ""; $("iFile").value = ""; fillSelect($("iGroup"), "", "Keep folders as groups / no group"); $("importDlg").showModal(); };
+$("iGo").onclick = async () => {
+  const fd = new FormData(); fd.append("text", $("iText").value); fd.append("group_id", $("iGroup").value);
+  if ($("iFile").files[0]) fd.append("file", $("iFile").files[0]);
+  if (!$("iText").value.trim() && !$("iFile").files[0]) return toast("Paste some links or choose a file.");
+  $("iGo").disabled = true;
+  try { const r = await api("POST", "/api/import", fd); $("importDlg").close();
+        toast("Imported " + r.added + (r.added === 1 ? " link" : " links") + (r.skipped ? ", skipped " + r.skipped + " (duplicates or not web links)" : "") + "."); load(); }
+  catch (e) { toast(e.message); } finally { $("iGo").disabled = false; }
+};
+// pasting several links into the add box sends them to import
+$("addUrl").onpaste = e => {
+  const t = (e.clipboardData || window.clipboardData).getData("text");
+  if (t.trim().split(/\s*\n\s*/).length > 1) { e.preventDefault(); $("importBtn").click(); $("iText").value = t; }
+};
+load();
+</script>
+</body>
+</html>

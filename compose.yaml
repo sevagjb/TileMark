@@ -1,0 +1,12 @@
+services:
+  linkboard:
+    image: ghcr.io/sevagjb/linkboard:latest
+    # To build from source instead of pulling the image, comment the line
+    # above and uncomment the next one:
+    # build: .
+    container_name: linkboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data

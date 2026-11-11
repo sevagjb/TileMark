@@ -11,10 +11,11 @@
   --accent: #2f6fe4; --danger: #d6453d; --shadow: 0 1px 2px rgba(20,25,40,.06), 0 6px 18px rgba(20,25,40,.06);
   color-scheme: light dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3;
-          --accent: #6ea0ff; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); }
-}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3;
+  --accent: #6ea0ff; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3;
+  --accent: #6ea0ff; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
        font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -123,6 +124,15 @@ main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
   .gitem { flex: none; } .gitem.ghost { margin-top: 0; }
   .list .thumb { flex-basis: 104px; }
 }
+.lay-sections .layout { grid-template-columns: minmax(0, 1fr); }
+.lay-sections .side, .lay-sections #ptitle, .lay-sections #openAll { display: none; }
+.lay-panel .only-sections { display: none; }
+.sec-head .edit { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; opacity: 0; }
+.sec-head:hover .edit, .sec-head .edit:focus-visible { opacity: 1; }
+.choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.choice input { margin-top: 3px; }
+.choice b { display: block; } .choice span { color: var(--muted); font-size: 13px; }
 .empty { text-align: center; color: var(--muted); padding: 70px 20px; }
 .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
 dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
@@ -157,6 +167,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <input class="search" id="search" type="search" placeholder="Search" aria-label="Search links">
     <button class="btn" id="importBtn">Import</button>
     <a class="btn" href="/api/export" style="text-decoration:none">Export</a>
+    <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
 
@@ -165,6 +176,9 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <nav class="side" id="side" aria-label="Groups"></nav>
     <section>
       <div class="tools"><span class="ptitle" id="ptitle"></span><span id="count"></span><span class="spacer"></span>
+        <button class="btn only-sections" id="newGroupBtn">+ New group</button>
+        <button class="btn only-sections" id="foldAll">Collapse all</button>
+        <button class="btn only-sections" id="unfoldAll">Expand all</button>
         <button class="btn" id="openAll" hidden>Open all in tabs</button></div>
       <div id="board"></div>
       <div class="empty" id="empty" hidden></div>
@@ -201,12 +215,35 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <div class="row"><button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="iGo">Import</button></div>
 </form></dialog>
 
+<dialog id="settingsDlg"><form method="dialog">
+  <h2>Settings</h2>
+  <label>Layout</label>
+  <label class="choice"><input type="radio" name="layout" value="panel"><div><b>Side panel</b><span>Groups in a column on the left; click one to list its links beside it.</span></div></label>
+  <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
+  <label for="setTheme">Appearance</label>
+  <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+  <p class="hint">Settings are saved in this browser, so each device can have its own.</p>
+  <div class="row"><button class="btn primary" value="close">Done</button></div>
+</form></dialog>
+
 <div id="toast" role="status"></div>
 
 <script>
 const COLORS = ["#4c8bf5","#e5534b","#e0a31b","#3fa55a","#d6589f","#8e6ad8","#2aa7b8","#e8793a","#7d8590"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+let cfg = { layout: "panel", theme: "system" };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem("lb.settings") || "{}")); } catch {}
+if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
+function applySettings() {
+  try { localStorage.setItem("lb.settings", JSON.stringify(cfg)); } catch {}
+  document.body.className = "lay-" + cfg.layout;
+  if (cfg.theme === "light" || cfg.theme === "dark") document.documentElement.dataset.theme = cfg.theme;
+  else delete document.documentElement.dataset.theme;
+}
+let expanded = new Set();  // sections layout: groups start collapsed; only the opened ones are remembered
+try { expanded = new Set(JSON.parse(localStorage.getItem("lb.expanded") || "[]")); } catch {}
+const saveExpanded = () => { try { localStorage.setItem("lb.expanded", JSON.stringify([...expanded])); } catch {} };
 let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
 
 async function api(method, path, body) {
@@ -234,7 +271,7 @@ function setFilter(f) { filter = String(f); localStorage.setItem("lb.filter", fi
 function visible() {
   const needle = q.trim().toLowerCase();
   return S.links.filter(l => {
-    if (!needle) return filter === "all" || (filter === "none" ? l.group_id === null : l.group_id === +filter);
+    if (!needle) return cfg.layout === "sections" || filter === "all" || (filter === "none" ? l.group_id === null : l.group_id === +filter);
     const g = group(l.group_id);
     return (l.title + " " + l.url + " " + l.description + " " + (g ? g.name : "")).toLowerCase().includes(needle);
   });
@@ -304,7 +341,7 @@ function card(l) {
   act.append(btn("✎", "Edit", () => openLink(l)),
              btn("↻", "Refresh thumbnail", async () => { await api("POST", "/api/links/" + l.id + "/refresh"); load(); }),
              btn("✕", "Delete", () => removeLink(l)));
-  if (g && (filter === "all" || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
+  if (g && cfg.layout === "panel" && (filter === "all" || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
   const body = el("div", { className: "body" }, el("div", { className: "title", textContent: l.title || host(l.url) }));
   if (l.description) body.append(el("div", { className: "desc", textContent: l.description }));
   body.append(meta);
@@ -312,7 +349,45 @@ function card(l) {
   return a;
 }
 
+function section(key, name, color, links, g) {
+  const k = String(key), isC = !expanded.has(k) && !q.trim();
+  const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color);
+  const head = el("div", { className: "sec-head", tabIndex: 0, role: "button", title: isC ? "Expand" : "Collapse" },
+    el("span", { className: "chev", textContent: "▾" }), el("span", { className: "dot" }),
+    el("span", { className: "sec-name", textContent: name }), el("span", { className: "n", textContent: links.length }));
+  if (g) { const b = el("button", { className: "edit", type: "button", title: "Edit group", textContent: "✎" });
+           b.onclick = e => { e.stopPropagation(); openGroup(g); }; head.append(b); dragGroup(head, g); }
+  const open = el("button", { className: "open", type: "button", textContent: "Open all", title: "Open all links of this group in tabs" });
+  open.onclick = e => { e.stopPropagation(); openMany(links); };
+  if (links.length) head.append(open);
+  head.setAttribute("aria-expanded", String(!isC));
+  const toggle = () => { expanded.has(k) ? expanded.delete(k) : expanded.add(k); saveExpanded(); render(); };
+  head.onclick = toggle;
+  head.onkeydown = e => { if (e.target === head && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } };
+  makeDrop(head, key);
+  sec.append(head, el("div", { className: "grid" }, ...links.map(card)));
+  return sec;
+}
+function renderSections(list) {
+  const searching = !!q.trim(), secs = [], keys = [];
+  for (const g of S.groups) { const ls = list.filter(l => l.group_id === g.id);
+    if (ls.length || !searching) { secs.push(section(g.id, g.name, g.color, ls, g)); keys.push(String(g.id)); } }
+  const un = list.filter(l => l.group_id === null);
+  if (un.length) { if (S.groups.length) { secs.push(section("none", "Ungrouped", "#9aa3b2", un)); keys.push("none"); }
+                   else secs.push(el("div", { className: "grid" }, ...un.map(card))); }
+  $("board").replaceChildren(...secs);
+  $("foldAll").disabled = $("unfoldAll").disabled = searching || !keys.length;
+  $("foldAll").onclick = () => { expanded.clear(); saveExpanded(); render(); };
+  $("unfoldAll").onclick = () => { for (const k of keys) expanded.add(k); saveExpanded(); render(); };
+  $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
+  const empty = $("empty"); empty.hidden = list.length > 0 || S.groups.length > 0;
+  if (!empty.hidden) empty.replaceChildren(el("b", { textContent: "No links yet" }), "Paste a link above, or use Import to bring in your bookmarks all at once.");
+}
 function render() {
+  if (cfg.layout === "sections") {
+    const keep = $("addGroup").value; fillSelect($("addGroup"), keep, "No group");
+    return renderSections(visible());
+  }
   const side = $("side"), ungrouped = S.links.filter(l => l.group_id === null).length, searching = !!q.trim();
   side.replaceChildren();
   for (const g of S.groups) side.append(sideItem(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
@@ -381,7 +456,7 @@ $("gSave").onclick = async () => {
     if (gid) await api("PATCH", "/api/groups/" + gid, { name, color: pickedColor });
     else gid = (await api("POST", "/api/groups", { name, color: pickedColor })).id;
     if ($("gPos").value !== $("gPos").dataset.was) await moveGroup(gid, +$("gPos").value);
-    if (!editingGroup) { filter = String(gid); localStorage.setItem("lb.filter", filter); }
+    if (!editingGroup) { filter = String(gid); localStorage.setItem("lb.filter", filter); expanded.add(filter); saveExpanded(); }
     $("groupDlg").close(); load();
   } catch (e) { toast(e.message); }
 };
@@ -390,6 +465,15 @@ $("gDelete").onclick = async () => {
   if (!confirm('Delete the group "' + editingGroup.name + '"?\nIts links are kept and become ungrouped.')) return;
   try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
 };
+
+// settings
+$("newGroupBtn").onclick = () => openGroup(null);
+$("settingsBtn").onclick = () => {
+  for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); render(); }; }
+  $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); };
+  $("settingsDlg").showModal();
+};
+applySettings();
 
 // import
 $("importBtn").onclick = () => { $("iText").value = ""; $("iFile").value = ""; fillSelect($("iGroup"), "", "Keep folders as groups / no group"); $("importDlg").showModal(); };

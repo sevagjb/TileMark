@@ -8,6 +8,7 @@ A very small self-hosted page for your web links. Paste a link, and it shows up 
 - **Thumbnails** come from the page's preview image (for YouTube, Vimeo and TikTok from their official embed info), falling back to the site icon, then to a letter tile. They are stored locally, so the page stays fast.
 - **Groups** with colours. In the default layout they are listed in a column on the left: click a group and its links appear beside it as a compact list, one under the other. Drag a card onto a group to move it, and use "Open all in tabs" to open a whole group at once.
 - **Import everything in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
+- **Backup and restore** from Settings: one file with links, groups, order and thumbnails, optionally encrypted with a password.
 - **Export** to a standard bookmarks file that can be imported back here or into any browser.
 - **Your own group order.** Drag a group onto another group in the left column to move it, or pick a position in the group's edit dialog.
 - **Select several links** (the Select button) and move or delete them together, or drag the whole selection onto a group.
@@ -75,6 +76,18 @@ docker exec linkboard python app.py reset-login
 ```
 
 LinkBoard itself speaks plain HTTP. On a home network that keeps other people out of the page, but the password is not encrypted in transit; put a reverse proxy with HTTPS in front if you need that, or if you expose it outside your network.
+
+## Backup and restore
+
+Settings (⚙) → **Backup** downloads a single file with everything: links, groups, colours, order and thumbnails.
+
+- With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.lbk`. Without the password it cannot be opened, and there is no way to recover a forgotten one.
+- Without a password it is a plain `.zip`.
+- The login (username, password hash) is never part of a backup.
+
+Settings → **Restore** replaces all current links and groups with the contents of a backup file. It is all-or-nothing: a wrong password or a damaged file changes nothing.
+
+Copying the `data` folder while the container is stopped is an equally valid full backup.
 
 ## Settings
 

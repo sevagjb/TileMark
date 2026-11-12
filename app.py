@@ -5,7 +5,10 @@ import io
 import os
 import re
 import secrets
+import shutil
 import sqlite3
+import tempfile
+import zipfile
 import sys
 import threading
 import time
@@ -20,6 +23,9 @@ from flask.sessions import SecureCookieSessionInterface
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
@@ -49,7 +55,7 @@ COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2a
 
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
-app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # backups with many thumbnails can be large
 if os.environ.get("BEHIND_PROXY", "").lower() in ("1", "true", "yes"):
     # Trust the reverse proxy's X-Forwarded-* headers: real visitor address (for the
     # wrong-password limit) and whether the visitor used https.
@@ -736,6 +742,118 @@ def export_links():
     out += rows(None, "    ") + ["</DL><p>", ""]
     return Response("\n".join(out), mimetype="text/html",
                     headers={"Content-Disposition": "attachment; filename=linkboard-bookmarks.html"})
+
+
+# ------------------------------------------------------- backup and restore
+# A backup is a zip holding the database and the thumbnails. With a password it is
+# wrapped as: MAGIC + 16-byte salt + 12-byte nonce + AES-256-GCM(zip), key = scrypt(password).
+MAGIC = b"LINKBOARD-BACKUP-1\n"
+PRIVATE_SETTINGS = ("auth_user", "auth_hash", "auth_ver", "secret_key")  # never leave the server
+
+
+def _key(password, salt):
+    return Scrypt(salt=salt, length=32, n=2 ** 15, r=8, p=1).derive(password.encode("utf-8"))
+
+
+def make_backup(password=""):
+    with tempfile.TemporaryDirectory() as tmp:
+        snap = os.path.join(tmp, "linkboard.db")
+        src, dst = sqlite3.connect(DB_PATH, timeout=30), sqlite3.connect(snap)
+        with dst:
+            src.backup(dst)  # consistent copy, even while the app is in use
+        src.close()
+        dst.execute(f"DELETE FROM settings WHERE key IN ({','.join('?' * len(PRIVATE_SETTINGS))})", PRIVATE_SETTINGS)
+        dst.commit()
+        dst.execute("VACUUM")
+        dst.close()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(snap, "linkboard.db")
+            for name in sorted(os.listdir(THUMB_DIR)):
+                z.write(os.path.join(THUMB_DIR, name), "thumbs/" + name, zipfile.ZIP_STORED)
+    data = buf.getvalue()
+    if password:
+        salt, nonce = os.urandom(16), os.urandom(12)
+        data = MAGIC + salt + nonce + AESGCM(_key(password, salt)).encrypt(nonce, data, MAGIC)
+    return data
+
+
+class RestoreError(Exception):
+    pass
+
+
+def restore_backup(data, password=""):
+    if data.startswith(MAGIC):
+        if not password:
+            raise RestoreError("This backup is protected. Enter its password.")
+        salt, nonce, body = data[len(MAGIC):len(MAGIC) + 16], data[len(MAGIC) + 16:len(MAGIC) + 28], data[len(MAGIC) + 28:]
+        try:
+            data = AESGCM(_key(password, salt)).decrypt(nonce, body, MAGIC)
+        except InvalidTag:
+            raise RestoreError("Wrong password, or the backup file is damaged.")
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+        z.getinfo("linkboard.db")
+    except (zipfile.BadZipFile, KeyError):
+        raise RestoreError("This is not a LinkBoard backup file.")
+    with tempfile.TemporaryDirectory() as tmp:
+        snap = os.path.join(tmp, "restore.db")
+        with open(snap, "wb") as f:
+            f.write(z.read("linkboard.db"))
+        try:
+            old = sqlite3.connect(snap)
+            old.row_factory = sqlite3.Row
+            groups = [dict(r) for r in old.execute("SELECT * FROM groups")]
+            links = [dict(r) for r in old.execute("SELECT * FROM links")]
+            old.close()
+        except sqlite3.Error:
+            raise RestoreError("The backup's database cannot be read.")
+        new_thumbs = os.path.join(tmp, "thumbs")
+        os.makedirs(new_thumbs)
+        wanted = {l.get("thumb") for l in links if l.get("thumb")}
+        for info in z.infolist():
+            name = os.path.basename(info.filename)
+            if info.filename.startswith("thumbs/") and name in wanted and re.fullmatch(r"[\w.-]+\.(webp|png)", name):
+                with open(os.path.join(new_thumbs, name), "wb") as f:
+                    f.write(z.read(info))
+        with db() as c:  # one transaction: either everything is replaced or nothing
+            g_cols = [r["name"] for r in c.execute("PRAGMA table_info(groups)")]
+            l_cols = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
+            c.execute("DELETE FROM links")
+            c.execute("DELETE FROM groups")
+            for table, cols, rows in (("groups", g_cols, groups), ("links", l_cols, links)):
+                for row in rows:
+                    row.setdefault("position", row["id"] if table == "groups" else -row["id"])
+                    use = [k for k in cols if k in row]
+                    c.execute(f"INSERT INTO {table} ({','.join(use)}) VALUES ({','.join('?' * len(use))})", [row[k] for k in use])
+            c.execute("UPDATE links SET status='error' WHERE status='pending'")
+        for name in os.listdir(THUMB_DIR):
+            _remove_thumb(name)
+        for name in os.listdir(new_thumbs):
+            shutil.move(os.path.join(new_thumbs, name), os.path.join(THUMB_DIR, name))
+    return len(links), len(groups)
+
+
+@app.post("/api/backup")
+def api_backup():
+    d = request.get_json(force=True, silent=True) or {}
+    password = str(d.get("password", ""))
+    data = make_backup(password)
+    name = "linkboard-backup-" + time.strftime("%Y-%m-%d") + (".lbk" if password else ".zip")
+    return Response(data, mimetype="application/octet-stream",
+                    headers={"Content-Disposition": f"attachment; filename={name}", "X-Filename": name})
+
+
+@app.post("/api/restore")
+def api_restore():
+    f = request.files.get("file")
+    if not f:
+        return jsonify(error="Choose a backup file."), 400
+    try:
+        links, groups = restore_backup(f.read(), request.form.get("password", ""))
+    except RestoreError as e:
+        return jsonify(error=str(e)), 400
+    return jsonify(ok=True, links=links, groups=groups)
 
 
 init_db()

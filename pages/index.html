@@ -146,7 +146,7 @@ main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 .bulk b { color: var(--text); }
 .empty { text-align: center; color: var(--muted); padding: 70px 20px; }
 .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
-dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
+dialog { max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
          padding: 22px; width: min(520px, calc(100vw - 30px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 dialog::backdrop { background: rgba(10,12,18,.5); }
 dialog h2 { margin: 0 0 14px; font-size: 18px; }
@@ -252,6 +252,15 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <button class="btn danger" type="button" id="auOff">Turn off login</button>
     <button class="btn" type="button" id="auOut">Sign out</button>
   </div>
+  <label style="margin-top:20px">Backup</label>
+  <p class="hint" style="margin-top:0">One file with all links, groups, their order and the thumbnails. Give it a password to encrypt it.</p>
+  <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
+  <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
+  <label style="margin-top:20px">Restore</label>
+  <p class="hint" style="margin-top:0">Replaces all current links and groups with the ones from a backup file. Your login stays as it is.</p>
+  <input id="rsFile" type="file" accept=".lbk,.zip">
+  <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
+  <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
   <div class="row"><button class="btn primary" value="close">Done</button></div>
 </form></dialog>
 
@@ -577,6 +586,27 @@ $("auSave").onclick = async () => {
 $("auOff").onclick = async () => {
   if (!$("auCur").value) return toast("Enter the current password to turn the login off.");
   try { await api("DELETE", "/api/auth", { current_password: $("auCur").value }); toast("Login turned off."); refreshAuth(); } catch (e) { toast(e.message); }
+};
+$("bkGo").onclick = async () => {
+  $("bkGo").disabled = true;
+  try {
+    const r = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("bkPass").value }) });
+    if (r.status === 401) { location.href = "/login"; return; }
+    if (!r.ok) throw new Error("The backup could not be made (" + r.status + ").");
+    const a = el("a", { href: URL.createObjectURL(await r.blob()), download: r.headers.get("X-Filename") || "linkboard-backup" });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast($("bkPass").value ? "Encrypted backup downloaded. Keep the password: without it the file cannot be opened." : "Backup downloaded (not encrypted).");
+    $("bkPass").value = "";
+  } catch (e) { toast(e.message); } finally { $("bkGo").disabled = false; }
+};
+$("rsGo").onclick = async () => {
+  const f = $("rsFile").files[0]; if (!f) return toast("Choose a backup file first.");
+  if (!confirm("Replace ALL current links and groups with the contents of this backup?")) return;
+  const fd = new FormData(); fd.append("file", f); fd.append("password", $("rsPass").value);
+  $("rsGo").disabled = true;
+  try { const r = await api("POST", "/api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
+        $("settingsDlg").close(); toast("Restored " + r.links + " links in " + r.groups + " groups."); load(); }
+  catch (e) { toast(e.message); } finally { $("rsGo").disabled = false; }
 };
 $("auOut").onclick = async () => { try { await api("POST", "/api/logout"); } catch (e) {} location.href = "/login"; };
 applySettings();

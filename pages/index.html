@@ -438,7 +438,7 @@ function card(l) {
   };
   a.onclick = e => {  // plain click: open a fresh, independent tab
     if (selecting) { e.preventDefault(); selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); return; }
-    try { navigator.sendBeacon("/api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); } catch {}
+    try { navigator.sendBeacon("/api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); setTimeout(render, 0); } catch {}
     if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     const w = window.open(l.url, "_blank", "noopener,noreferrer");
     if (w !== undefined) e.preventDefault();
@@ -528,7 +528,7 @@ function render() {
   if (favs) side.append(sideItem(SPECIAL.fav, "fav", "#f5b83d", favs));
   side.append(sideItem(SPECIAL.all, "all", null, S.links.length));
   if (S.links.length) side.append(sideItem(SPECIAL.recent, "recent", null, Math.min(30, S.links.length)));
-  if (opened) side.append(sideItem(SPECIAL.opened, "opened", null, Math.min(30, opened)));
+  side.append(sideItem(SPECIAL.opened, "opened", null, Math.min(30, opened)));
   const add = el("div", { className: "gitem ghost", textContent: "+ New group", tabIndex: 0, role: "button" });
   add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
   side.append(add);

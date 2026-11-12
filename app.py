@@ -622,6 +622,8 @@ def create_link():
         gid = d.get("group_id") or None
         if gid is not None and not c.execute("SELECT 1 FROM groups WHERE id=?", (gid,)).fetchone():
             gid = None
+        if gid is None and str(d.get("group") or "").strip():  # by name; created if it is new
+            gid = get_or_create_group(c, str(d["group"]))
         link_id = add_link(c, url, gid, title)
         if link_id is not None and note:
             c.execute("UPDATE links SET note=? WHERE id=?", (note, link_id))

@@ -104,7 +104,7 @@ curl -X POST https://linkboard.example.com/api/links \
   -d '{"url": "https://example.com/article", "group_id": 3, "note": "read later"}'
 ```
 
-`GET /api/groups` with the same header lists the groups and their ids. `title`, `group_id` and `note` are optional.
+`title`, `note` and the group are optional. The group can be given by name (`"group": "Videos"`, created if it does not exist yet) or by id (`group_id`); `GET /api/groups` with the same header lists the groups and their ids.
 
 ## Login
 

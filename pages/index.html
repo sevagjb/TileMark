@@ -133,6 +133,17 @@ main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 .choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .choice input { margin-top: 3px; }
 .choice b { display: block; } .choice span { color: var(--muted); font-size: 13px; }
+.card.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tick { position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #fff; background: rgba(15,18,25,.55);
+        display: none; place-items: center; color: #fff; font-size: 14px; line-height: 1; z-index: 2; }
+.selecting .tick { display: grid; } .selecting .actions { display: none; } .selecting .card { cursor: pointer; }
+.card.sel .tick { background: var(--accent); border-color: var(--accent); }
+.list .card.ins-before { box-shadow: 0 -4px 0 -1px var(--accent); } .list .card.ins-after { box-shadow: 0 4px 0 -1px var(--accent); }
+.grid .card.ins-before { box-shadow: -5px 0 0 -1px var(--accent); } .grid .card.ins-after { box-shadow: 5px 0 0 -1px var(--accent); }
+.bulk { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
+.selecting .bulk { display: flex; } .selecting .not-selecting { display: none !important; }
+.bulk select { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; max-width: 190px; }
+.bulk b { color: var(--text); }
 .empty { text-align: center; color: var(--muted); padding: 70px 20px; }
 .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
 dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
@@ -176,10 +187,16 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <nav class="side" id="side" aria-label="Groups"></nav>
     <section>
       <div class="tools"><span class="ptitle" id="ptitle"></span><span id="count"></span><span class="spacer"></span>
-        <button class="btn only-sections" id="newGroupBtn">+ New group</button>
-        <button class="btn only-sections" id="foldAll">Collapse all</button>
-        <button class="btn only-sections" id="unfoldAll">Expand all</button>
-        <button class="btn" id="openAll" hidden>Open all in tabs</button></div>
+        <span class="bulk"><b id="selCount">0 selected</b>
+          <select id="selMove" aria-label="Move selected links to a group"></select>
+          <button class="btn danger" id="selDelete">Delete</button>
+          <button class="btn" id="selAll">Select all</button>
+          <button class="btn primary" id="selDone">Done</button></span>
+        <button class="btn only-sections not-selecting" id="newGroupBtn">+ New group</button>
+        <button class="btn only-sections not-selecting" id="foldAll">Collapse all</button>
+        <button class="btn only-sections not-selecting" id="unfoldAll">Expand all</button>
+        <button class="btn not-selecting" id="openAll" hidden>Open all in tabs</button>
+        <button class="btn not-selecting" id="selBtn">Select</button></div>
       <div id="board"></div>
       <div class="empty" id="empty" hidden></div>
     </section>
@@ -249,13 +266,14 @@ try { Object.assign(cfg, JSON.parse(localStorage.getItem("lb.settings") || "{}")
 if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
 function applySettings() {
   try { localStorage.setItem("lb.settings", JSON.stringify(cfg)); } catch {}
-  document.body.className = "lay-" + cfg.layout;
+  document.body.classList.remove("lay-panel", "lay-sections"); document.body.classList.add("lay-" + cfg.layout);
   if (cfg.theme === "light" || cfg.theme === "dark") document.documentElement.dataset.theme = cfg.theme;
   else delete document.documentElement.dataset.theme;
 }
 let expanded = new Set();  // sections layout: groups start collapsed; only the opened ones are remembered
 try { expanded = new Set(JSON.parse(localStorage.getItem("lb.expanded") || "[]")); } catch {}
 const saveExpanded = () => { try { localStorage.setItem("lb.expanded", JSON.stringify([...expanded])); } catch {} };
+let selecting = false, selected = new Set(), dragIds = [];
 let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
 
 async function api(method, path, body) {
@@ -306,10 +324,11 @@ function makeDrop(c, key) {  // drop a card on a group to move it; drop a group 
   c.ondragover = e => { e.preventDefault(); c.classList.add("drop"); };
   c.ondragleave = () => c.classList.remove("drop");
   c.ondrop = async e => { e.preventDefault(); c.classList.remove("drop");
-    const gid = +e.dataTransfer.getData("text/linkboard-group"), id = +e.dataTransfer.getData("text/linkboard");
+    const gid = +e.dataTransfer.getData("text/linkboard-group");
+    const ids = e.dataTransfer.getData("text/linkboard").split(",").map(Number).filter(Boolean);
     try {
       if (gid) { if (key !== "none" && gid !== key) await moveGroup(gid, S.groups.findIndex(g => g.id === key)); }
-      else if (id) await api("PATCH", "/api/links/" + id, { group_id: key === "none" ? null : key });
+      else if (ids.length) { await api("POST", "/api/links/bulk", { ids, group_id: key === "none" ? null : key }); selected.clear(); }
       else return;
       load();
     } catch (err) { toast(err.message); } };
@@ -332,12 +351,43 @@ function fillSelect(sel, value, noneLabel) {
   sel.value = value == null ? "" : String(value);
 }
 
+const clearIns = () => document.querySelectorAll(".ins-before,.ins-after").forEach(n => n.classList.remove("ins-before", "ins-after"));
+// list layout: upper/lower half of the card; grid layout: left/right half
+const dropAfter = (node, e) => { const r = node.getBoundingClientRect();
+  return node.closest(".list") ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2; };
+// reordering works inside one group (not in "All links" or search results), with cards of that same group
+function canReorder(target) {
+  if (!dragIds.length || q.trim() || dragIds.includes(target.id)) return false;
+  if (cfg.layout === "panel" && filter === "all") return false;
+  return dragIds.every(id => { const x = S.links.find(k => k.id === id); return x && x.group_id === target.group_id; });
+}
 function card(l) {
   const g = group(l.group_id);
   const a = el("a", { className: "card", href: l.url, target: "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
   if (g) a.style.setProperty("--c", g.color);
-  a.ondragstart = e => e.dataTransfer.setData("text/linkboard", l.id);
+  if (selected.has(l.id)) a.classList.add("sel");
+  a.append(el("span", { className: "tick", textContent: selected.has(l.id) ? "✓" : "" }));
+  a.ondragstart = e => {  // dragging a selected card takes the whole selection along
+    dragIds = selected.has(l.id) ? [...selected] : [l.id];
+    e.dataTransfer.setData("text/linkboard", dragIds.join(",")); e.dataTransfer.effectAllowed = "move";
+  };
+  a.ondragend = () => { dragIds = []; clearIns(); };
+  a.ondragover = e => {  // reorder inside a group: show where the card will land
+    if (!canReorder(l)) return;
+    e.preventDefault(); e.stopPropagation(); clearIns();
+    a.classList.add(dropAfter(a, e) ? "ins-after" : "ins-before");
+  };
+  a.ondrop = async e => {
+    if (!canReorder(l)) return;
+    e.preventDefault(); e.stopPropagation();
+    const after = dropAfter(a, e), moving = dragIds.slice(); clearIns();
+    const ids = S.links.filter(x => x.group_id === l.group_id).map(x => x.id);
+    const rest = ids.filter(i => !moving.includes(i)), picked = ids.filter(i => moving.includes(i));
+    rest.splice(rest.indexOf(l.id) + (after ? 1 : 0), 0, ...picked);
+    try { await api("POST", "/api/links/order", { ids: rest }); load(); } catch (err) { toast(err.message); }
+  };
   a.onclick = e => {  // plain click: open a fresh, independent tab
+    if (selecting) { e.preventDefault(); selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); return; }
     if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     const w = window.open(l.url, "_blank", "noopener,noreferrer");
     if (w !== undefined) e.preventDefault();
@@ -396,7 +446,17 @@ function renderSections(list) {
   const empty = $("empty"); empty.hidden = list.length > 0 || S.groups.length > 0;
   if (!empty.hidden) empty.replaceChildren(el("b", { textContent: "No links yet" }), "Paste a link above, or use Import to bring in your bookmarks all at once.");
 }
+function renderSelection() {
+  const known = new Set(S.links.map(l => l.id)); for (const id of [...selected]) if (!known.has(id)) selected.delete(id);
+  document.body.classList.toggle("selecting", selecting);
+  $("selCount").textContent = selected.size + " selected";
+  const sel = $("selMove");
+  sel.replaceChildren(el("option", { value: "", textContent: "Move to…" }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })),
+    el("option", { value: "none", textContent: "No group" }));
+  sel.disabled = $("selDelete").disabled = !selected.size;
+}
 function render() {
+  renderSelection();
   if (cfg.layout === "sections") {
     const keep = $("addGroup").value; fillSelect($("addGroup"), keep, "No group");
     return renderSections(visible());
@@ -478,6 +538,21 @@ $("gDelete").onclick = async () => {
   if (!confirm('Delete the group "' + editingGroup.name + '"?\nIts links are kept and become ungrouped.')) return;
   try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
 };
+
+// select several links, then move or delete them together
+$("selBtn").onclick = () => { selecting = true; render(); };
+$("selDone").onclick = () => { selecting = false; selected.clear(); render(); };
+$("selAll").onclick = () => { const v = visible(); const all = v.every(l => selected.has(l.id)); for (const l of v) all ? selected.delete(l.id) : selected.add(l.id); render(); };
+$("selMove").onchange = async e => {
+  const v = e.target.value; if (!v || !selected.size) return;
+  try { const r = await api("POST", "/api/links/bulk", { ids: [...selected], group_id: v === "none" ? null : +v });
+        toast("Moved " + r.count + (r.count === 1 ? " link." : " links.")); selected.clear(); load(); } catch (err) { toast(err.message); }
+};
+$("selDelete").onclick = async () => {
+  if (!selected.size || !confirm("Delete " + selected.size + (selected.size === 1 ? " link?" : " links?"))) return;
+  try { await api("POST", "/api/links/bulk", { ids: [...selected], delete: true }); selected.clear(); load(); } catch (err) { toast(err.message); }
+};
+document.addEventListener("keydown", e => { if (e.key === "Escape" && selecting && !document.querySelector("dialog[open]")) $("selDone").click(); });
 
 // settings
 $("newGroupBtn").onclick = () => openGroup(null);

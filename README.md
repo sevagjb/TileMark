@@ -10,6 +10,8 @@ A very small self-hosted page for your web links. Paste a link, and it shows up 
 - **Import everything in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
 - **Export** to a standard bookmarks file that can be imported back here or into any browser.
 - **Your own group order.** Drag a group onto another group in the left column to move it, or pick a position in the group's edit dialog.
+- **Select several links** (the Select button) and move or delete them together, or drag the whole selection onto a group.
+- **Your own link order.** Inside a group, drag a card up or down to rearrange it.
 - **Settings** (⚙): choose the layout (side panel, or all groups as collapsible sections with large cards) and light/dark appearance. Saved per browser.
 - **Search** across titles, addresses and groups.
 - Light and dark mode, follows your system.

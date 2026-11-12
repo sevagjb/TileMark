@@ -100,6 +100,9 @@ def init_db():
         if "position" not in cols:
             c.execute("ALTER TABLE groups ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
             c.execute("UPDATE groups SET position = id")
+        if "position" not in [r["name"] for r in c.execute("PRAGMA table_info(links)")]:
+            c.execute("ALTER TABLE links ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
+            c.execute("UPDATE links SET position = -id")  # keeps the old look: newest first
 
 
 def _is_local(hostish):
@@ -143,13 +146,15 @@ def get_or_create_group(c, name):
                      (name, COLORS[n % len(COLORS)], last + 1)).lastrowid
 
 
-def add_link(c, url, group_id=None, title=""):
-    """Insert a link. Returns the new id, or None if it already exists."""
+def add_link(c, url, group_id=None, title="", top=True):
+    """Insert a link, first in the list (or last, for imports, so a file keeps its
+    order). Returns the new id, or None if it already exists."""
     title = (title or "").strip()[:300]
+    lo, hi = c.execute("SELECT COALESCE(MIN(position), 0), COALESCE(MAX(position), 0) FROM links").fetchone()
     try:
         return c.execute(
-            "INSERT INTO links (url, title, group_id, custom_title, created_at) VALUES (?,?,?,?,?)",
-            (url, title, group_id, 0, int(time.time()))).lastrowid
+            "INSERT INTO links (url, title, group_id, custom_title, created_at, position) VALUES (?,?,?,?,?,?)",
+            (url, title, group_id, 0, int(time.time()), lo - 1 if top else hi + 1)).lastrowid
     except sqlite3.IntegrityError:
         return None
 
@@ -519,7 +524,7 @@ def thumbs(name):
 def state():
     with db() as c:
         groups = [dict(r) for r in c.execute("SELECT * FROM groups ORDER BY position, id")]
-        links = [dict(r) for r in c.execute("SELECT * FROM links ORDER BY id DESC")]
+        links = [dict(r) for r in c.execute("SELECT * FROM links ORDER BY position, id DESC")]
     return jsonify(groups=groups, links=links)
 
 
@@ -535,6 +540,52 @@ def create_link():
         return jsonify(error="This link is already saved."), 409
     queue(link_id)
     return jsonify(id=link_id), 201
+
+
+def _ids(d):
+    return list(dict.fromkeys(int(i) for i in d.get("ids", []) if str(i).isdigit()))
+
+
+@app.post("/api/links/order")
+def order_links():
+    """Body: {"ids": [...]} - these links, in the order they should appear. They
+    swap places among themselves only, so other links keep their position."""
+    ids = _ids(request.get_json(force=True, silent=True) or {})
+    with db() as c:
+        rows = {r["id"]: r["position"] for r in
+                c.execute(f"SELECT id, position FROM links WHERE id IN ({','.join('?' * len(ids))})", ids)} if ids else {}
+        ids = [i for i in ids if i in rows]
+        slots = sorted(rows.values())
+        if len(set(slots)) < len(slots):  # ties: spread them out below the smallest
+            slots = list(range(slots[0], slots[0] + len(slots))) if slots else []
+        for link_id, pos in zip(ids, slots):
+            c.execute("UPDATE links SET position=? WHERE id=?", (pos, link_id))
+    return jsonify(ok=True)
+
+
+@app.post("/api/links/bulk")
+def bulk_links():
+    """Body: {"ids": [...], "group_id": 3 or null} to move, or {"ids": [...], "delete": true}."""
+    d = request.get_json(force=True, silent=True) or {}
+    ids = _ids(d)
+    if not ids:
+        return jsonify(error="Nothing selected."), 400
+    marks = ",".join("?" * len(ids))
+    thumbs = []
+    with db() as c:
+        if d.get("delete"):
+            thumbs = [r["thumb"] for r in c.execute(f"SELECT thumb FROM links WHERE id IN ({marks})", ids) if r["thumb"]]
+            c.execute(f"DELETE FROM links WHERE id IN ({marks})", ids)
+        elif "group_id" in d:
+            gid = d["group_id"] or None
+            if gid is not None and not c.execute("SELECT 1 FROM groups WHERE id=?", (gid,)).fetchone():
+                return jsonify(error="That group no longer exists."), 404
+            c.execute(f"UPDATE links SET group_id=? WHERE id IN ({marks})", [gid] + ids)
+        else:
+            return jsonify(error="Nothing to do."), 400
+    for name in thumbs:
+        _remove_thumb(name)
+    return jsonify(ok=True, count=len(ids))
 
 
 @app.patch("/api/links/<int:link_id>")
@@ -654,7 +705,7 @@ def import_links():
                 skipped += 1
                 continue
             gid = target or (get_or_create_group(c, folder) if folder else None)
-            link_id = add_link(c, url, gid, title)
+            link_id = add_link(c, url, gid, title, top=False)
             if link_id is None:
                 skipped += 1
             else:
@@ -674,7 +725,7 @@ def export_links():
            "<TITLE>Bookmarks</TITLE>", "<H1>Bookmarks</H1>", "<DL><p>"]
     with db() as c:
         groups = c.execute("SELECT * FROM groups ORDER BY position, id").fetchall()
-        links = c.execute("SELECT * FROM links ORDER BY id").fetchall()
+        links = c.execute("SELECT * FROM links ORDER BY position, id DESC").fetchall()
 
     def rows(gid, pad):
         return [f'{pad}<DT><A HREF="{e(l["url"])}" ADD_DATE="{l["created_at"]}">{e(l["title"] or l["url"])}</A>'

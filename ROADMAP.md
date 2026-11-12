@@ -55,6 +55,14 @@ Keeping the collection healthy
 - [x] **10.** Own picture for a card (upload or paste).
 - [x] **11.** Refresh titles and pictures for a selection, a group or everything.
 
+## 1.1.0
+
+- [x] Accounts: the first one is the admin, who adds the others. Links, groups, settings, API key and backups are per account and private.
+- [x] A new installation asks for the first account before showing anything.
+- [x] Safe fetching: no loopback, link-local or metadata addresses; private addresses only when the admin allows it; redirects and the connected address are checked.
+- [x] Image tags: `edge` for every change on `main`, `latest` only for releases.
+- [x] Automated tests, run before every image build.
+
 ## Ideas for wider reach
 
 - [ ] Home Assistant add-on (most home-lab users run Home Assistant; LinkBoard is a light fit).
@@ -66,9 +74,9 @@ Keeping the collection healthy
 ## Later
 
 - [ ] Tags on links (notes came first).
-- [ ] Sort choice saved on the server instead of per browser.
+- [x] Sort choice saved on the server instead of per browser (1.1.0, with layout and appearance).
 - [ ] **12.** Keep a readable copy of the page.
-- [ ] **13.** Several users, each with their own links.
+- [x] **13.** Several users, each with their own links (1.1.0).
 - [ ] **14.** Interface in other languages.
 - [ ] Nightly automatic backup kept in the data folder.
-- [ ] Option to require creating a login on first start.
+- [x] Require creating an account on first start (1.1.0; no open mode any more).

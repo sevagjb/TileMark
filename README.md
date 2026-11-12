@@ -36,7 +36,8 @@ One container, one data folder, no external services.
 - **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
 - **Export** to a standard bookmarks file that any browser can import.
 - **Backup and restore** from Settings, optionally encrypted with a password.
-- **Optional login** with username and password.
+- **Accounts for everyone in the house:** each person has their own links, groups, settings, API key and backups. The first account is the admin and adds the others.
+- **Never open by accident:** a new installation asks for the first account before it shows anything.
 - **Search** across titles, addresses and groups.
 - Light and dark appearance.
 
@@ -62,9 +63,10 @@ Everything LinkBoard stores (the database and the thumbnails) is in the `data` f
 
 ### First steps
 
-1. Paste a link into the field at the top and press Enter, or use **Import** to bring in your browser bookmarks.
-2. Create groups with **+ New group** and drag cards onto them.
-3. Open **⚙ Settings → Login** and set a username and password. Until you do, anyone who can reach the address can see and change your links.
+1. Create the first account on the welcome screen. It is the admin.
+2. Paste a link into the field at the top and press Enter, or use **Import** to bring in your browser bookmarks.
+3. Create groups with **+ New group** and drag cards onto them.
+4. To give someone else their own LinkBoard, add them in **⚙ Settings → People**.
 
 ### Update
 
@@ -75,6 +77,10 @@ docker compose pull && docker compose up -d
 ```
 
 Your data is kept.
+
+Image tags: `latest` is the newest **release** and is what the compose above uses. `1.1.0` (or `1.1`) stays on one release. `edge` follows every change on `main` before it is released; use it only to try out what is coming.
+
+**Upgrading from 1.0:** the database is upgraded automatically on the first start (make a backup first, to be safe). If you had a login, it becomes the admin account with all your links and your API key, and every device has to sign in once more. If you had no login, LinkBoard asks you to create an account and gives it all existing links.
 
 ### Build from source instead
 
@@ -100,7 +106,7 @@ You can also paste a plain list of links (one per line) into the import box, or 
 
 **Phone.** When LinkBoard runs on HTTPS, open it in the phone's browser and choose "Install app" or "Add to Home screen". On Android it then appears in the Share menu of other apps, so you can send a page or video straight to a group. iOS installs the app but does not offer web apps in its Share menu; use the API key with a Shortcut there.
 
-**API key.** Create one in the same Settings section. It is shown once, and it can only add links and read group names:
+**API key.** Create one in the same Settings section. Every account has its own key; links sent with it go to that account. It is shown once, and it can only add links and read group names:
 
 ```bash
 curl -X POST https://linkboard.example.com/api/links \
@@ -110,39 +116,48 @@ curl -X POST https://linkboard.example.com/api/links \
 
 `title`, `note` and the group are optional. The group can be given by name (`"group": "Videos"`, created if it does not exist yet) or by id (`group_id`); `GET /api/groups` with the same header lists the groups and their ids.
 
-## Login
+## Accounts and login
 
-**⚙ Settings → Login** lets you set a username and password. Once it is on:
+Every page, link, thumbnail, import, export and backup requires signing in. There is no open mode: a new installation shows a welcome screen that creates the first account, which is the admin.
 
-- Every page, the links, thumbnails, import, export and backup require signing in.
+- **⚙ Settings → Your account:** change your username or password (needs the current password). A new password signs out your other devices.
+- **⚙ Settings → People** (admin only): add people, give them a new password, make them admin or remove them (with all their links). There is no public sign-up page; only an admin adds accounts.
+- Links are private per account. The admin manages accounts but cannot see anyone else's links.
+- Layout, appearance and sort order are saved with the account, so they are the same on every device.
 - "Keep me signed in" remembers a device for 30 days; **Sign out** is in Settings.
-- Changing the login signs out every other device.
 - After five wrong attempts, further tries from that address have to wait (15 seconds, doubling up to 5 minutes).
-- The password is stored only as a salted hash.
+- Passwords are stored only as salted hashes.
 
-Forgot the password? Remove the login on the server, then set a new one in Settings:
+Forgot a password? This gives the first admin (or the account you name) a new random password and prints it:
 
 ```bash
 docker exec linkboard python app.py reset-login
+docker exec linkboard python app.py reset-login bob
 ```
 
 ## Backup and restore
 
-**⚙ Settings → Backup** downloads a single file with everything: links, groups, colours, order and thumbnails.
+**⚙ Settings → Backup** downloads a single file with all *your* links, groups, colours, order and thumbnails. Each person makes their own backup.
 
 - With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.lbk`. A forgotten backup password cannot be recovered.
 - Without a password it is a plain `.zip`.
-- The login and the API key are never part of a backup.
+- Accounts, passwords and API keys are never part of a backup.
 
-**⚙ Settings → Restore** replaces all current links and groups with the contents of a backup file. It is all-or-nothing: a wrong password or a damaged file changes nothing.
+**⚙ Settings → Restore** replaces all your links and groups with the contents of a backup file; other people's links are not touched. Backups from LinkBoard 1.0 work too. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 
-Copying the `data` folder while the container is stopped is an equally valid full backup.
+For the whole installation (all accounts), copy the `data` folder while the container is stopped.
 
 ## Broken links
 
-LinkBoard checks all links once a week and lists the ones that no longer work under **Broken links** in the left column; each also gets a "Broken" label on its card. **⚙ Settings → Link check** has the weekly switch and a **Check now** button.
+LinkBoard checks all links once a week and lists the ones that no longer work under **Broken links** in the left column; each also gets a "Broken" label on its card. **⚙ Settings → Link check** has a **Check now** button for your own links; the admin can switch the weekly check off under **Installation**.
 
 A link counts as broken when its address cannot be reached on two tries, or the site answers that the page does not exist (404 or 410). Sign-in walls, bot blocks and temporary server errors are not counted, so a link is not flagged just because a site is picky. The label disappears when a later check or a refresh succeeds.
+
+## Local addresses and safety
+
+LinkBoard fetches pages to get titles and pictures, and the address of a picture comes from the page itself. To stop a page (or another account) from making LinkBoard look inside your network, it never fetches loopback, link-local or cloud-metadata addresses, and by default no private network addresses either (`192.168.x.x`, `10.x.x.x`, `nas.local` …). Redirects are checked hop by hop, and so is the address actually connected to.
+
+You can still save local links; they show their address and a letter tile. If you want titles and pictures for them, and you trust everyone who has an account, the admin can turn on **⚙ Settings → Installation → Fetch titles and pictures for local network addresses**. The link check skips local addresses while this is off, so they are never reported as broken.
 
 ## HTTPS and reverse proxies
 
@@ -159,11 +174,11 @@ Environment variables for the container:
 | `FETCH_WORKERS` | `4` | How many pages are fetched at the same time |
 | `DATA_DIR` | `/data` | Where the database and thumbnails are stored |
 
-Layout and appearance are chosen in **⚙ Settings** and saved per browser, so each device can have its own.
+Layout, appearance and sort order are chosen in **⚙ Settings** and saved with your account.
 
 ## Good to know
 
-- Thumbnails are the preview image a site publishes, not a screenshot. Sites without one, sites that require a login (Instagram, for example) and most local services show their icon or a letter instead. Use ↻ on a card to try again.
+- Thumbnails are the preview image a site publishes, not a screenshot. Sites without one, sites that require a login (Instagram, for example) and local services (see above) show their icon or a letter instead. Use ↻ on a card to try again.
 - Addresses typed without `http://` get `https://`, except local ones (`192.168.x.x`, `localhost`, `name.local`), which get `http://`.
 - Reordering by drag and drop works inside one group, not in "All links" or in search results.
 - If a link to a large site (YouTube, Instagram …) will not open with a normal click but opens with right-click → "Open in new tab", a browser extension is interfering. Try a private window to confirm.
@@ -177,9 +192,10 @@ Planned work is listed in [ROADMAP.md](ROADMAP.md). Ideas and bug reports are we
 ```bash
 pip install -r requirements.txt
 DATA_DIR=./data python app.py
+pip install pytest && pytest -q    # tests: upgrade from 1.0, accounts kept apart, address checks
 ```
 
-The app is a single Flask file (`app.py`) with two static pages in `pages/`, and SQLite for storage.
+The app is a single Flask file (`app.py`) with a few static pages in `pages/`, and SQLite for storage. Changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

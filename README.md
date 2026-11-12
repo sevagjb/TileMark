@@ -1,4 +1,4 @@
-<img src="docs/logo.svg" width="72" alt="LinkBoard logo">
+<img src="docs/logo.png" width="72" alt="LinkBoard logo">
 
 # LinkBoard
 

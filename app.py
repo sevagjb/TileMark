@@ -642,6 +642,11 @@ def delete_link(link_id):
     return jsonify(ok=True)
 
 
+def _color(value):
+    """Only plain #rrggbb colours are stored."""
+    return isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value) is not None
+
+
 @app.post("/api/groups")
 def create_group():
     d = request.get_json(force=True, silent=True) or {}
@@ -649,7 +654,7 @@ def create_group():
         gid = get_or_create_group(c, d.get("name"))
         if gid is None:
             return jsonify(error="Give the group a name."), 400
-        if d.get("color"):
+        if _color(d.get("color")):
             c.execute("UPDATE groups SET color=? WHERE id=?", (d["color"], gid))
     return jsonify(id=gid), 201
 
@@ -674,7 +679,7 @@ def update_group(gid):
         try:
             if (d.get("name") or "").strip():
                 c.execute("UPDATE groups SET name=? WHERE id=?", (d["name"].strip()[:60], gid))
-            if d.get("color"):
+            if _color(d.get("color")):
                 c.execute("UPDATE groups SET color=? WHERE id=?", (d["color"], gid))
         except sqlite3.IntegrityError:
             return jsonify(error="A group with that name already exists."), 409

@@ -26,13 +26,13 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
          backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
 .brand { font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-right: 6px; }
-.add { flex: 1 1 320px; display: flex; background: var(--panel); border: 1px solid var(--line);
+.add { flex: 2 1 280px; max-width: 520px; display: flex; background: var(--panel); border: 1px solid var(--line);
        border-radius: 10px; overflow: hidden; }
 .add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .add input { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 12px; outline: none; }
 .add select { border: 0; border-left: 1px solid var(--line); background-color: var(--panel); padding: 0 8px; max-width: 170px; outline: none; cursor: pointer; }
 .add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
-.search { flex: 0 1 200px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
+.search { flex: 3 1 240px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
 .search:focus { border-color: var(--accent); }
 .btn { color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 13px; cursor: pointer; white-space: nowrap; }
 .btn:hover { border-color: var(--muted); }
@@ -160,6 +160,11 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatches button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; background: var(--c); cursor: pointer; }
 .swatches button.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--panel) inset; }
+.swatches .custom { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 3px 12px 3px 4px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--text); font-size: 13px; }
+.swatches .custom.on { border-color: var(--text); }
+.swatches .custom input { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.swatches .custom input::-webkit-color-swatch-wrapper { padding: 0; } .swatches .custom input::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.swatches .custom input::-moz-color-swatch { border: 0; border-radius: 50%; }
 .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1b1f27; color: #fff;
          padding: 10px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; max-width: 90vw; }
@@ -216,7 +221,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <h2 id="gHead">New group</h2>
   <label for="gName">Name</label><input id="gName" type="text" maxlength="60">
   <label>Colour</label><div class="swatches" id="gColors"></div>
-  <div id="gPosWrap"><label for="gPos">Position</label><select id="gPos"></select></div>
+  <div id="gPosWrap"><label for="gPos">Place in the list</label><select id="gPos"></select></div>
   <div class="row"><button class="btn danger left" type="button" id="gDelete">Delete group</button>
     <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="gSave">Save</button></div>
 </form></dialog>
@@ -267,7 +272,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 <div id="toast" role="status"></div>
 
 <script>
-const COLORS = ["#4c8bf5","#e5534b","#e0a31b","#3fa55a","#d6589f","#8e6ad8","#2aa7b8","#e8793a","#7d8590"];
+const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8793a","#e5534b","#d6589f","#b455c9","#8e6ad8","#5b63d6","#a0714f","#7d8590","#4a5568","#c9a227"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
 let cfg = { layout: "panel", theme: "system" };
@@ -524,11 +529,21 @@ $("lDelete").onclick = async () => { $("linkDlg").close(); removeLink(editing); 
 function openGroup(g) {
   editingGroup = g; $("gHead").textContent = g ? "Edit group" : "New group"; $("gName").value = g ? g.name : "";
   pickedColor = g ? g.color : COLORS[S.groups.length % COLORS.length]; $("gDelete").hidden = !g;
-  const n = S.groups.length + (g ? 0 : 1), at = g ? S.groups.findIndex(x => x.id === g.id) : n - 1;
-  $("gPos").replaceChildren(...Array.from({ length: n }, (_, i) => el("option", { value: i, textContent: (i + 1) + (i === 0 ? " (first)" : i === n - 1 ? " (last)" : "") })));
+  // position is chosen by neighbour name: "First", or "After <group>"
+  const others = S.groups.filter(x => !g || x.id !== g.id), at = g ? S.groups.findIndex(x => x.id === g.id) : others.length;
+  $("gPos").replaceChildren(el("option", { value: 0, textContent: "First in the list" }),
+    ...others.map((o, i) => el("option", { value: i + 1, textContent: "After " + o.name })));
   $("gPos").value = String(at); $("gPos").dataset.was = String(at);
-  const draw = () => $("gColors").replaceChildren(...COLORS.map(c => { const b = el("button", { type: "button", className: c === pickedColor ? "on" : "" });
-    b.style.setProperty("--c", c); b.setAttribute("aria-label", "Colour " + c); b.onclick = () => { pickedColor = c; draw(); }; return b; }));
+  $("gPosWrap").hidden = !others.length;
+  const draw = () => {
+    const isCustom = !COLORS.includes(pickedColor);
+    const pick = el("input", { type: "color", value: /^#[0-9a-f]{6}$/i.test(pickedColor) ? pickedColor : "#4c8bf5" });
+    pick.setAttribute("aria-label", "Choose any colour");
+    pick.oninput = () => { pickedColor = pick.value; wrap.classList.add("on"); for (const b of $("gColors").querySelectorAll("button")) b.classList.remove("on"); };
+    const wrap = el("label", { className: "custom" + (isCustom ? " on" : "") }, pick, "Other colour…");
+    $("gColors").replaceChildren(...COLORS.map(c => { const b = el("button", { type: "button", className: c === pickedColor ? "on" : "" });
+      b.style.setProperty("--c", c); b.setAttribute("aria-label", "Colour " + c); b.onclick = () => { pickedColor = c; draw(); }; return b; }), wrap);
+  };
   draw(); $("groupDlg").showModal(); $("gName").focus();
 }
 $("gSave").onclick = async () => {

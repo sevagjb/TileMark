@@ -17,10 +17,10 @@ What exists:
 
 What is left:
 
-1. **Make the package public.** GitHub → profile → Packages → `linkboard` → Package settings → Change visibility → Public. Until then pulls are denied.
+1. ~~Make the package public.~~ Done. ~~ GitHub → profile → Packages → `linkboard` → Package settings → Change visibility → Public. Until then pulls are denied.~~
 2. **Verify an anonymous pull** from a machine that is not logged in to ghcr.io: `docker pull ghcr.io/sevagjb/linkboard:latest`.
 3. **Switch the own installation** from build-from-source to the image (compose below) and confirm Update in Dockge pulls a new version.
-4. **First release tag** `v1.0.0`, so people can pin a version (`ghcr.io/sevagjb/linkboard:1.0.0`) instead of `latest`.
+4. ~~First release `v1.0.0`.~~ Done.
 5. ~~README for others: screenshots, install, update, login, backup, reverse proxy.~~ Done.
 6. Optional: add a changelog. (The image is already labelled with its source repository, so GitHub links the package to the repo.)
 
@@ -43,14 +43,14 @@ services:
 ## Next rounds
 
 Saving links faster
-- [ ] **3.** "Save to LinkBoard" browser button (bookmarklet) with group picker; needs an API key in Settings.
-- [ ] **4.** Install as an app on the phone and appear in the Share menu (needs HTTPS).
+- [x] **3.** "Save to LinkBoard" browser button with group picker, and an API key in Settings.
+- [x] **4.** Install as an app on the phone and appear in the Share menu (needs HTTPS).
 
 Finding and keeping order
-- [ ] **5.** Pin favourites to the top of a group / a Favourites entry.
-- [ ] **6.** Notes and tags on a link.
-- [ ] **7.** Sort options per group: own order, newest, name, site.
-- [ ] **8.** Recently added and recently opened.
+- [x] **5.** Favourites: pinned to the top of a group, plus a Favourites list.
+- [x] **6.** Notes on a link (tags left for later).
+- [x] **7.** Sort options per group: own order, newest, oldest, name, site.
+- [x] **8.** Recently added and recently opened.
 
 Keeping the collection healthy
 - [ ] **9.** Dead-link check that marks links that no longer work.
@@ -59,6 +59,8 @@ Keeping the collection healthy
 
 ## Later
 
+- [ ] Tags on links (notes came first).
+- [ ] Sort choice saved on the server instead of per browser.
 - [ ] **12.** Keep a readable copy of the page.
 - [ ] **13.** Several users, each with their own links.
 - [ ] **14.** Interface in other languages.

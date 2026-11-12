@@ -23,6 +23,11 @@ One container, one data folder, no external services.
 - **Two layouts**, switchable in Settings: groups in a side column with a compact list beside it, or all groups on one page as collapsible sections with large cards.
 - **Your own link order.** Drag a card inside a group to rearrange it.
 - **Select several links** and move or delete them together, or drag the whole selection onto a group.
+- **Favourites:** star a link to keep it at the top of its group and in a Favourites list.
+- **Notes** on a link, shown on the card and included in search.
+- **Sort** a group by your own order, newest, oldest, name or site.
+- **Recently added** and **Recently opened** lists.
+- **Save from anywhere:** a browser button, the phone's Share menu (when installed as an app over HTTPS), or an API key for scripts.
 - **Open all in tabs** for a whole group at once.
 - **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
 - **Export** to a standard bookmarks file that any browser can import.
@@ -85,6 +90,22 @@ Each folder becomes a group. Thumbnails are fetched in the background, a few at 
 
 You can also paste a plain list of links (one per line) into the import box, or paste several lines straight into the "add" field.
 
+## Save from anywhere
+
+**Browser button.** In **⚙ Settings → Save from anywhere**, drag **＋ Save to LinkBoard** to your favorites bar. Clicking it on any page opens a small window where you pick the group, add an optional note and save. You need to be signed in to LinkBoard in that browser.
+
+**Phone.** When LinkBoard runs on HTTPS, open it in the phone's browser and choose "Install app" or "Add to Home screen". On Android it then appears in the Share menu of other apps, so you can send a page or video straight to a group. iOS installs the app but does not offer web apps in its Share menu; use the API key with a Shortcut there.
+
+**API key.** Create one in the same Settings section. It is shown once, and it can only add links and read group names:
+
+```bash
+curl -X POST https://linkboard.example.com/api/links \
+  -H "Authorization: Bearer lb_your_key" -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/article", "group_id": 3, "note": "read later"}'
+```
+
+`GET /api/groups` with the same header lists the groups and their ids. `title`, `group_id` and `note` are optional.
+
 ## Login
 
 **⚙ Settings → Login** lets you set a username and password. Once it is on:
@@ -107,7 +128,7 @@ docker exec linkboard python app.py reset-login
 
 - With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.lbk`. A forgotten backup password cannot be recovered.
 - Without a password it is a plain `.zip`.
-- The login is never part of a backup.
+- The login and the API key are never part of a backup.
 
 **⚙ Settings → Restore** replaces all current links and groups with the contents of a backup file. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 

@@ -1,6 +1,7 @@
 """LinkBoard - a tiny self-hosted page for your links, with thumbnails and groups."""
 import html
 import ipaddress
+import hashlib
 import io
 import os
 import re
@@ -109,6 +110,11 @@ def init_db():
         if "position" not in [r["name"] for r in c.execute("PRAGMA table_info(links)")]:
             c.execute("ALTER TABLE links ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
             c.execute("UPDATE links SET position = -id")  # keeps the old look: newest first
+        have = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
+        for col, ddl in (("pinned", "INTEGER NOT NULL DEFAULT 0"), ("note", "TEXT NOT NULL DEFAULT ''"),
+                         ("opened_at", "INTEGER NOT NULL DEFAULT 0")):
+            if col not in have:
+                c.execute(f"ALTER TABLE links ADD COLUMN {col} {ddl}")
 
 
 def _is_local(hostish):
@@ -430,12 +436,24 @@ def _note_login(ip, ok):
             _fails.clear()
 
 
-OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "icon"}
+OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "icon", "save_page", "manifest", "service_worker"}
+KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
+
+
+def key_ok():
+    """True when the request carries the API key ("Authorization: Bearer <key>")."""
+    stored = get_setting("api_key_hash")
+    sent = request.headers.get("Authorization", "")
+    if not stored or not sent.startswith("Bearer "):
+        return False
+    return secrets.compare_digest(hashlib.sha256(sent[7:].strip().encode()).hexdigest(), stored)
 
 
 @app.before_request
 def require_login():
     if request.endpoint in OPEN_ENDPOINTS or not auth_enabled() or signed_in():
+        return None
+    if request.endpoint in KEY_ENDPOINTS and key_ok():
         return None
     if request.path.startswith("/api/"):
         return jsonify(error="Please sign in."), 401
@@ -445,20 +463,55 @@ def require_login():
 @app.get("/login")
 def login_page():
     if not auth_enabled() or signed_in():
-        return redirect("/")
+        nxt = request.args.get("next", "")
+        return redirect(nxt if nxt.startswith("/save") else "/")
     return send_from_directory(PAGES, "login.html", max_age=0)
 
 
-@app.get("/icon-<int:size>.png")
-def icon(size):
-    return send_from_directory(PAGES, f"icon-{size}.png", max_age=86400)
+@app.get("/save")
+def save_page():
+    """The small "Save to LinkBoard" window (browser button, phone share). The page
+    itself holds nothing private; saving still needs a sign-in."""
+    return send_from_directory(PAGES, "save.html", max_age=0)
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return send_from_directory(PAGES, "manifest.webmanifest", mimetype="application/manifest+json", max_age=0)
+
+
+@app.get("/sw.js")
+def service_worker():
+    return send_from_directory(PAGES, "sw.js", mimetype="text/javascript", max_age=0)
+
+
+@app.post("/api/apikey")
+def make_api_key():
+    """Create (or replace) the API key. It is shown once; only its hash is stored."""
+    key = "lb_" + secrets.token_urlsafe(32)
+    set_setting("api_key_hash", hashlib.sha256(key.encode()).hexdigest())
+    return jsonify(key=key)
+
+
+@app.delete("/api/apikey")
+def drop_api_key():
+    set_setting("api_key_hash", None)
+    return jsonify(ok=True)
+
+
+@app.get("/icon-<name>.png")
+def icon(name):
+    if not re.fullmatch(r"[a-z0-9-]+", name):
+        return jsonify(error="Not found"), 404
+    return send_from_directory(PAGES, f"icon-{name}.png", max_age=86400)
 
 
 @app.get("/api/auth")
 def auth_status():
     on = auth_enabled()
     inside = not on or signed_in()
-    return jsonify(enabled=on, signed_in=inside, username=get_setting("auth_user", "") if inside else "")
+    return jsonify(enabled=on, signed_in=inside, username=get_setting("auth_user", "") if inside else "",
+                   has_key=bool(get_setting("api_key_hash")) if inside else False)
 
 
 @app.post("/api/login")
@@ -545,12 +598,32 @@ def create_link():
     url = normalize_url(d.get("url"))
     if not url:
         return jsonify(error="That does not look like a web link."), 400
+    title, note = str(d.get("title") or "").strip()[:300], str(d.get("note") or "").strip()[:2000]
     with db() as c:
-        link_id = add_link(c, url, d.get("group_id") or None)
+        gid = d.get("group_id") or None
+        if gid is not None and not c.execute("SELECT 1 FROM groups WHERE id=?", (gid,)).fetchone():
+            gid = None
+        link_id = add_link(c, url, gid, title)
+        if link_id is not None and note:
+            c.execute("UPDATE links SET note=? WHERE id=?", (note, link_id))
     if link_id is None:
         return jsonify(error="This link is already saved."), 409
     queue(link_id)
     return jsonify(id=link_id), 201
+
+
+@app.get("/api/groups")
+def list_groups():
+    """Group names only - what the "Save to LinkBoard" window and API-key clients need."""
+    with db() as c:
+        return jsonify(groups=[dict(r) for r in c.execute("SELECT id, name, color FROM groups ORDER BY position, id")])
+
+
+@app.post("/api/links/<int:link_id>/opened")
+def opened_link(link_id):
+    with db() as c:
+        c.execute("UPDATE links SET opened_at=? WHERE id=?", (int(time.time()), link_id))
+    return jsonify(ok=True)
 
 
 def _ids(d):
@@ -614,6 +687,10 @@ def update_link(link_id):
                 refetch = refetch or not t
         if "group_id" in d:
             c.execute("UPDATE links SET group_id=? WHERE id=?", (d["group_id"] or None, link_id))
+        if "note" in d:
+            c.execute("UPDATE links SET note=? WHERE id=?", (str(d["note"] or "").strip()[:2000], link_id))
+        if "pinned" in d:
+            c.execute("UPDATE links SET pinned=? WHERE id=?", (1 if d["pinned"] else 0, link_id))
         if "url" in d:
             url = normalize_url(d["url"])
             if not url:
@@ -758,7 +835,7 @@ def export_links():
 # A backup is a zip holding the database and the thumbnails. With a password it is
 # wrapped as: MAGIC + 16-byte salt + 12-byte nonce + AES-256-GCM(zip), key = scrypt(password).
 MAGIC = b"LINKBOARD-BACKUP-1\n"
-PRIVATE_SETTINGS = ("auth_user", "auth_hash", "auth_ver", "secret_key")  # never leave the server
+PRIVATE_SETTINGS = ("auth_user", "auth_hash", "auth_ver", "secret_key", "api_key_hash")  # never leave the server
 
 
 def _key(password, salt):
@@ -878,7 +955,7 @@ with db() as _c:  # pick up anything interrupted by a restart
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["reset-login"]:  # docker exec linkboard python app.py reset-login
-        for _key in ("auth_user", "auth_hash", "auth_ver"):
+        for _key in ("auth_user", "auth_hash", "auth_ver", "api_key_hash"):
             set_setting(_key, None)
         print("Login removed. LinkBoard is open again; set a new login in Settings.")
         sys.exit(0)

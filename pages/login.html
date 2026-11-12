@@ -45,7 +45,7 @@ $("f").onsubmit = async e => {
     const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: $("u").value, password: $("p").value, remember: $("r").checked }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok) { location.href = "/"; return; }
+    if (r.ok) { const n = new URLSearchParams(location.search).get("next") || ""; location.href = n.startsWith("/save") ? n : "/"; return; }
     $("err").textContent = d.error || "Could not sign in."; $("p").value = ""; $("p").focus();
   } catch { $("err").textContent = "Could not reach LinkBoard."; }
   $("go").disabled = false;

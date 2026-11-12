@@ -1,27 +1,37 @@
 # LinkBoard
 
-A very small self-hosted page for your web links. Paste a link, and it shows up as a card with a thumbnail. Everything lives on one page, organised in coloured groups, like browser tab groups that you can open from any device.
+A small self-hosted home for your web links. Paste a link and it becomes a card with a thumbnail. Everything lives on one page, organised in coloured groups, a bit like browser tab groups that you can open from any device.
+
+One container, one data folder, no external services.
+
+![LinkBoard with groups on the left and the links of one group listed beside them](docs/side-panel.png)
+
+<details>
+<summary>The other layout: all groups as collapsible sections</summary>
+
+![LinkBoard showing all groups as collapsible sections with large cards](docs/sections.png)
+
+</details>
 
 ## Features
 
-- **Add a link by pasting it.** Title, description and thumbnail are fetched automatically.
-- **Thumbnails** come from the page's preview image (for YouTube, Vimeo and TikTok from their official embed info), falling back to the site icon, then to a letter tile. They are stored locally, so the page stays fast.
-- **Groups** with colours. In the default layout they are listed in a column on the left: click a group and its links appear beside it as a compact list, one under the other. Drag a card onto a group to move it, and use "Open all in tabs" to open a whole group at once.
-- **Import everything in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
-- **Backup and restore** from Settings: one file with links, groups, order and thumbnails, optionally encrypted with a password.
-- **Export** to a standard bookmarks file that can be imported back here or into any browser.
-- **Your own group order.** Drag a group onto another group in the left column to move it, or pick a position in the group's edit dialog.
-- **Select several links** (the Select button) and move or delete them together, or drag the whole selection onto a group.
-- **Your own link order.** Inside a group, drag a card up or down to rearrange it.
-- **Settings** (⚙): choose the layout (side panel, or all groups as collapsible sections with large cards) and light/dark appearance. Saved per browser.
-- **Search** across titles, addresses and groups.
-- Light and dark mode, follows your system.
+- **Paste a link to save it.** Title, description and thumbnail are fetched automatically.
+- **Thumbnails** come from the page's preview image (for YouTube, Vimeo and TikTok from their official embed info), then the site icon, then a letter tile. They are stored locally, so the page stays fast.
+- **Groups** with colours, in your own order. Click a group to see its links; drag a group onto another to reorder.
+- **Two layouts**, switchable in Settings: groups in a side column with a compact list beside it, or all groups on one page as collapsible sections with large cards.
+- **Your own link order.** Drag a card inside a group to rearrange it.
+- **Select several links** and move or delete them together, or drag the whole selection onto a group.
+- **Open all in tabs** for a whole group at once.
+- **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
+- **Export** to a standard bookmarks file that any browser can import.
+- **Backup and restore** from Settings, optionally encrypted with a password.
 - **Optional login** with username and password.
-- One container, one SQLite file. No external services.
+- **Search** across titles, addresses and groups.
+- Light and dark appearance.
 
-## Run with Docker Compose / Dockge
+## Install
 
-In Dockge, create a new stack (for example `linkboard`), paste this and deploy:
+You need Docker with Compose. In [Dockge](https://github.com/louislam/dockge), create a new stack and paste the compose; with plain Docker, save it as `compose.yaml` in an empty folder and run `docker compose up -d`.
 
 ```yaml
 services:
@@ -37,22 +47,36 @@ services:
 
 Then open `http://<your-server>:8080`.
 
-All data (database and thumbnails) is kept in the `data` folder next to the compose file. Back up that folder and you have everything.
+Everything LinkBoard stores (the database and the thumbnails) is in the `data` folder next to the compose file.
 
-### Build from source
+### First steps
+
+1. Paste a link into the field at the top and press Enter, or use **Import** to bring in your browser bookmarks.
+2. Create groups with **+ New group** and drag cards onto them.
+3. Open **⚙ Settings → Login** and set a username and password. Until you do, anyone who can reach the address can see and change your links.
+
+### Update
+
+In Dockge press **Update**. With plain Docker:
 
 ```bash
-git clone https://github.com/sevagjb/linkboard.git
-cd linkboard
-docker build -t linkboard .
-docker run -d --name linkboard -p 8080:8080 -v ./data:/data linkboard
+docker compose pull && docker compose up -d
 ```
 
-Or change `image:` to `build: .` in `compose.yaml` and run `docker compose up -d --build`.
+Your data is kept.
 
-## Importing your Edge favorites
+### Build from source instead
 
-1. In Edge: Favorites → `…` → **Export favorites**. This saves an `.html` file.
+Replace the `image:` line with these two, and Docker builds the latest code from this repository on every deploy:
+
+```yaml
+    build: https://github.com/sevagjb/linkboard.git#main
+    pull_policy: build
+```
+
+## Importing browser bookmarks
+
+1. Export from the browser. In Edge: Favorites → `…` → **Export favorites**. In Chrome: Bookmark manager → `⋮` → **Export bookmarks**. Both save an `.html` file.
 2. In LinkBoard: **Import** → choose that file → **Import**.
 
 Each folder becomes a group. Thumbnails are fetched in the background, a few at a time, so a big import fills in over a minute or two.
@@ -61,47 +85,68 @@ You can also paste a plain list of links (one per line) into the import box, or 
 
 ## Login
 
-Settings (⚙) → **Login** lets you set a username and password. Once it is on:
+**⚙ Settings → Login** lets you set a username and password. Once it is on:
 
-- Every page, the links, thumbnails, import and export all require signing in.
+- Every page, the links, thumbnails, import, export and backup require signing in.
 - "Keep me signed in" remembers a device for 30 days; **Sign out** is in Settings.
 - Changing the login signs out every other device.
 - After five wrong attempts, further tries from that address have to wait (15 seconds, doubling up to 5 minutes).
 - The password is stored only as a salted hash.
 
-Forgot the password? Remove the login from the server, then set a new one in Settings:
+Forgot the password? Remove the login on the server, then set a new one in Settings:
 
 ```bash
 docker exec linkboard python app.py reset-login
 ```
 
-LinkBoard itself speaks plain HTTP. On a home network that keeps other people out of the page, but the password is not encrypted in transit; put a reverse proxy with HTTPS in front if you need that, or if you expose it outside your network.
-
 ## Backup and restore
 
-Settings (⚙) → **Backup** downloads a single file with everything: links, groups, colours, order and thumbnails.
+**⚙ Settings → Backup** downloads a single file with everything: links, groups, colours, order and thumbnails.
 
-- With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.lbk`. Without the password it cannot be opened, and there is no way to recover a forgotten one.
+- With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.lbk`. A forgotten backup password cannot be recovered.
 - Without a password it is a plain `.zip`.
-- The login (username, password hash) is never part of a backup.
+- The login is never part of a backup.
 
-Settings → **Restore** replaces all current links and groups with the contents of a backup file. It is all-or-nothing: a wrong password or a damaged file changes nothing.
+**⚙ Settings → Restore** replaces all current links and groups with the contents of a backup file. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 
 Copying the `data` folder while the container is stopped is an equally valid full backup.
 
-## Settings
+## HTTPS and reverse proxies
+
+LinkBoard itself speaks plain HTTP. On a home network the login keeps other people out of the page, but the password is not encrypted in transit. For that, or for access from outside your network, put a reverse proxy with HTTPS in front (Nginx Proxy Manager, Traefik, Caddy …):
+
+- Forward your hostname to `http://<your-server>:8080`. The standard forwarded headers are enough.
+- Add this to the service in your compose, so LinkBoard sees the real visitor address and knows the visitor used HTTPS:
+
+```yaml
+    environment:
+      - BEHIND_PROXY=1
+```
+
+Only set `BEHIND_PROXY` when a proxy really is in front; with it on, port 8080 should not be reachable directly.
+
+## Options
+
+Environment variables for the container:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `DATA_DIR` | `/data` | Where the database and thumbnails are stored |
+| `BEHIND_PROXY` | off | Set to `1` when running behind a reverse proxy (see above) |
 | `FETCH_WORKERS` | `4` | How many pages are fetched at the same time |
-| `BEHIND_PROXY` | off | Set to `1` when LinkBoard runs behind a reverse proxy (Nginx Proxy Manager, Traefik, Caddy …). It then trusts the proxy's forwarded headers for the visitor's address and https. Leave it off when the port is reachable directly. |
+| `DATA_DIR` | `/data` | Where the database and thumbnails are stored |
+
+Layout and appearance are chosen in **⚙ Settings** and saved per browser, so each device can have its own.
 
 ## Good to know
 
-- **Login is off until you turn it on.** Open Settings (⚙) → Login, choose a username and password, and from then on nothing is visible without signing in. See [Login](#login).
-- Thumbnails are the preview image a site publishes, not a screenshot. Sites without one (and most local services) show their icon or a letter instead. Use the ↻ button on a card to try again.
+- Thumbnails are the preview image a site publishes, not a screenshot. Sites without one, sites that require a login (Instagram, for example) and most local services show their icon or a letter instead. Use ↻ on a card to try again.
 - Addresses typed without `http://` get `https://`, except local ones (`192.168.x.x`, `localhost`, `name.local`), which get `http://`.
+- Reordering by drag and drop works inside one group, not in "All links" or in search results.
+- If a link to a large site (YouTube, Instagram …) will not open with a normal click but opens with right-click → "Open in new tab", a browser extension is interfering. Try a private window to confirm.
+
+## Roadmap
+
+Planned work is listed in [ROADMAP.md](ROADMAP.md). Ideas and bug reports are welcome in the [issues](https://github.com/sevagjb/linkboard/issues).
 
 ## Development
 
@@ -110,6 +155,8 @@ pip install -r requirements.txt
 DATA_DIR=./data python app.py
 ```
 
+The app is a single Flask file (`app.py`) with two static pages in `pages/`, and SQLite for storage.
+
 ## License
 
-MIT
+[MIT](LICENSE)

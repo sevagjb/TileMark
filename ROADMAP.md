@@ -21,7 +21,7 @@ What is left:
 2. **Verify an anonymous pull** from a machine that is not logged in to ghcr.io: `docker pull ghcr.io/sevagjb/linkboard:latest`.
 3. **Switch the own installation** from build-from-source to the image (compose below) and confirm Update in Dockge pulls a new version.
 4. **First release tag** `v1.0.0`, so people can pin a version (`ghcr.io/sevagjb/linkboard:1.0.0`) instead of `latest`.
-5. **README for others:** screenshot, short "what is it", install in three steps, update instructions, link to this roadmap.
+5. ~~README for others: screenshots, install, update, login, backup, reverse proxy.~~ Done.
 6. Optional: add a changelog. (The image is already labelled with its source repository, so GitHub links the package to the repo.)
 
 Compose to use once the package is public:

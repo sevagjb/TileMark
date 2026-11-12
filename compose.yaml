@@ -1,11 +1,14 @@
 services:
   linkboard:
     image: ghcr.io/sevagjb/linkboard:latest
-    # To build from source instead of pulling the image, comment the line
-    # above and uncomment the next one:
-    # build: .
+    # To build from source instead of pulling the image, replace the line
+    # above with these two:
+    # build: https://github.com/sevagjb/linkboard.git#main
+    # pull_policy: build
     container_name: linkboard
     restart: unless-stopped
+    # environment:
+    #   - BEHIND_PROXY=1   # only when running behind a reverse proxy
     ports:
       - "8080:8080"
     volumes:

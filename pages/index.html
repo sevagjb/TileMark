@@ -132,6 +132,8 @@ main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 .lay-panel .only-sections { display: none; }
 .sec-head .edit { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; opacity: 0; }
 .sec-head:hover .edit, .sec-head .edit:focus-visible { opacity: 1; }
+dialog h3.sect { margin: 24px 0 8px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 15px; font-weight: 650; color: var(--text); }
+dialog h2 + h3.sect { margin-top: 0; padding-top: 0; border-top: 0; }
 .choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; cursor: pointer; }
 .choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .choice input { margin-top: 3px; }
@@ -254,13 +256,13 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 
 <dialog id="settingsDlg"><form method="dialog">
   <h2>Settings</h2>
-  <label>Layout</label>
+  <h3 class="sect">Layout</h3>
   <label class="choice"><input type="radio" name="layout" value="panel"><div><b>Side panel</b><span>Groups in a column on the left; click one to list its links beside it.</span></div></label>
   <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
-  <label for="setTheme">Appearance</label>
+  <h3 class="sect">Appearance</h3>
   <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
   <p class="hint">Layout and appearance are saved in this browser, so each device can have its own.</p>
-  <label style="margin-top:20px">Login</label>
+  <h3 class="sect">Login</h3>
   <p class="hint" id="authState" style="margin-top:0"></p>
   <div id="authForm">
     <label for="auUser">Username</label><input id="auUser" type="text" maxlength="60" autocomplete="username">
@@ -272,7 +274,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <button class="btn danger" type="button" id="auOff">Turn off login</button>
     <button class="btn" type="button" id="auOut">Sign out</button>
   </div>
-  <label style="margin-top:20px">Save from anywhere</label>
+  <h3 class="sect">Save from anywhere</h3>
   <p class="hint" style="margin-top:0"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
   <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">＋ Save to LinkBoard</a></div>
   <p class="hint" id="pwaHint"></p>
@@ -281,11 +283,11 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <p class="hint">Copy it now; it is shown only this once. Send it as the header <span class="keybox">Authorization: Bearer &lt;key&gt;</span> with a POST to <span class="keybox">/api/links</span>.</p></div>
   <div class="row" style="justify-content:flex-start;margin-top:8px">
     <button class="btn" type="button" id="keyNew">Create API key</button><button class="btn danger" type="button" id="keyDel" hidden>Remove API key</button></div>
-  <label style="margin-top:20px">Backup</label>
+  <h3 class="sect">Backup</h3>
   <p class="hint" style="margin-top:0">One file with all links, groups, their order and the thumbnails. Give it a password to encrypt it.</p>
   <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
   <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
-  <label style="margin-top:20px">Restore</label>
+  <h3 class="sect">Restore</h3>
   <p class="hint" style="margin-top:0">Replaces all current links and groups with the ones from a backup file. Your login stays as it is.</p>
   <input id="rsFile" type="file" accept=".lbk,.zip">
   <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">

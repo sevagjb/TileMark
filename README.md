@@ -28,6 +28,7 @@ One container, one data folder, no external services.
 - **Sort** a group by your own order, newest, oldest, name or site.
 - **Recently added** and **Recently opened** lists.
 - **Save from anywhere:** a browser button, the phone's Share menu (when installed as an app over HTTPS), or an API key for scripts.
+- **Share** a link from its card: the phone's share sheet where there is one, otherwise the address is copied.
 - **Open all in tabs** for a whole group at once.
 - **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
 - **Export** to a standard bookmarks file that any browser can import.
@@ -92,7 +93,7 @@ You can also paste a plain list of links (one per line) into the import box, or 
 
 ## Save from anywhere
 
-**Browser button.** In **⚙ Settings → Save from anywhere**, drag **＋ Save to LinkBoard** to your favorites bar. Clicking it on any page opens a small window where you pick the group, add an optional note and save. You need to be signed in to LinkBoard in that browser.
+**Browser button.** In **⚙ Settings → Save from anywhere**, drag **🔖 Save to LinkBoard** to your favorites bar. Clicking it on any page opens a small window where you pick the group, add an optional note and save. You need to be signed in to LinkBoard in that browser.
 
 **Phone.** When LinkBoard runs on HTTPS, open it in the phone's browser and choose "Install app" or "Add to Home screen". On Android it then appears in the Share menu of other apps, so you can send a page or video straight to a group. iOS installs the app but does not offer web apps in its Share menu; use the API key with a Shortcut there.
 

@@ -116,7 +116,7 @@ main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 .list .thumb { flex: 0 0 150px; border-bottom: 0; border-right: 1px solid var(--line); }
 .list .thumb .letter { font-size: 30px; }
 .list .thumb img.icon { width: 40px; height: 40px; }
-.list .body { flex: 1; padding: 9px 152px 9px 14px; display: flex; flex-direction: column; justify-content: center; }
+.list .body { flex: 1; padding: 9px 186px 9px 14px; display: flex; flex-direction: column; justify-content: center; }
 .list .title { -webkit-line-clamp: 1; }
 .list .actions { top: 50%; right: 10px; transform: translateY(-50%); }
 .desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -276,7 +276,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   </div>
   <h3 class="sect">Save from anywhere</h3>
   <p class="hint" style="margin-top:0"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
-  <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">＋ Save to LinkBoard</a></div>
+  <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">🔖 Save to LinkBoard</a></div>
   <p class="hint" id="pwaHint"></p>
   <p class="hint"><b>API key</b> for scripts and phone shortcuts. It can only add links and read group names.</p>
   <div id="keyShow" hidden><input class="keybox" id="keyVal" type="text" readonly>
@@ -413,6 +413,15 @@ function canReorder(target) {
   if (cfg.layout === "panel" && (!isGroupView() || sortMode() !== "manual")) return false;
   return dragIds.every(id => { const x = S.links.find(k => k.id === id); return x && x.group_id === target.group_id; });
 }
+// share sheet on phones and other devices that have one; otherwise copy the address
+async function shareLink(l) {
+  const title = l.title || host(l.url);
+  if (navigator.share) { try { await navigator.share({ title, url: l.url }); } catch (e) { if (e.name !== "AbortError") toast("Could not share."); } return; }
+  try { await navigator.clipboard.writeText(l.url); }
+  catch { const t = el("textarea", { value: l.url }); t.style.position = "fixed"; t.style.opacity = "0"; document.body.append(t); t.select();
+          try { document.execCommand("copy"); } catch {} t.remove(); }
+  toast("Link copied. Paste it wherever you want to share it.");
+}
 function card(l) {
   const g = group(l.group_id);
   const a = el("a", { className: "card", href: l.url, target: "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
@@ -457,7 +466,7 @@ function card(l) {
   const star = btn(l.pinned ? "★" : "☆", l.pinned ? "Remove from favourites" : "Add to favourites",
     async () => { try { await api("PATCH", "/api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
   if (l.pinned) star.classList.add("on");
-  act.append(star, btn("✎", "Edit", () => openLink(l)),
+  act.append(star, btn("↗", "Share", () => shareLink(l)), btn("✎", "Edit", () => openLink(l)),
              btn("↻", "Refresh thumbnail", async () => { await api("POST", "/api/links/" + l.id + "/refresh"); load(); }),
              btn("✕", "Delete", () => removeLink(l)));
   if (g && cfg.layout === "panel" && (!isGroupView() || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));

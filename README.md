@@ -80,6 +80,7 @@ LinkBoard itself speaks plain HTTP. On a home network that keeps other people ou
 | --- | --- | --- |
 | `DATA_DIR` | `/data` | Where the database and thumbnails are stored |
 | `FETCH_WORKERS` | `4` | How many pages are fetched at the same time |
+| `BEHIND_PROXY` | off | Set to `1` when LinkBoard runs behind a reverse proxy (Nginx Proxy Manager, Traefik, Caddy …). It then trusts the proxy's forwarded headers for the visitor's address and https. Leave it off when the port is reachable directly. |
 
 ## Good to know
 

@@ -16,6 +16,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, Response, jsonify, redirect, request, send_from_directory, session
+from flask.sessions import SecureCookieSessionInterface
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
 
@@ -48,6 +50,18 @@ COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2a
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
+if os.environ.get("BEHIND_PROXY", "").lower() in ("1", "true", "yes"):
+    # Trust the reverse proxy's X-Forwarded-* headers: real visitor address (for the
+    # wrong-password limit) and whether the visitor used https.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+class _Sessions(SecureCookieSessionInterface):
+    def get_cookie_secure(self, app):  # https visitors get an https-only cookie
+        return request.is_secure
+
+
+app.session_interface = _Sessions()
 pool = ThreadPoolExecutor(max_workers=int(os.environ.get("FETCH_WORKERS", "4")))
 
 

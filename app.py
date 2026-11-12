@@ -21,7 +21,6 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, Response, jsonify, redirect, request, send_from_directory, session
 from flask.sessions import SecureCookieSessionInterface
-from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
 from cryptography.exceptions import InvalidTag
@@ -57,15 +56,12 @@ COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2a
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # backups with many thumbnails can be large
-if os.environ.get("BEHIND_PROXY", "").lower() in ("1", "true", "yes"):
-    # Trust the reverse proxy's X-Forwarded-* headers: real visitor address (for the
-    # wrong-password limit) and whether the visitor used https.
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-
-
 class _Sessions(SecureCookieSessionInterface):
-    def get_cookie_secure(self, app):  # https visitors get an https-only cookie
-        return request.is_secure
+    def get_cookie_secure(self, app):
+        # https visitors get an https-only cookie, whether they reach the app directly
+        # or through a reverse proxy (which reports the scheme in X-Forwarded-Proto).
+        # A forged header only changes the forger's own cookie, so it needs no setting.
+        return request.is_secure or request.headers.get("X-Forwarded-Proto", "").split(",")[-1].strip() == "https"
 
 
 app.session_interface = _Sessions()
@@ -414,26 +410,49 @@ def _hash(password):
     return generate_password_hash(password, method="pbkdf2:sha256:600000")
 
 
-# Wrong-password throttle, per client address: 5 free tries, then a growing wait.
-_fails, _fails_lock = {}, threading.Lock()
+# Wrong-password throttle. It works the same with or without a reverse proxy, so no
+# setting is needed:
+#  - per visitor: 5 free tries, then a growing wait. Behind a proxy the visitor is the
+#    last X-Forwarded-For entry (the one the proxy itself adds), otherwise the peer.
+#  - per connecting address: at most 20 wrong tries a minute. This caps anyone who
+#    connects directly and invents X-Forwarded-For values to look like many visitors.
+_fails, _peer_fails, _fails_lock = {}, {}, threading.Lock()
+PEER_LIMIT, PEER_WINDOW = 20, 60
 
 
-def _wait_seconds(ip):
+def _client():
+    peer = request.remote_addr or "?"
+    fwd = request.headers.get("X-Forwarded-For", "").split(",")[-1].strip()
+    return peer, f"{peer}|{fwd}" if fwd else peer
+
+
+def _wait_seconds(client):
+    peer, visitor = client
+    now = time.time()
     with _fails_lock:
-        count, until = _fails.get(ip, (0, 0))
-    return max(0, int(until - time.time()) + 1) if until > time.time() else 0
+        until = _fails.get(visitor, (0, 0))[1]
+        recent = [t for t in _peer_fails.get(peer, []) if now - t < PEER_WINDOW]
+        _peer_fails[peer] = recent
+    wait = int(until - now) + 1 if until > now else 0
+    if len(recent) >= PEER_LIMIT:
+        wait = max(wait, int(recent[0] + PEER_WINDOW - now) + 1)
+    return wait
 
 
-def _note_login(ip, ok):
+def _note_login(client, ok):
+    peer, visitor = client
     with _fails_lock:
         if ok:
-            _fails.pop(ip, None)
+            _fails.pop(visitor, None)
             return
-        count = _fails.get(ip, (0, 0))[0] + 1
+        count = _fails.get(visitor, (0, 0))[0] + 1
         until = time.time() + min(300, 15 * 2 ** (count - 5)) if count >= 5 else 0
-        _fails[ip] = (count, until)
+        _fails[visitor] = (count, until)
+        _peer_fails.setdefault(peer, []).append(time.time())
         if len(_fails) > 5000:
             _fails.clear()
+        if len(_peer_fails) > 5000:
+            _peer_fails.clear()
 
 
 OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "icon", "save_page", "manifest", "service_worker"}
@@ -517,7 +536,7 @@ def auth_status():
 @app.post("/api/login")
 def api_login():
     d = request.get_json(force=True, silent=True) or {}
-    ip = request.remote_addr or "?"
+    ip = _client()
     wait = _wait_seconds(ip)
     if wait:
         return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429

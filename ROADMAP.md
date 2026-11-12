@@ -32,8 +32,6 @@ services:
     image: ghcr.io/sevagjb/linkboard:latest
     container_name: linkboard
     restart: unless-stopped
-    # environment:
-    #   - BEHIND_PROXY=1   # only when running behind a reverse proxy
     ports:
       - "8080:8080"
     volumes:

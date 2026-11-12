@@ -136,17 +136,9 @@ Copying the `data` folder while the container is stopped is an equally valid ful
 
 ## HTTPS and reverse proxies
 
-LinkBoard itself speaks plain HTTP. On a home network the login keeps other people out of the page, but the password is not encrypted in transit. For that, or for access from outside your network, put a reverse proxy with HTTPS in front (Nginx Proxy Manager, Traefik, Caddy …):
+LinkBoard itself speaks plain HTTP. On a home network the login keeps other people out of the page, but the password is not encrypted in transit. For that, or for access from outside your network, put a reverse proxy with HTTPS in front (Nginx Proxy Manager, Traefik, Caddy …) and forward your hostname to `http://<your-server>:8080`.
 
-- Forward your hostname to `http://<your-server>:8080`. The standard forwarded headers are enough.
-- Add this to the service in your compose, so LinkBoard sees the real visitor address and knows the visitor used HTTPS:
-
-```yaml
-    environment:
-      - BEHIND_PROXY=1
-```
-
-Only set `BEHIND_PROXY` when a proxy really is in front; with it on, port 8080 should not be reachable directly.
+Nothing needs to be configured in LinkBoard for this. The same compose file works for the local address, the HTTPS address, or both at once: LinkBoard reads the standard forwarded headers a proxy sends, gives HTTPS visitors an HTTPS-only login cookie, and limits wrong-password attempts per visitor either way.
 
 ## Options
 
@@ -154,7 +146,6 @@ Environment variables for the container:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `BEHIND_PROXY` | off | Set to `1` when running behind a reverse proxy (see above) |
 | `FETCH_WORKERS` | `4` | How many pages are fetched at the same time |
 | `DATA_DIR` | `/data` | Where the database and thumbnails are stored |
 

@@ -4,14 +4,19 @@ import ipaddress
 import io
 import os
 import re
+import secrets
 import sqlite3
+import sys
+import threading
 import time
+from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, redirect, request, send_from_directory, session
+from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
@@ -40,7 +45,8 @@ OEMBED = [
 ]
 COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2aa7b8", "#e8793a", "#7d8590"]
 
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+app = Flask(__name__, static_folder=None)
+PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
 pool = ThreadPoolExecutor(max_workers=int(os.environ.get("FETCH_WORKERS", "4")))
 
@@ -75,6 +81,7 @@ def init_db():
             created_at INTEGER NOT NULL
         );
         """)
+        c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         cols = [r["name"] for r in c.execute("PRAGMA table_info(groups)")]
         if "position" not in cols:
             c.execute("ALTER TABLE groups ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
@@ -346,10 +353,147 @@ def parse_plain(text):
             yield line, "", ""
 
 
+# ------------------------------------------------------------------- login
+def get_setting(key, default=None):
+    with db() as c:
+        row = c.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(key, value):
+    with db() as c:
+        if value is None:
+            c.execute("DELETE FROM settings WHERE key=?", (key,))
+        else:
+            c.execute("INSERT INTO settings (key, value) VALUES (?, ?) "
+                      "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+
+def auth_enabled():
+    return bool(get_setting("auth_hash"))
+
+
+def signed_in():
+    """True when this browser holds a session made with the current credentials."""
+    ver = get_setting("auth_ver")
+    return bool(ver) and secrets.compare_digest(session.get("ver", ""), ver)
+
+
+def _hash(password):
+    return generate_password_hash(password, method="pbkdf2:sha256:600000")
+
+
+# Wrong-password throttle, per client address: 5 free tries, then a growing wait.
+_fails, _fails_lock = {}, threading.Lock()
+
+
+def _wait_seconds(ip):
+    with _fails_lock:
+        count, until = _fails.get(ip, (0, 0))
+    return max(0, int(until - time.time()) + 1) if until > time.time() else 0
+
+
+def _note_login(ip, ok):
+    with _fails_lock:
+        if ok:
+            _fails.pop(ip, None)
+            return
+        count = _fails.get(ip, (0, 0))[0] + 1
+        until = time.time() + min(300, 15 * 2 ** (count - 5)) if count >= 5 else 0
+        _fails[ip] = (count, until)
+        if len(_fails) > 5000:
+            _fails.clear()
+
+
+OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status"}
+
+
+@app.before_request
+def require_login():
+    if request.endpoint in OPEN_ENDPOINTS or not auth_enabled() or signed_in():
+        return None
+    if request.path.startswith("/api/"):
+        return jsonify(error="Please sign in."), 401
+    return redirect("/login")
+
+
+@app.get("/login")
+def login_page():
+    if not auth_enabled() or signed_in():
+        return redirect("/")
+    return send_from_directory(PAGES, "login.html", max_age=0)
+
+
+@app.get("/api/auth")
+def auth_status():
+    on = auth_enabled()
+    inside = not on or signed_in()
+    return jsonify(enabled=on, signed_in=inside, username=get_setting("auth_user", "") if inside else "")
+
+
+@app.post("/api/login")
+def api_login():
+    d = request.get_json(force=True, silent=True) or {}
+    ip = request.remote_addr or "?"
+    wait = _wait_seconds(ip)
+    if wait:
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    user, pw_hash = get_setting("auth_user", ""), get_setting("auth_hash", "")
+    ok = bool(pw_hash) and secrets.compare_digest(str(d.get("username", "")).strip().lower().encode(), user.lower().encode())
+    ok = check_password_hash(pw_hash or _hash("x"), str(d.get("password", ""))) and ok
+    _note_login(ip, ok)
+    if not ok:
+        return jsonify(error="Wrong username or password."), 401
+    session.clear()
+    session["ver"] = get_setting("auth_ver")
+    session.permanent = bool(d.get("remember"))  # otherwise the cookie ends with the browser session
+    return jsonify(ok=True)
+
+
+@app.post("/api/logout")
+def api_logout():
+    session.clear()
+    return jsonify(ok=True)
+
+
+@app.post("/api/auth")
+def set_auth():
+    """Turn the login on, or change it. Changing needs the current password."""
+    d = request.get_json(force=True, silent=True) or {}
+    user, pw = str(d.get("username", "")).strip(), str(d.get("password", ""))
+    old = get_setting("auth_hash")
+    if old and not check_password_hash(old, str(d.get("current_password", ""))):
+        return jsonify(error="The current password is not correct."), 403
+    if not user or len(user) > 60:
+        return jsonify(error="Choose a username."), 400
+    if len(pw) < 8:
+        return jsonify(error="The password needs at least 8 characters."), 400
+    ver = secrets.token_hex(16)  # new value signs every other device out
+    set_setting("auth_user", user)
+    set_setting("auth_hash", _hash(pw))
+    set_setting("auth_ver", ver)
+    session.clear()
+    session["ver"] = ver
+    session.permanent = True
+    return jsonify(ok=True)
+
+
+@app.delete("/api/auth")
+def remove_auth():
+    d = request.get_json(force=True, silent=True) or {}
+    old = get_setting("auth_hash")
+    if old and not check_password_hash(old, str(d.get("current_password", ""))):
+        return jsonify(error="The current password is not correct."), 403
+    for key in ("auth_user", "auth_hash", "auth_ver"):
+        set_setting(key, None)
+    session.clear()
+    return jsonify(ok=True)
+
+
 # --------------------------------------------------------------------- api
 @app.get("/")
 def index():
-    return send_from_directory(app.static_folder, "index.html")
+    return send_from_directory(PAGES, "index.html", max_age=0)
 
 
 @app.get("/thumbs/<path:name>")
@@ -530,9 +674,19 @@ def export_links():
 
 
 init_db()
+if not get_setting("secret_key"):
+    set_setting("secret_key", secrets.token_hex(32))
+app.secret_key = get_setting("secret_key")
+app.config.update(SESSION_COOKIE_NAME="linkboard", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                  PERMANENT_SESSION_LIFETIME=timedelta(days=30))
 with db() as _c:  # pick up anything interrupted by a restart
     for _r in _c.execute("SELECT id FROM links WHERE status='pending'").fetchall():
         queue(_r["id"])
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["reset-login"]:  # docker exec linkboard python app.py reset-login
+        for _key in ("auth_user", "auth_hash", "auth_ver"):
+            set_setting(_key, None)
+        print("Login removed. LinkBoard is open again; set a new login in Settings.")
+        sys.exit(0)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))

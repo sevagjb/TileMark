@@ -13,7 +13,8 @@ A very small self-hosted page for your web links. Paste a link, and it shows up 
 - **Settings** (⚙): choose the layout (side panel, or all groups as collapsible sections with large cards) and light/dark appearance. Saved per browser.
 - **Search** across titles, addresses and groups.
 - Light and dark mode, follows your system.
-- One container, one SQLite file. No account, no external services.
+- **Optional login** with username and password.
+- One container, one SQLite file. No external services.
 
 ## Run with Docker Compose / Dockge
 
@@ -55,6 +56,24 @@ Each folder becomes a group. Thumbnails are fetched in the background, a few at 
 
 You can also paste a plain list of links (one per line) into the import box, or paste several lines straight into the "add" field.
 
+## Login
+
+Settings (⚙) → **Login** lets you set a username and password. Once it is on:
+
+- Every page, the links, thumbnails, import and export all require signing in.
+- "Keep me signed in" remembers a device for 30 days; **Sign out** is in Settings.
+- Changing the login signs out every other device.
+- After five wrong attempts, further tries from that address have to wait (15 seconds, doubling up to 5 minutes).
+- The password is stored only as a salted hash.
+
+Forgot the password? Remove the login from the server, then set a new one in Settings:
+
+```bash
+docker exec linkboard python app.py reset-login
+```
+
+LinkBoard itself speaks plain HTTP. On a home network that keeps other people out of the page, but the password is not encrypted in transit; put a reverse proxy with HTTPS in front if you need that, or if you expose it outside your network.
+
 ## Settings
 
 | Variable | Default | Meaning |
@@ -64,7 +83,7 @@ You can also paste a plain list of links (one per line) into the import box, or 
 
 ## Good to know
 
-- There is **no login**. Run it on your home network or behind a reverse proxy that handles authentication. Do not expose it directly to the internet.
+- **Login is off until you turn it on.** Open Settings (⚙) → Login, choose a username and password, and from then on nothing is visible without signing in. See [Login](#login).
 - Thumbnails are the preview image a site publishes, not a screenshot. Sites without one (and most local services) show their icon or a letter instead. Use the ↻ button on a card to try again.
 - Addresses typed without `http://` get `https://`, except local ones (`192.168.x.x`, `localhost`, `name.local`), which get `http://`.
 

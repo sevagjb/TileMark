@@ -140,7 +140,7 @@ dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--p
 dialog::backdrop { background: rgba(10,12,18,.5); }
 dialog h2 { margin: 0 0 14px; font-size: 18px; }
 dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
-dialog input[type=text], dialog input[type=url], dialog select, dialog textarea {
+dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog select, dialog textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
 dialog textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 dialog :is(input, select, textarea):focus { border-color: var(--accent); }
@@ -222,7 +222,19 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
   <label for="setTheme">Appearance</label>
   <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
-  <p class="hint">Settings are saved in this browser, so each device can have its own.</p>
+  <p class="hint">Layout and appearance are saved in this browser, so each device can have its own.</p>
+  <label style="margin-top:20px">Login</label>
+  <p class="hint" id="authState" style="margin-top:0"></p>
+  <div id="authForm">
+    <label for="auUser">Username</label><input id="auUser" type="text" maxlength="60" autocomplete="username">
+    <label for="auPass" id="auPassLbl">Password (at least 8 characters)</label><input id="auPass" type="password" autocomplete="new-password">
+    <div id="auCurWrap"><label for="auCur">Current password</label><input id="auCur" type="password" autocomplete="current-password"></div>
+  </div>
+  <div class="row" style="justify-content:flex-start;margin-top:12px">
+    <button class="btn primary" type="button" id="auSave">Turn on login</button>
+    <button class="btn danger" type="button" id="auOff">Turn off login</button>
+    <button class="btn" type="button" id="auOut">Sign out</button>
+  </div>
   <div class="row"><button class="btn primary" value="close">Done</button></div>
 </form></dialog>
 
@@ -251,6 +263,7 @@ async function api(method, path, body) {
   if (body instanceof FormData) opt.body = body;
   else if (body) { opt.headers = { "Content-Type": "application/json" }; opt.body = JSON.stringify(body); }
   const r = await fetch(path, opt), d = await r.json().catch(() => ({}));
+  if (r.status === 401 && !path.startsWith("/api/login")) { location.href = "/login"; throw new Error("Please sign in."); }
   if (!r.ok) throw new Error(d.error || "Something went wrong (" + r.status + ")");
   return d;
 }
@@ -472,7 +485,25 @@ $("settingsBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); render(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); };
   $("settingsDlg").showModal();
+  refreshAuth();
 };
+async function refreshAuth() {
+  let a; try { a = await api("GET", "/api/auth"); } catch (e) { return; }
+  $("authState").textContent = a.enabled ? "Login is on. Signed in as " + a.username + "." : "Login is off: anyone on your network who opens this address can see and change your links.";
+  $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
+  $("auPassLbl").textContent = a.enabled ? "New password (at least 8 characters)" : "Password (at least 8 characters)";
+  $("auCurWrap").hidden = $("auOff").hidden = $("auOut").hidden = !a.enabled;
+  $("auSave").textContent = a.enabled ? "Change login" : "Turn on login";
+}
+$("auSave").onclick = async () => {
+  try { await api("POST", "/api/auth", { username: $("auUser").value, password: $("auPass").value, current_password: $("auCur").value });
+        toast("Login saved. Other devices have been signed out."); refreshAuth(); } catch (e) { toast(e.message); }
+};
+$("auOff").onclick = async () => {
+  if (!$("auCur").value) return toast("Enter the current password to turn the login off.");
+  try { await api("DELETE", "/api/auth", { current_password: $("auCur").value }); toast("Login turned off."); refreshAuth(); } catch (e) { toast(e.message); }
+};
+$("auOut").onclick = async () => { try { await api("POST", "/api/logout"); } catch (e) {} location.href = "/login"; };
 applySettings();
 
 // import

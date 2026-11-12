@@ -108,7 +108,8 @@ def init_db():
             c.execute("UPDATE links SET position = -id")  # keeps the old look: newest first
         have = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
         for col, ddl in (("pinned", "INTEGER NOT NULL DEFAULT 0"), ("note", "TEXT NOT NULL DEFAULT ''"),
-                         ("opened_at", "INTEGER NOT NULL DEFAULT 0")):
+                         ("opened_at", "INTEGER NOT NULL DEFAULT 0"), ("custom_thumb", "INTEGER NOT NULL DEFAULT 0"),
+                         ("broken", "INTEGER NOT NULL DEFAULT 0"), ("checked_at", "INTEGER NOT NULL DEFAULT 0")):
             if col not in have:
                 c.execute(f"ALTER TABLE links ADD COLUMN {col} {ddl}")
 
@@ -196,7 +197,7 @@ def _save_thumb(link_id, data, kind):
         img.load()
     except Exception:
         return None
-    name = f"{link_id}-{int(time.time())}"
+    name = f"{link_id}-{int(time.time() * 1000)}"
     if kind == "image":
         if img.width < 80 or img.height < 60:
             return None
@@ -283,7 +284,8 @@ def fetch_meta(link_id):
     icons = info["icons"] + [urljoin(info["final"], "/favicon.ico")]
 
     thumb, kind = None, ""
-    for candidates, k in ((images, "image"), (icons, "icon")):
+    own = row["custom_thumb"]  # the user's own picture is never replaced by a fetched one
+    for candidates, k in (() if own else ((images, "image"), (icons, "icon"))):
         for u in dict.fromkeys(candidates):
             try:
                 img_data, _, _ = _download(u, 8_000_000)
@@ -307,8 +309,14 @@ def fetch_meta(link_id):
         old = cur["thumb"]
         if not thumb:  # keep whatever we had before
             thumb, kind = cur["thumb"], cur["thumb_kind"]
+        if cur["custom_thumb"]:
+            if thumb and thumb != cur["thumb"]:
+                _remove_thumb(thumb)
+            thumb, kind = cur["thumb"], cur["thumb_kind"]
         c.execute("UPDATE links SET title=?, description=?, thumb=?, thumb_kind=?, status=? WHERE id=?",
                   (new_title, desc[:500] or cur["description"], thumb, kind, status, link_id))
+        if status == "ok":
+            c.execute("UPDATE links SET broken=0, checked_at=? WHERE id=?", (int(time.time()), link_id))
     if old and old != thumb:
         _remove_thumb(old)
 
@@ -331,6 +339,80 @@ def _safe_fetch(link_id):
         app.logger.exception("fetch failed for link %s", link_id)
         with db() as c:
             c.execute("UPDATE links SET status='error' WHERE id=? AND status='pending'", (link_id,))
+
+
+# -------------------------------------------------------------- link check
+# Marks links that no longer work. "Broken" means: the address could not be reached
+# on two tries, or the site answered "not found" (404) or "gone" (410). Login walls,
+# bot blocks and server errors are NOT counted, to avoid false alarms.
+_check = {"running": False, "done": 0, "total": 0}
+_check_lock = threading.Lock()
+CHECK_EVERY = 7 * 24 * 3600
+
+
+def _probe(url):
+    host = (urlparse(url).hostname or "").lower()
+    try:
+        r = requests.get(url, headers=UA, cookies=CONSENT_COOKIES if host.endswith(CONSENT_HOSTS) else None,
+                         timeout=15, stream=True)
+        code = r.status_code
+        r.close()
+    except requests.exceptions.RequestException:
+        return "broken"
+    return "broken" if code in (404, 410) else "ok" if code < 400 else "unknown"
+
+
+def _check_one(link_id, url):
+    result = _probe(url)
+    if result == "broken":
+        time.sleep(8)
+        result = _probe(url)
+    with db() as c:
+        if result == "unknown":
+            c.execute("UPDATE links SET checked_at=? WHERE id=?", (int(time.time()), link_id))
+        else:
+            c.execute("UPDATE links SET broken=?, checked_at=? WHERE id=?",
+                      (1 if result == "broken" else 0, int(time.time()), link_id))
+    with _check_lock:
+        _check["done"] += 1
+
+
+def run_link_check():
+    """Start a check of all links in the background. False if one is already running."""
+    with _check_lock:
+        if _check["running"]:
+            return False
+        _check.update(running=True, done=0, total=0)
+
+    def work():
+        try:
+            with db() as c:
+                rows = c.execute("SELECT id, url FROM links").fetchall()
+            with _check_lock:
+                _check["total"] = len(rows)
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                for r in rows:
+                    ex.submit(_check_one, r["id"], r["url"])
+            set_setting("linkcheck_last", str(int(time.time())))
+        except Exception:
+            app.logger.exception("link check failed")
+        finally:
+            with _check_lock:
+                _check["running"] = False
+
+    threading.Thread(target=work, daemon=True).start()
+    return True
+
+
+def _check_scheduler():
+    time.sleep(120)
+    while True:
+        try:
+            if get_setting("linkcheck", "on") == "on" and time.time() - int(get_setting("linkcheck_last", "0")) > CHECK_EVERY:
+                run_link_check()
+        except Exception:
+            app.logger.exception("link check scheduler")
+        time.sleep(1800)
 
 
 # ------------------------------------------------------------------ import
@@ -608,7 +690,52 @@ def state():
     with db() as c:
         groups = [dict(r) for r in c.execute("SELECT * FROM groups ORDER BY position, id")]
         links = [dict(r) for r in c.execute("SELECT * FROM links ORDER BY position, id DESC")]
-    return jsonify(groups=groups, links=links)
+    with _check_lock:
+        check = dict(_check)
+    check.update(enabled=get_setting("linkcheck", "on") == "on", last=int(get_setting("linkcheck_last", "0")))
+    return jsonify(groups=groups, links=links, check=check)
+
+
+@app.post("/api/settings")
+def save_settings():
+    d = request.get_json(force=True, silent=True) or {}
+    if "linkcheck" in d:
+        set_setting("linkcheck", "on" if d["linkcheck"] else "off")
+    return jsonify(ok=True)
+
+
+@app.post("/api/linkcheck")
+def start_link_check():
+    if not run_link_check():
+        return jsonify(error="A check is already running."), 409
+    return jsonify(ok=True)
+
+
+@app.post("/api/links/<int:link_id>/thumb")
+def set_thumb(link_id):
+    """Use an uploaded picture for this link, in place of the fetched one."""
+    f = request.files.get("file")
+    with db() as c:
+        row = c.execute("SELECT thumb FROM links WHERE id=?", (link_id,)).fetchone()
+    if not row or not f:
+        return jsonify(error="Not found" if not row else "Choose a picture."), 404 if not row else 400
+    name = _save_thumb(link_id, f.read(20_000_000), "image")
+    if not name:
+        return jsonify(error="That file is not a usable picture (it may be too small or not an image)."), 400
+    with db() as c:
+        c.execute("UPDATE links SET thumb=?, thumb_kind='image', custom_thumb=1 WHERE id=?", (name, link_id))
+    if row["thumb"] and row["thumb"] != name:
+        _remove_thumb(row["thumb"])
+    return jsonify(ok=True)
+
+
+@app.delete("/api/links/<int:link_id>/thumb")
+def drop_thumb(link_id):
+    """Forget the own picture and fetch the site's one again."""
+    with db() as c:
+        c.execute("UPDATE links SET custom_thumb=0, status='pending' WHERE id=?", (link_id,))
+    queue(link_id)
+    return jsonify(ok=True)
 
 
 @app.post("/api/links")
@@ -686,10 +813,15 @@ def bulk_links():
             if gid is not None and not c.execute("SELECT 1 FROM groups WHERE id=?", (gid,)).fetchone():
                 return jsonify(error="That group no longer exists."), 404
             c.execute(f"UPDATE links SET group_id=? WHERE id IN ({marks})", [gid] + ids)
+        elif d.get("refresh"):
+            c.execute(f"UPDATE links SET status='pending' WHERE id IN ({marks})", ids)
         else:
             return jsonify(error="Nothing to do."), 400
     for name in thumbs:
         _remove_thumb(name)
+    if d.get("refresh") and not d.get("delete"):
+        for link_id in ids:
+            queue(link_id)
     return jsonify(ok=True, count=len(ids))
 
 
@@ -970,6 +1102,8 @@ if not get_setting("secret_key"):
 app.secret_key = get_setting("secret_key")
 app.config.update(SESSION_COOKIE_NAME="linkboard", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   PERMANENT_SESSION_LIFETIME=timedelta(days=30))
+if sys.argv[1:] != ["reset-login"]:
+    threading.Thread(target=_check_scheduler, daemon=True).start()
 with db() as _c:  # pick up anything interrupted by a restart
     for _r in _c.execute("SELECT id FROM links WHERE status='pending'").fetchall():
         queue(_r["id"])

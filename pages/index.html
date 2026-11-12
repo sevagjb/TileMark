@@ -156,6 +156,10 @@ dialog h2 + h3.sect { margin-top: 0; padding-top: 0; border-top: 0; }
 .tools select { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 dialog .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin-top: 14px; }
 .keybox { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+.bad { color: var(--danger); font-weight: 600; white-space: nowrap; }
+.picrow { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+.picrow img { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.picrow .col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .empty { text-align: center; color: var(--muted); padding: 70px 20px; }
 .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
 dialog { max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
@@ -206,6 +210,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
       <div class="tools"><span class="ptitle" id="ptitle"></span><span id="count"></span><span class="spacer"></span>
         <span class="bulk"><b id="selCount">0 selected</b>
           <select id="selMove" aria-label="Move selected links to a group"></select>
+          <button class="btn" id="selRefresh">Refresh</button>
           <button class="btn danger" id="selDelete">Delete</button>
           <button class="btn" id="selAll">Select all</button>
           <button class="btn primary" id="selDone">Done</button></span>
@@ -215,6 +220,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
         <select class="not-selecting" id="sortSel" aria-label="Sort links" hidden>
           <option value="manual">My order</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option>
           <option value="name">Name</option><option value="site">Site</option></select>
+        <button class="btn not-selecting" id="refreshAll" title="Fetch titles and pictures again for the links shown here" aria-label="Refresh these links">↻</button>
         <button class="btn not-selecting" id="openAll" hidden>Open all in tabs</button>
         <button class="btn not-selecting" id="selBtn">Select</button></div>
       <div id="board"></div>
@@ -229,6 +235,11 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <label for="lTitle">Title <span style="font-weight:400">(leave empty to use the page title)</span></label><input id="lTitle" type="text">
   <label for="lGroup">Group</label><select id="lGroup"></select>
   <label for="lNote">Note</label><textarea id="lNote" maxlength="2000" style="min-height:70px;font-family:inherit;font-size:inherit"></textarea>
+  <label for="lPic">Picture</label>
+  <div class="picrow"><img id="lPicPrev" alt="" hidden>
+    <div class="col"><input id="lPic" type="file" accept="image/*">
+      <span class="hint" style="margin:0">Choose your own picture, or paste one with Ctrl+V while this window is open.</span>
+      <button class="btn" type="button" id="lPicReset" hidden style="align-self:flex-start">Use the site's picture again</button></div></div>
   <label class="check"><input id="lPin" type="checkbox"> Favourite (keep at the top of its group)</label>
   <div class="row"><button class="btn danger left" type="button" id="lDelete">Delete</button>
     <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="lSave">Save</button></div>
@@ -283,6 +294,12 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <p class="hint">Copy it now; it is shown only this once. Send it as the header <span class="keybox">Authorization: Bearer &lt;key&gt;</span> with a POST to <span class="keybox">/api/links</span>.</p></div>
   <div class="row" style="justify-content:flex-start;margin-top:8px">
     <button class="btn" type="button" id="keyNew">Create API key</button><button class="btn danger" type="button" id="keyDel" hidden>Remove API key</button></div>
+  <h3 class="sect">Link check</h3>
+  <p class="hint" style="margin-top:0">Finds links that no longer work and lists them under "Broken links". A link counts as broken when its address cannot be reached twice in a row, or the site says the page is gone.</p>
+  <label class="check" style="margin-top:8px"><input id="ckOn" type="checkbox"> Check all links automatically once a week</label>
+  <p class="hint" id="ckState"></p>
+  <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="ckNow">Check now</button>
+    <button class="btn" type="button" id="rfAll">Refresh all titles and pictures</button></div>
   <h3 class="sect">Backup</h3>
   <p class="hint" style="margin-top:0">One file with all links, groups, their order and the thumbnails. Give it a password to encrypt it.</p>
   <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
@@ -313,7 +330,7 @@ function applySettings() {
 let expanded = new Set();  // sections layout: groups start collapsed; only the opened ones are remembered
 try { expanded = new Set(JSON.parse(localStorage.getItem("lb.expanded") || "[]")); } catch {}
 const saveExpanded = () => { try { localStorage.setItem("lb.expanded", JSON.stringify([...expanded])); } catch {} };
-const SPECIAL = { fav: "Favourites", recent: "Recently added", opened: "Recently opened", all: "All links", none: "Ungrouped" };
+const SPECIAL = { broken: "Broken links", fav: "Favourites", recent: "Recently added", opened: "Recently opened", all: "All links", none: "Ungrouped" };
 let sorts = {}; try { sorts = JSON.parse(localStorage.getItem("lb.sort") || "{}"); } catch {}
 const sortMode = () => sorts[filter] || "manual";
 const isGroupView = () => filter === "none" || !!group(+filter);
@@ -339,7 +356,8 @@ async function load() {
     filter = S.groups.length ? String(S.groups[0].id) : "all";  // nothing (valid) chosen yet: open the first group
   render();
   clearTimeout(timer);
-  if (S.links.some(l => l.status === "pending")) timer = setTimeout(load, 2000);
+  if (S.links.some(l => l.status === "pending") || (S.check && S.check.running)) timer = setTimeout(load, 2000);
+  if ($("settingsDlg").open) showCheck();
 }
 function setFilter(f) { filter = String(f); localStorage.setItem("lb.filter", filter); render(); }
 
@@ -351,7 +369,7 @@ function visible() {
   const byNew = (a, b) => b.created_at - a.created_at || b.id - a.id;
   if (filter === "recent") return [...S.links].sort(byNew).slice(0, 30);
   if (filter === "opened") return S.links.filter(l => l.opened_at).sort((a, b) => b.opened_at - a.opened_at).slice(0, 30);
-  const list = S.links.filter(l => filter === "all" || (filter === "fav" ? l.pinned : filter === "none" ? l.group_id === null : l.group_id === +filter));
+  const list = S.links.filter(l => filter === "all" || (filter === "broken" ? l.broken : filter === "fav" ? l.pinned : filter === "none" ? l.group_id === null : l.group_id === +filter));
   const mode = sortMode(), name = l => (l.title || host(l.url)).toLowerCase();
   if (mode === "newest") list.sort(byNew);
   else if (mode === "oldest") list.sort((a, b) => -byNew(a, b));
@@ -460,6 +478,7 @@ function card(l) {
                  img.onerror = () => img.replaceWith(letter()); th.append(img); }
   else th.append(l.status === "pending" ? el("span", { className: "spin" }) : letter());
   const meta = el("div", { className: "meta" }, el("span", { className: "host", textContent: host(l.url) }));
+  if (l.broken) meta.append(el("span", { className: "bad", textContent: "Broken", title: "This address could not be reached at the last check, or the page no longer exists." }));
   const act = el("div", { className: "actions" });
   const btn = (txt, tip, fn) => { const b = el("button", { type: "button", textContent: txt, title: tip }); b.setAttribute("aria-label", tip);
     b.onclick = e => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
@@ -522,7 +541,7 @@ function renderSelection() {
   const sel = $("selMove");
   sel.replaceChildren(el("option", { value: "", textContent: "Move to…" }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })),
     el("option", { value: "none", textContent: "No group" }));
-  sel.disabled = $("selDelete").disabled = !selected.size;
+  sel.disabled = $("selDelete").disabled = $("selRefresh").disabled = !selected.size;
 }
 function render() {
   renderSelection();
@@ -536,6 +555,8 @@ function render() {
   if (ungrouped && S.groups.length) side.append(sideItem("Ungrouped", "none", "#9aa3b2", ungrouped));
   if (S.groups.length) side.append(el("hr"));
   const favs = S.links.filter(l => l.pinned).length, opened = S.links.filter(l => l.opened_at).length;
+  const broken = S.links.filter(l => l.broken).length;
+  if (broken) side.append(sideItem(SPECIAL.broken, "broken", "#e5534b", broken));
   if (favs) side.append(sideItem(SPECIAL.fav, "fav", "#f5b83d", favs));
   side.append(sideItem(SPECIAL.all, "all", null, S.links.length));
   if (S.links.length) side.append(sideItem(SPECIAL.recent, "recent", null, Math.min(30, S.links.length)));
@@ -559,7 +580,7 @@ function render() {
   $("openAll").hidden = list.length < 2;
   const empty = $("empty"); empty.hidden = list.length > 0;
   if (!list.length) empty.replaceChildren(el("b", { textContent: S.links.length ? "Nothing here" : "No links yet" }),
-    searching ? "No link matches your search." : filter === "fav" ? "No favourites yet. Use the ☆ on a card."
+    searching ? "No link matches your search." : filter === "broken" ? "No broken links." : filter === "fav" ? "No favourites yet. Use the ☆ on a card."
       : filter === "opened" ? "Links you open will be listed here." : S.links.length ? "This group is empty. Paste a link above, or drag a card onto the group."
       : "Paste a link above, or use Import to bring in your bookmarks all at once.");
 }
@@ -580,10 +601,26 @@ $("search").oninput = e => { q = e.target.value; render(); };
 $("openAll").onclick = () => openMany(visible());
 
 // edit link
-function openLink(l) { editing = l; $("lUrl").value = l.url; $("lTitle").value = l.title; $("lNote").value = l.note || ""; $("lPin").checked = !!l.pinned;
+let newPic = null;
+function setPic(file) {
+  newPic = file; const im = $("lPicPrev");
+  if (file) { im.src = URL.createObjectURL(file); im.hidden = false; }
+  else if (editing && editing.thumb && editing.thumb_kind === "image") { im.src = "/thumbs/" + editing.thumb; im.hidden = false; }
+  else im.hidden = true;
+}
+$("lPic").onchange = e => setPic(e.target.files[0] || null);
+$("linkDlg").addEventListener("paste", e => {
+  const f = [...(e.clipboardData ? e.clipboardData.files : [])].find(x => x.type.startsWith("image/"));
+  if (f) { e.preventDefault(); $("lPic").value = ""; setPic(f); toast("Picture pasted. Press Save to use it."); }
+});
+$("lPicReset").onclick = async () => {
+  try { await api("DELETE", "/api/links/" + editing.id + "/thumb"); $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
+};
+function openLink(l) { editing = l; $("lPic").value = ""; setPic(null); $("lPicReset").hidden = !l.custom_thumb; $("lUrl").value = l.url; $("lTitle").value = l.title; $("lNote").value = l.note || ""; $("lPin").checked = !!l.pinned;
   fillSelect($("lGroup"), l.group_id, "No group"); $("linkDlg").showModal(); }
 $("lSave").onclick = async () => {
   try { await api("PATCH", "/api/links/" + editing.id, { url: $("lUrl").value, title: $("lTitle").value, group_id: +$("lGroup").value || null, note: $("lNote").value, pinned: $("lPin").checked });
+        if (newPic) { const fd = new FormData(); fd.append("file", newPic, newPic.name || "picture.png"); await api("POST", "/api/links/" + editing.id + "/thumb", fd); }
         $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
 };
 $("lDelete").onclick = async () => { $("linkDlg").close(); removeLink(editing); };
@@ -626,6 +663,25 @@ $("gDelete").onclick = async () => {
   try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
 };
 
+// link check and refreshing
+function showCheck() {
+  const c = S.check || {}, n = S.links.filter(l => l.broken).length;
+  $("ckOn").checked = !!c.enabled; $("ckNow").disabled = !!c.running;
+  $("ckState").textContent = c.running ? "Checking… " + c.done + " of " + c.total + " links done."
+    : (c.last ? "Last check: " + new Date(c.last * 1000).toLocaleString() + ". " : "No check has run yet. ") + (c.last ? (n ? n + (n === 1 ? " broken link." : " broken links.") : "No broken links.") : "");
+}
+$("ckOn").onchange = async e => { try { await api("POST", "/api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
+$("ckNow").onclick = async () => { try { await api("POST", "/api/linkcheck"); toast("Check started. You can close this window; it continues in the background."); load(); } catch (e) { toast(e.message); } };
+async function refreshMany(list, what) {
+  if (!list.length) return;
+  if (list.length > 20 && !confirm("Fetch titles and pictures again for " + list.length + " links? This can take a few minutes.")) return;
+  try { await api("POST", "/api/links/bulk", { ids: list.map(l => l.id), refresh: true }); toast("Refreshing " + list.length + (list.length === 1 ? " link" : " links") + what + "."); load(); }
+  catch (e) { toast(e.message); }
+}
+$("rfAll").onclick = () => refreshMany(S.links, "");
+$("refreshAll").onclick = () => refreshMany(visible(), " shown here");
+$("selRefresh").onclick = () => refreshMany(S.links.filter(l => selected.has(l.id)), "");
+
 // select several links, then move or delete them together
 $("selBtn").onclick = () => { selecting = true; render(); };
 $("selDone").onclick = () => { selecting = false; selected.clear(); render(); };
@@ -647,6 +703,7 @@ $("settingsBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); render(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); };
   $("settingsDlg").showModal();
+  showCheck();
   refreshAuth();
 };
 async function refreshAuth() {

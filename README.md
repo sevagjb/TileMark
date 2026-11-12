@@ -28,6 +28,9 @@ One container, one data folder, no external services.
 - **Sort** a group by your own order, newest, oldest, name or site.
 - **Recently added** and **Recently opened** lists.
 - **Save from anywhere:** a browser button, the phone's Share menu (when installed as an app over HTTPS), or an API key for scripts.
+- **Broken-link check:** once a week (or on demand) LinkBoard checks every link and lists the ones that no longer work.
+- **Your own picture** for a card: upload or paste an image when a site offers none.
+- **Refresh** titles and pictures for one link, a selection, a whole group or everything.
 - **Share** a link from its card: the phone's share sheet where there is one, otherwise the address is copied.
 - **Open all in tabs** for a whole group at once.
 - **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
@@ -134,6 +137,12 @@ docker exec linkboard python app.py reset-login
 **⚙ Settings → Restore** replaces all current links and groups with the contents of a backup file. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 
 Copying the `data` folder while the container is stopped is an equally valid full backup.
+
+## Broken links
+
+LinkBoard checks all links once a week and lists the ones that no longer work under **Broken links** in the left column; each also gets a "Broken" label on its card. **⚙ Settings → Link check** has the weekly switch and a **Check now** button.
+
+A link counts as broken when its address cannot be reached on two tries, or the site answers that the page does not exist (404 or 410). Sign-in walls, bot blocks and temporary server errors are not counted, so a link is not flagged just because a site is picky. The label disappears when a later check or a refresh succeeds.
 
 ## HTTPS and reverse proxies
 

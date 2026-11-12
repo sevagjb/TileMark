@@ -51,9 +51,17 @@ Finding and keeping order
 - [x] **8.** Recently added and recently opened.
 
 Keeping the collection healthy
-- [ ] **9.** Dead-link check that marks links that no longer work.
-- [ ] **10.** Own picture for a card (upload or paste).
-- [ ] **11.** Refresh all thumbnails of a group.
+- [x] **9.** Broken-link check: weekly and on demand, with a Broken links list.
+- [x] **10.** Own picture for a card (upload or paste).
+- [x] **11.** Refresh titles and pictures for a selection, a group or everything.
+
+## Ideas for wider reach
+
+- [ ] Home Assistant add-on (most home-lab users run Home Assistant; LinkBoard is a light fit).
+- [ ] App-catalogue entries: Unraid, CasaOS, Umbrel, Proxmox helper script.
+- [ ] Desktop installer for Windows, macOS and Linux (no Docker needed).
+- [ ] Browser extension with a real toolbar icon.
+- [ ] Android app in F-Droid or the Play Store.
 
 ## Later
 

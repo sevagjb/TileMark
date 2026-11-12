@@ -29,21 +29,34 @@ button:disabled { opacity: .6; cursor: default; }
 <form id="f">
   <svg viewBox="0 0 120 120" width="44" height="44" aria-hidden="true" style="display:block;margin-bottom:12px"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>
   <h1>LinkBoard</h1>
-  <p>Sign in to see your links.</p>
-  <label for="u">Username</label><input id="u" type="text" autocomplete="username" autofocus required>
-  <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
-  <label class="remember"><input id="r" type="checkbox" checked> Keep me signed in on this device for 30 days</label>
+  <p id="intro">Sign in to see your links.</p>
+  <label for="u">Username</label><input id="u" type="text" autocomplete="username" maxlength="60" autofocus required>
+  <label for="p" id="pLbl">Password</label><input id="p" type="password" autocomplete="current-password" required>
+  <div id="p2Wrap" hidden><label for="p2">Repeat the password</label><input id="p2" type="password" autocomplete="new-password"></div>
+  <label class="remember" id="rWrap"><input id="r" type="checkbox" checked> Keep me signed in on this device for 30 days</label>
   <div id="err" role="alert"></div>
   <button id="go" type="submit">Sign in</button>
 </form>
 <script>
 try { const t = JSON.parse(localStorage.getItem("lb.settings") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
 const $ = id => document.getElementById(id);
+let setup = false;
+fetch("/api/auth").then(r => r.json()).then(a => {
+  if (!a.setup) return;
+  setup = true;  // a new installation: the first account is created here and becomes the admin
+  document.title = "Set up - LinkBoard";
+  $("intro").textContent = "Welcome! Create the first account. It becomes the admin, who can add more people later.";
+  $("pLbl").textContent = "Password (at least 8 characters)"; $("p").autocomplete = "new-password"; $("p").minLength = 8;
+  $("p2Wrap").hidden = false; $("p2").required = true; $("rWrap").hidden = true; $("go").textContent = "Create account";
+}).catch(() => {});
 $("f").onsubmit = async e => {
-  e.preventDefault(); $("err").textContent = ""; $("go").disabled = true;
+  e.preventDefault(); $("err").textContent = "";
+  if (setup && $("p").value !== $("p2").value) { $("err").textContent = "The two passwords are not the same."; return; }
+  $("go").disabled = true;
   try {
-    const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+    const r = await fetch(setup ? "/api/setup" : "/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: $("u").value, password: $("p").value, remember: $("r").checked }) });
+    if (setup && r.status === 409) { location.reload(); return; }  // someone else finished the setup first
     const d = await r.json().catch(() => ({}));
     if (r.ok) { const n = new URLSearchParams(location.search).get("next") || ""; location.href = n.startsWith("/save") ? n : "/"; return; }
     $("err").textContent = d.error || "Could not sign in."; $("p").value = ""; $("p").focus();

@@ -3,10 +3,12 @@ import html
 import ipaddress
 import hashlib
 import io
+import json
 import os
 import re
 import secrets
 import shutil
+import socket
 import sqlite3
 import tempfile
 import zipfile
@@ -18,8 +20,11 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin, urlparse
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from bs4 import BeautifulSoup
-from flask import Flask, Response, jsonify, redirect, request, send_from_directory, session
+from flask import Flask, Response, g, jsonify, redirect, request, send_from_directory, session
 from flask.sessions import SecureCookieSessionInterface
 from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
@@ -31,6 +36,7 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
 DB_PATH = os.path.join(DATA_DIR, "linkboard.db")
 os.makedirs(THUMB_DIR, exist_ok=True)
+Image.MAX_IMAGE_PIXELS = 50_000_000  # refuse "decompression bomb" pictures early
 
 UA = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -52,6 +58,7 @@ OEMBED = [
     (re.compile(r"^https?://(www\.|vm\.)?tiktok\.com/", re.I), "https://www.tiktok.com/oembed"),
 ]
 COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2aa7b8", "#e8793a", "#7d8590"]
+SCHEMA = 2  # 1 = LinkBoard 1.0 (one owner), 2 = several users
 
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
@@ -79,6 +86,17 @@ def db():
 def init_db():
     with db() as c:
         c.execute("PRAGMA journal_mode = WAL")
+        c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        schema = c.execute("SELECT value FROM settings WHERE key='schema'").fetchone()
+    if schema and int(schema["value"]) >= SCHEMA:
+        return
+    _upgrade_v1()
+    _migrate_v2()
+
+
+def _upgrade_v1():
+    """The 1.0 tables and every column 1.0 added over time (a no-op on a current 1.0 database)."""
+    with db() as c:
         c.executescript("""
         CREATE TABLE IF NOT EXISTS groups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +116,6 @@ def init_db():
             created_at INTEGER NOT NULL
         );
         """)
-        c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         cols = [r["name"] for r in c.execute("PRAGMA table_info(groups)")]
         if "position" not in cols:
             c.execute("ALTER TABLE groups ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
@@ -112,6 +129,100 @@ def init_db():
                          ("broken", "INTEGER NOT NULL DEFAULT 0"), ("checked_at", "INTEGER NOT NULL DEFAULT 0")):
             if col not in have:
                 c.execute(f"ALTER TABLE links ADD COLUMN {col} {ddl}")
+
+
+LINK_COLS = ("id", "url", "title", "description", "thumb", "thumb_kind", "group_id", "status", "custom_title",
+             "created_at", "position", "pinned", "note", "opened_at", "custom_thumb", "broken", "checked_at")
+LEGACY_KEYS = ("auth_user", "auth_hash", "auth_ver", "api_key_hash")
+
+
+def _migrate_v2():
+    """Give links and groups an owner. SQLite cannot change a UNIQUE constraint in
+    place, so both tables are rebuilt, inside one transaction: a failure leaves the
+    1.0 database exactly as it was. The 1.0 login (if any) becomes the first admin
+    and owns everything; without one, the rows wait for the first account."""
+    con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys = OFF")  # only effective outside a transaction
+    try:
+        con.execute("BEGIN IMMEDIATE")
+        row = con.execute("SELECT value FROM settings WHERE key='schema'").fetchone()
+        if row and int(row["value"]) >= SCHEMA:  # another process got here first
+            con.execute("ROLLBACK")
+            return
+        for stmt in (
+            """CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                pw_hash TEXT NOT NULL,
+                is_admin INTEGER NOT NULL DEFAULT 0,
+                ver TEXT NOT NULL,
+                api_key_hash TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL)""",
+            """CREATE TABLE IF NOT EXISTS user_settings (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                PRIMARY KEY (user_id, key))""",
+            """CREATE TABLE groups_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL COLLATE NOCASE,
+                color TEXT NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                UNIQUE (user_id, name))""",
+            """CREATE TABLE links_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                url TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                description TEXT NOT NULL DEFAULT '',
+                thumb TEXT NOT NULL DEFAULT '',
+                thumb_kind TEXT NOT NULL DEFAULT '',
+                group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                custom_title INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                pinned INTEGER NOT NULL DEFAULT 0,
+                note TEXT NOT NULL DEFAULT '',
+                opened_at INTEGER NOT NULL DEFAULT 0,
+                custom_thumb INTEGER NOT NULL DEFAULT 0,
+                broken INTEGER NOT NULL DEFAULT 0,
+                checked_at INTEGER NOT NULL DEFAULT 0,
+                UNIQUE (user_id, url))""",
+        ):
+            con.execute(stmt)
+        legacy = {r["key"]: r["value"] for r in
+                  con.execute(f"SELECT key, value FROM settings WHERE key IN ({','.join('?' * len(LEGACY_KEYS))})", LEGACY_KEYS)}
+        owner = None
+        if legacy.get("auth_hash"):
+            owner = con.execute(
+                "INSERT INTO users (username, pw_hash, is_admin, ver, api_key_hash, created_at) VALUES (?,?,1,?,?,?)",
+                ((legacy.get("auth_user") or "admin")[:60], legacy["auth_hash"], secrets.token_hex(16),
+                 legacy.get("api_key_hash", ""), int(time.time()))).lastrowid
+        con.execute("INSERT INTO groups_v2 (id, user_id, name, color, position) "
+                    "SELECT id, ?, name, color, position FROM groups", (owner,))
+        cols = ",".join(LINK_COLS)
+        con.execute(f"INSERT INTO links_v2 (user_id, {cols}) SELECT ?, {cols} FROM links", (owner,))
+        for stmt in ("DROP TABLE links", "DROP TABLE groups",
+                     "ALTER TABLE groups_v2 RENAME TO groups", "ALTER TABLE links_v2 RENAME TO links",
+                     "CREATE INDEX IF NOT EXISTS links_user ON links(user_id, position)",
+                     "CREATE INDEX IF NOT EXISTS groups_user ON groups(user_id, position)"):
+            con.execute(stmt)
+        con.execute(f"DELETE FROM settings WHERE key IN ({','.join('?' * len(LEGACY_KEYS))})", LEGACY_KEYS)
+        con.execute("INSERT INTO settings (key, value) VALUES ('schema', ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(SCHEMA),))
+        bad = con.execute("PRAGMA foreign_key_check").fetchall()
+        if bad:
+            raise RuntimeError(f"database check failed after upgrade: {[tuple(b) for b in bad][:5]}")
+        con.execute("COMMIT")
+    except BaseException:
+        if con.in_transaction:
+            con.execute("ROLLBACK")
+        raise
+    finally:
+        con.close()
 
 
 def _is_local(hostish):
@@ -143,51 +254,172 @@ def normalize_url(raw):
     return raw
 
 
-def get_or_create_group(c, name):
+def own_group(c, uid, gid):
+    """The group id if it exists and belongs to this user, else None."""
+    try:
+        gid = int(gid)
+    except (TypeError, ValueError):
+        return None
+    return gid if c.execute("SELECT 1 FROM groups WHERE id=? AND user_id=?", (gid, uid)).fetchone() else None
+
+
+def get_or_create_group(c, uid, name):
     name = (name or "").strip()[:60]
     if not name:
         return None
-    row = c.execute("SELECT id FROM groups WHERE name = ?", (name,)).fetchone()
+    row = c.execute("SELECT id FROM groups WHERE user_id=? AND name=?", (uid, name)).fetchone()
     if row:
         return row["id"]
-    n, last = c.execute("SELECT COUNT(*), COALESCE(MAX(position), 0) FROM groups").fetchone()
-    return c.execute("INSERT INTO groups (name, color, position) VALUES (?, ?, ?)",
-                     (name, COLORS[n % len(COLORS)], last + 1)).lastrowid
+    n, last = c.execute("SELECT COUNT(*), COALESCE(MAX(position), 0) FROM groups WHERE user_id=?", (uid,)).fetchone()
+    return c.execute("INSERT INTO groups (user_id, name, color, position) VALUES (?, ?, ?, ?)",
+                     (uid, name, COLORS[n % len(COLORS)], last + 1)).lastrowid
 
 
-def add_link(c, url, group_id=None, title="", top=True):
+def add_link(c, uid, url, group_id=None, title="", top=True):
     """Insert a link, first in the list (or last, for imports, so a file keeps its
-    order). Returns the new id, or None if it already exists."""
+    order). Returns the new id, or None if this user already has it."""
     title = (title or "").strip()[:300]
-    lo, hi = c.execute("SELECT COALESCE(MIN(position), 0), COALESCE(MAX(position), 0) FROM links").fetchone()
+    lo, hi = c.execute("SELECT COALESCE(MIN(position), 0), COALESCE(MAX(position), 0) FROM links WHERE user_id=?",
+                       (uid,)).fetchone()
     try:
         return c.execute(
-            "INSERT INTO links (url, title, group_id, custom_title, created_at, position) VALUES (?,?,?,?,?,?)",
-            (url, title, group_id, 0, int(time.time()), lo - 1 if top else hi + 1)).lastrowid
+            "INSERT INTO links (user_id, url, title, group_id, custom_title, created_at, position) VALUES (?,?,?,?,?,?,?)",
+            (uid, url, title, group_id, 0, int(time.time()), lo - 1 if top else hi + 1)).lastrowid
     except sqlite3.IntegrityError:
         return None
 
 
-# ------------------------------------------------------- metadata fetching
+# ------------------------------------------------------- safe outgoing fetch
+# Every request the server makes on behalf of a link (page, picture, link check)
+# goes through safe_get. Links and their og:image addresses come from pages anyone
+# can write, so without this a page could point LinkBoard at http://homeassistant
+# .local:8123/... or a cloud metadata address and have the answer stored as a
+# thumbnail. Rules:
+#  - loopback, link-local (incl. 169.254.169.254), multicast and reserved
+#    addresses are never fetched;
+#  - private LAN addresses only when the admin turns on "fetch_private";
+#  - redirects are followed one hop at a time and every hop is checked again;
+#  - the address actually connected to is checked as well, so a name that
+#    resolves differently a second time (DNS rebinding) is caught too.
+class Blocked(Exception):
+    """The address is not one LinkBoard is allowed to fetch."""
+
+
+_guard = threading.local()
+_NET0 = ipaddress.ip_network("0.0.0.0/8")
+
+
+def _addr_allowed(addr, allow_private):
+    try:
+        a = ipaddress.ip_address(str(addr).split("%")[0])
+    except ValueError:
+        return False
+    if a.version == 6 and a.ipv4_mapped:
+        a = a.ipv4_mapped
+    if a.is_loopback or a.is_link_local or a.is_multicast or a.is_unspecified or a.is_reserved:
+        return False
+    if a.version == 4 and a in _NET0:
+        return False
+    return a.is_global or bool(allow_private)
+
+
+def _host_allowed(host, port, allow_private):
+    try:
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except (socket.gaierror, UnicodeError):
+        raise requests.ConnectionError(f"Cannot find {host}")
+    return bool(infos) and all(_addr_allowed(i[4][0], allow_private) for i in infos)
+
+
+class _PeerCheck:
+    def _new_conn(self):
+        sock = super()._new_conn()
+        try:
+            peer = sock.getpeername()[0]
+        except OSError:
+            peer = ""
+        if not _addr_allowed(peer, getattr(_guard, "allow_private", False)):
+            sock.close()
+            raise Blocked(f"Connecting to {peer} is not allowed")
+        return sock
+
+
+class _GuardHTTPConnection(_PeerCheck, HTTPConnection):
+    pass
+
+
+class _GuardHTTPSConnection(_PeerCheck, HTTPSConnection):
+    pass
+
+
+class _GuardHTTPPool(HTTPConnectionPool):
+    ConnectionCls = _GuardHTTPConnection
+
+
+class _GuardHTTPSPool(HTTPSConnectionPool):
+    ConnectionCls = _GuardHTTPSConnection
+
+
+class _GuardAdapter(HTTPAdapter):
+    """Direct connections get the peer check. (Through a configured HTTP proxy the
+    peer is the proxy itself; there the per-hop name check still applies.)"""
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {"http": _GuardHTTPPool, "https": _GuardHTTPSPool}
+
+
 # Google/YouTube show EU visitors a "Before you continue" consent page instead of
 # the real one. This cookie is what the "Reject all" button sets (no tracking).
 CONSENT_HOSTS = ("youtube.com", "youtu.be", "google.com")
 CONSENT_COOKIES = {"SOCS": "CAI", "CONSENT": "YES+cb"}
+MAX_REDIRECTS = 5
 
 
+def fetch_private():
+    return get_setting("fetch_private", "off") == "on"
+
+
+def safe_get(url, headers=UA, timeout=12, params=None):
+    """Like requests.get(url, stream=True), with the rules above. The caller closes
+    the response. Raises Blocked for a refused address."""
+    allow = fetch_private()
+    _guard.allow_private = allow
+    s = requests.Session()
+    s.mount("http://", _GuardAdapter())
+    s.mount("https://", _GuardAdapter())
+    for _ in range(MAX_REDIRECTS + 1):
+        p = urlparse(url)
+        try:
+            port = p.port or (443 if p.scheme == "https" else 80)
+        except ValueError:
+            raise Blocked("Not a valid address")
+        if p.scheme not in ("http", "https") or not p.hostname:
+            raise Blocked("Not a web address")
+        if not _host_allowed(p.hostname, port, allow):
+            raise Blocked(f"{p.hostname} is a local or reserved address")
+        host = p.hostname.lower()
+        r = s.get(url, headers=headers, params=params, timeout=timeout, stream=True, allow_redirects=False,
+                  cookies=CONSENT_COOKIES if host.endswith(CONSENT_HOSTS) else None)
+        params = None
+        if r.is_redirect:
+            url = urljoin(r.url, r.headers["Location"])
+            r.close()
+            continue
+        return r
+    raise requests.TooManyRedirects("Too many redirects")
+
+
+# ------------------------------------------------------- metadata fetching
 def _download(url, limit, headers=UA):
-    host = (urlparse(url).hostname or "").lower()
-    cookies = CONSENT_COOKIES if host.endswith(CONSENT_HOSTS) else None
-    r = requests.get(url, headers=headers, cookies=cookies, timeout=12, stream=True)
-    r.raise_for_status()
-    if (urlparse(r.url).hostname or "").lower().startswith("consent."):
+    r = safe_get(url, headers)
+    try:
+        r.raise_for_status()
+        if (urlparse(r.url).hostname or "").lower().startswith("consent."):
+            raise RuntimeError("consent wall")
+        data = r.raw.read(limit + 1, decode_content=True)
+        return data[:limit], r.headers.get("Content-Type", "").lower(), r.url
+    finally:
         r.close()
-        raise RuntimeError("consent wall")
-    data = r.raw.read(limit + 1, decode_content=True)
-    ctype = r.headers.get("Content-Type", "").lower()
-    final = r.url
-    r.close()
-    return data[:limit], ctype, final
 
 
 def _save_thumb(link_id, data, kind):
@@ -197,7 +429,7 @@ def _save_thumb(link_id, data, kind):
         img.load()
     except Exception:
         return None
-    name = f"{link_id}-{int(time.time() * 1000)}"
+    name = f"{link_id}-{int(time.time() * 1000)}-{secrets.token_hex(3)}"
     if kind == "image":
         if img.width < 80 or img.height < 60:
             return None
@@ -227,9 +459,12 @@ def _oembed(url):
     for rx, endpoint in OEMBED:
         if rx.search(url):
             try:
-                r = requests.get(endpoint, params={"url": url, "format": "json"}, headers=UA, timeout=10)
-                r.raise_for_status()
-                d = r.json()
+                r = safe_get(endpoint, UA, timeout=10, params={"url": url, "format": "json"})
+                try:
+                    r.raise_for_status()
+                    d = json.loads(r.raw.read(1_000_000, decode_content=True))
+                finally:
+                    r.close()
                 return (d.get("title") or "").strip(), (d.get("thumbnail_url") or "").strip()
             except Exception:
                 return "", ""
@@ -268,6 +503,8 @@ def fetch_meta(link_id):
     for headers in (UA, BOT_UA):  # second try only when the first gave no picture
         try:
             cur = _scrape(url, headers)
+        except Blocked:
+            break  # a local address: the second try would be refused the same way
         except Exception:
             continue
         if info is None or cur["images"]:
@@ -344,19 +581,20 @@ def _safe_fetch(link_id):
 # -------------------------------------------------------------- link check
 # Marks links that no longer work. "Broken" means: the address could not be reached
 # on two tries, or the site answered "not found" (404) or "gone" (410). Login walls,
-# bot blocks and server errors are NOT counted, to avoid false alarms.
-_check = {"running": False, "done": 0, "total": 0}
+# bot blocks, server errors and addresses LinkBoard may not fetch are NOT counted,
+# to avoid false alarms.
+_check = {"running": False, "done": 0, "total": 0, "uid": None}
 _check_lock = threading.Lock()
 CHECK_EVERY = 7 * 24 * 3600
 
 
 def _probe(url):
-    host = (urlparse(url).hostname or "").lower()
     try:
-        r = requests.get(url, headers=UA, cookies=CONSENT_COOKIES if host.endswith(CONSENT_HOSTS) else None,
-                         timeout=15, stream=True)
+        r = safe_get(url, UA, timeout=15)
         code = r.status_code
         r.close()
+    except Blocked:
+        return "unknown"
     except requests.exceptions.RequestException:
         return "broken"
     return "broken" if code in (404, 410) else "ok" if code < 400 else "unknown"
@@ -377,23 +615,29 @@ def _check_one(link_id, url):
         _check["done"] += 1
 
 
-def run_link_check():
-    """Start a check of all links in the background. False if one is already running."""
+def run_link_check(uid=None):
+    """Check links in the background: one user's (the "Check now" button) or everyone's
+    (the weekly run, uid None). False if a check is already running."""
     with _check_lock:
         if _check["running"]:
             return False
-        _check.update(running=True, done=0, total=0)
+        _check.update(running=True, done=0, total=0, uid=uid)
 
     def work():
         try:
             with db() as c:
-                rows = c.execute("SELECT id, url FROM links").fetchall()
+                rows = c.execute("SELECT id, url FROM links" + (" WHERE user_id=?" if uid else ""),
+                                 (uid,) if uid else ()).fetchall()
             with _check_lock:
                 _check["total"] = len(rows)
             with ThreadPoolExecutor(max_workers=4) as ex:
                 for r in rows:
                     ex.submit(_check_one, r["id"], r["url"])
-            set_setting("linkcheck_last", str(int(time.time())))
+            now = str(int(time.time()))
+            if uid:
+                set_user_setting(uid, "linkcheck_last", now)
+            else:
+                set_setting("linkcheck_last", now)
         except Exception:
             app.logger.exception("link check failed")
         finally:
@@ -462,7 +706,7 @@ def parse_plain(text):
             yield line, "", ""
 
 
-# ------------------------------------------------------------------- login
+# ---------------------------------------------------------------- settings
 def get_setting(key, default=None):
     with db() as c:
         row = c.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
@@ -478,18 +722,63 @@ def set_setting(key, value):
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
 
 
-def auth_enabled():
-    return bool(get_setting("auth_hash"))
+def get_user_setting(uid, key, default=None):
+    with db() as c:
+        row = c.execute("SELECT value FROM user_settings WHERE user_id=? AND key=?", (uid, key)).fetchone()
+    return row["value"] if row else default
 
 
-def signed_in():
-    """True when this browser holds a session made with the current credentials."""
-    ver = get_setting("auth_ver")
-    return bool(ver) and secrets.compare_digest(session.get("ver", ""), ver)
+def set_user_setting(uid, key, value):
+    with db() as c:
+        c.execute("INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) "
+                  "ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value", (uid, key, value))
 
 
+# ------------------------------------------------------------------- login
 def _hash(password):
     return generate_password_hash(password, method="pbkdf2:sha256:600000")
+
+
+_DUMMY_HASH = _hash(secrets.token_hex(8))  # so a wrong username takes as long as a wrong password
+
+
+def setup_needed():
+    with db() as c:
+        return c.execute("SELECT 1 FROM users LIMIT 1").fetchone() is None
+
+
+def current_user():
+    """The signed-in user's row, if this browser holds a session made with the
+    user's current password (changing it signs every other device out)."""
+    uid = session.get("uid")
+    if not uid:
+        return None
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    if row and secrets.compare_digest(str(session.get("ver", "")), row["ver"]):
+        return row
+    return None
+
+
+def key_user():
+    """The user whose API key this request carries ("Authorization: Bearer <key>")."""
+    sent = request.headers.get("Authorization", "")
+    if not sent.startswith("Bearer ") or not sent[7:].strip():
+        return None
+    digest = hashlib.sha256(sent[7:].strip().encode()).hexdigest()
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE api_key_hash=?", (digest,)).fetchone()
+    return row if row and secrets.compare_digest(row["api_key_hash"], digest) else None
+
+
+def me():
+    return g.user["id"]
+
+
+def _sign_in(user):
+    session.clear()
+    session["uid"] = user["id"]
+    session["ver"] = user["ver"]
 
 
 # Wrong-password throttle. It works the same with or without a reverse proxy, so no
@@ -537,33 +826,39 @@ def _note_login(client, ok):
             _peer_fails.clear()
 
 
-OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "icon", "save_page", "manifest", "service_worker"}
+def _check_new_credentials(username, password, need_password=True):
+    if not username or len(username) > 60:
+        return "Choose a username (at most 60 characters)."
+    if need_password and len(password) < 8:
+        return "The password needs at least 8 characters."
+    return None
+
+
+OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "api_setup", "icon", "save_page", "manifest",
+                  "service_worker"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
-
-
-def key_ok():
-    """True when the request carries the API key ("Authorization: Bearer <key>")."""
-    stored = get_setting("api_key_hash")
-    sent = request.headers.get("Authorization", "")
-    if not stored or not sent.startswith("Bearer "):
-        return False
-    return secrets.compare_digest(hashlib.sha256(sent[7:].strip().encode()).hexdigest(), stored)
+ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings"}
 
 
 @app.before_request
 def require_login():
-    if request.endpoint in OPEN_ENDPOINTS or not auth_enabled() or signed_in():
+    g.user = current_user()
+    if request.endpoint in OPEN_ENDPOINTS:
         return None
-    if request.endpoint in KEY_ENDPOINTS and key_ok():
-        return None
-    if request.path.startswith("/api/"):
-        return jsonify(error="Please sign in."), 401
-    return redirect("/login")
+    if g.user is None and request.endpoint in KEY_ENDPOINTS:
+        g.user = key_user()
+    if g.user is None:
+        if request.path.startswith("/api/"):
+            return jsonify(error="Please sign in.", setup=setup_needed()), 401
+        return redirect("/login")
+    if request.endpoint in ADMIN_ENDPOINTS and not g.user["is_admin"]:
+        return jsonify(error="Only an admin can do this."), 403
+    return None
 
 
 @app.get("/login")
 def login_page():
-    if not auth_enabled() or signed_in():
+    if current_user():
         nxt = request.args.get("next", "")
         return redirect(nxt if nxt.startswith("/save") else "/")
     return send_from_directory(PAGES, "login.html", max_age=0)
@@ -586,20 +881,6 @@ def service_worker():
     return send_from_directory(PAGES, "sw.js", mimetype="text/javascript", max_age=0)
 
 
-@app.post("/api/apikey")
-def make_api_key():
-    """Create (or replace) the API key. It is shown once; only its hash is stored."""
-    key = "lb_" + secrets.token_urlsafe(32)
-    set_setting("api_key_hash", hashlib.sha256(key.encode()).hexdigest())
-    return jsonify(key=key)
-
-
-@app.delete("/api/apikey")
-def drop_api_key():
-    set_setting("api_key_hash", None)
-    return jsonify(ok=True)
-
-
 @app.get("/icon-<name>.png")
 def icon(name):
     if not re.fullmatch(r"[a-z0-9-]+", name):
@@ -609,10 +890,41 @@ def icon(name):
 
 @app.get("/api/auth")
 def auth_status():
-    on = auth_enabled()
-    inside = not on or signed_in()
-    return jsonify(enabled=on, signed_in=inside, username=get_setting("auth_user", "") if inside else "",
-                   has_key=bool(get_setting("api_key_hash")) if inside else False)
+    u = g.user
+    return jsonify(signed_in=bool(u), setup=not u and setup_needed(),
+                   username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
+                   has_key=bool(u and u["api_key_hash"]))
+
+
+@app.post("/api/setup")
+def api_setup():
+    """Create the first account (an admin). Only possible while there is no account;
+    links saved before (an open 1.0 installation) become this account's."""
+    d = request.get_json(force=True, silent=True) or {}
+    user, pw = str(d.get("username", "")).strip(), str(d.get("password", ""))
+    problem = _check_new_credentials(user, pw)
+    if problem:
+        return jsonify(error=problem), 400
+    con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
+    con.row_factory = sqlite3.Row
+    try:
+        con.execute("BEGIN IMMEDIATE")  # two browsers racing: only one wins
+        if con.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+            con.execute("ROLLBACK")
+            return jsonify(error="LinkBoard is already set up. Sign in instead."), 409
+        uid = con.execute("INSERT INTO users (username, pw_hash, is_admin, ver, created_at) VALUES (?,?,1,?,?)",
+                          (user, _hash(pw), secrets.token_hex(16), int(time.time()))).lastrowid
+        con.execute("UPDATE groups SET user_id=? WHERE user_id IS NULL", (uid,))
+        con.execute("UPDATE links SET user_id=? WHERE user_id IS NULL", (uid,))
+        row = con.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        con.execute("COMMIT")
+    finally:
+        if con.in_transaction:
+            con.execute("ROLLBACK")
+        con.close()
+    _sign_in(row)
+    session.permanent = True
+    return jsonify(ok=True), 201
 
 
 @app.post("/api/login")
@@ -622,14 +934,13 @@ def api_login():
     wait = _wait_seconds(ip)
     if wait:
         return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
-    user, pw_hash = get_setting("auth_user", ""), get_setting("auth_hash", "")
-    ok = bool(pw_hash) and secrets.compare_digest(str(d.get("username", "")).strip().lower().encode(), user.lower().encode())
-    ok = check_password_hash(pw_hash or _hash("x"), str(d.get("password", ""))) and ok
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE username=?", (str(d.get("username", "")).strip(),)).fetchone()
+    ok = check_password_hash(row["pw_hash"] if row else _DUMMY_HASH, str(d.get("password", ""))) and row is not None
     _note_login(ip, ok)
     if not ok:
         return jsonify(error="Wrong username or password."), 401
-    session.clear()
-    session["ver"] = get_setting("auth_ver")
+    _sign_in(row)
     session.permanent = bool(d.get("remember"))  # otherwise the cookie ends with the browser session
     return jsonify(ok=True)
 
@@ -640,37 +951,121 @@ def api_logout():
     return jsonify(ok=True)
 
 
-@app.post("/api/auth")
-def set_auth():
-    """Turn the login on, or change it. Changing needs the current password."""
+@app.post("/api/account")
+def update_account():
+    """Change your own username and/or password. Needs the current password."""
     d = request.get_json(force=True, silent=True) or {}
-    user, pw = str(d.get("username", "")).strip(), str(d.get("password", ""))
-    old = get_setting("auth_hash")
-    if old and not check_password_hash(old, str(d.get("current_password", ""))):
+    if not check_password_hash(g.user["pw_hash"], str(d.get("current_password", ""))):
         return jsonify(error="The current password is not correct."), 403
-    if not user or len(user) > 60:
-        return jsonify(error="Choose a username."), 400
-    if len(pw) < 8:
-        return jsonify(error="The password needs at least 8 characters."), 400
-    ver = secrets.token_hex(16)  # new value signs every other device out
-    set_setting("auth_user", user)
-    set_setting("auth_hash", _hash(pw))
-    set_setting("auth_ver", ver)
-    session.clear()
-    session["ver"] = ver
+    user, pw = str(d.get("username", "")).strip(), str(d.get("password", ""))
+    problem = _check_new_credentials(user, pw, need_password=bool(pw))
+    if problem:
+        return jsonify(error=problem), 400
+    with db() as c:
+        try:
+            c.execute("UPDATE users SET username=? WHERE id=?", (user, me()))
+        except sqlite3.IntegrityError:
+            return jsonify(error="That username is already taken."), 409
+        if pw:  # new value signs every other device out
+            c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), me()))
+        row = c.execute("SELECT * FROM users WHERE id=?", (me(),)).fetchone()
+    _sign_in(row)
     session.permanent = True
     return jsonify(ok=True)
 
 
-@app.delete("/api/auth")
-def remove_auth():
+@app.post("/api/apikey")
+def make_api_key():
+    """Create (or replace) your API key. It is shown once; only its hash is stored."""
+    key = "lb_" + secrets.token_urlsafe(32)
+    with db() as c:
+        c.execute("UPDATE users SET api_key_hash=? WHERE id=?", (hashlib.sha256(key.encode()).hexdigest(), me()))
+    return jsonify(key=key)
+
+
+@app.delete("/api/apikey")
+def drop_api_key():
+    with db() as c:
+        c.execute("UPDATE users SET api_key_hash='' WHERE id=?", (me(),))
+    return jsonify(ok=True)
+
+
+# ------------------------------------------------------------ admin: users
+def _admins(c):
+    return c.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+
+
+@app.get("/api/users")
+def list_users():
+    with db() as c:
+        rows = c.execute("SELECT u.id, u.username, u.is_admin, u.created_at, "
+                         "(SELECT COUNT(*) FROM links l WHERE l.user_id=u.id) AS links "
+                         "FROM users u ORDER BY u.username").fetchall()
+    return jsonify(users=[dict(r) | {"me": r["id"] == me()} for r in rows])
+
+
+@app.post("/api/users")
+def create_user():
     d = request.get_json(force=True, silent=True) or {}
-    old = get_setting("auth_hash")
-    if old and not check_password_hash(old, str(d.get("current_password", ""))):
-        return jsonify(error="The current password is not correct."), 403
-    for key in ("auth_user", "auth_hash", "auth_ver"):
-        set_setting(key, None)
-    session.clear()
+    user, pw = str(d.get("username", "")).strip(), str(d.get("password", ""))
+    problem = _check_new_credentials(user, pw)
+    if problem:
+        return jsonify(error=problem), 400
+    with db() as c:
+        try:
+            uid = c.execute("INSERT INTO users (username, pw_hash, is_admin, ver, created_at) VALUES (?,?,?,?,?)",
+                            (user, _hash(pw), 1 if d.get("is_admin") else 0, secrets.token_hex(16),
+                             int(time.time()))).lastrowid
+        except sqlite3.IntegrityError:
+            return jsonify(error="That username is already taken."), 409
+    return jsonify(id=uid), 201
+
+
+@app.patch("/api/users/<int:uid>")
+def update_user(uid):
+    """Rename, set a new password (signs that user out everywhere) or change admin rights."""
+    d = request.get_json(force=True, silent=True) or {}
+    user = str(d.get("username") or "").strip() if "username" in d else None
+    pw = str(d.get("password") or "")
+    make = (1 if d["is_admin"] else 0) if "is_admin" in d else None
+    if user is not None and _check_new_credentials(user, "", need_password=False):
+        return jsonify(error=_check_new_credentials(user, "", need_password=False)), 400
+    if pw and len(pw) < 8:
+        return jsonify(error="The password needs at least 8 characters."), 400
+    with db() as c:  # everything is checked before the first change
+        row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            return jsonify(error="Not found"), 404
+        if make == 0 and row["is_admin"] and _admins(c) <= 1:
+            return jsonify(error="LinkBoard needs at least one admin."), 400
+        if user is not None and c.execute("SELECT 1 FROM users WHERE username=? AND id != ?", (user, uid)).fetchone():
+            return jsonify(error="That username is already taken."), 409
+        if user is not None:
+            c.execute("UPDATE users SET username=? WHERE id=?", (user, uid))
+        if pw:
+            c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), uid))
+        if make is not None:
+            c.execute("UPDATE users SET is_admin=? WHERE id=?", (make, uid))
+        fresh = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    if uid == me():  # keep the admin who changed their own password signed in here
+        _sign_in(fresh)
+    return jsonify(ok=True)
+
+
+@app.delete("/api/users/<int:uid>")
+def delete_user(uid):
+    """Removes the account with all its links, groups and pictures."""
+    if uid == me():
+        return jsonify(error="You cannot remove your own account."), 400
+    with db() as c:
+        if not c.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
+            return jsonify(error="Not found"), 404
+        thumbs = [r["thumb"] for r in c.execute("SELECT thumb FROM links WHERE user_id=? AND thumb != ''", (uid,))]
+        c.execute("DELETE FROM links WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM groups WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM users WHERE id=?", (uid,))
+    for name in thumbs:
+        _remove_thumb(name)
     return jsonify(ok=True)
 
 
@@ -682,33 +1077,83 @@ def index():
 
 @app.get("/thumbs/<path:name>")
 def thumbs(name):
-    return send_from_directory(THUMB_DIR, name, max_age=31536000)
+    name = os.path.basename(name)
+    with db() as c:
+        mine = c.execute("SELECT 1 FROM links WHERE thumb=? AND user_id=?", (name, me())).fetchone()
+    if not mine:
+        return jsonify(error="Not found"), 404
+    resp = send_from_directory(THUMB_DIR, name, max_age=31536000)
+    resp.cache_control.public = False  # never kept by a shared cache: it belongs to one user
+    resp.cache_control.private = True
+    return resp
+
+
+PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark")}
+SORT_MODES = ("manual", "newest", "oldest", "name", "site")
+
+
+def _prefs(uid):
+    try:
+        return json.loads(get_user_setting(uid, "ui", "{}"))
+    except ValueError:
+        return {}
 
 
 @app.get("/api/state")
 def state():
+    uid = me()
     with db() as c:
-        groups = [dict(r) for r in c.execute("SELECT * FROM groups ORDER BY position, id")]
-        links = [dict(r) for r in c.execute("SELECT * FROM links ORDER BY position, id DESC")]
+        groups = [dict(r) for r in c.execute("SELECT * FROM groups WHERE user_id=? ORDER BY position, id", (uid,))]
+        links = [dict(r) for r in c.execute("SELECT * FROM links WHERE user_id=? ORDER BY position, id DESC", (uid,))]
     with _check_lock:
         check = dict(_check)
-    check.update(enabled=get_setting("linkcheck", "on") == "on", last=int(get_setting("linkcheck_last", "0")))
-    return jsonify(groups=groups, links=links, check=check)
+    if not (check["uid"] == uid or (check["uid"] is None and g.user["is_admin"])):
+        check.update(done=0, total=0)  # someone else's check: only say that one is running
+    check.pop("uid")
+    check.update(enabled=get_setting("linkcheck", "on") == "on",
+                 last=max(int(get_setting("linkcheck_last", "0")), int(get_user_setting(uid, "linkcheck_last", "0"))))
+    out = dict(groups=groups, links=links, check=check, prefs=_prefs(uid),
+               me={"username": g.user["username"], "is_admin": bool(g.user["is_admin"])})
+    if g.user["is_admin"]:
+        out["admin"] = {"fetch_private": fetch_private()}
+    return jsonify(out)
+
+
+@app.put("/api/prefs")
+def save_prefs():
+    """Layout, appearance and sort choices, kept on the server so every device of
+    this user sees the same."""
+    d = request.get_json(force=True, silent=True) or {}
+    prefs = _prefs(me())
+    for key, allowed in PREF_KEYS.items():
+        if d.get(key) in allowed:
+            prefs[key] = d[key]
+    if isinstance(d.get("sorts"), dict):
+        prefs["sorts"] = {str(k)[:40]: v for k, v in list(d["sorts"].items())[:500] if v in SORT_MODES}
+    set_user_setting(me(), "ui", json.dumps(prefs))
+    return jsonify(ok=True, prefs=prefs)
 
 
 @app.post("/api/settings")
 def save_settings():
+    """Settings for the whole installation (admin only)."""
     d = request.get_json(force=True, silent=True) or {}
     if "linkcheck" in d:
         set_setting("linkcheck", "on" if d["linkcheck"] else "off")
+    if "fetch_private" in d:
+        set_setting("fetch_private", "on" if d["fetch_private"] else "off")
     return jsonify(ok=True)
 
 
 @app.post("/api/linkcheck")
 def start_link_check():
-    if not run_link_check():
+    if not run_link_check(me()):
         return jsonify(error="A check is already running."), 409
     return jsonify(ok=True)
+
+
+def own_link(c, link_id):
+    return c.execute("SELECT * FROM links WHERE id=? AND user_id=?", (link_id, me())).fetchone()
 
 
 @app.post("/api/links/<int:link_id>/thumb")
@@ -716,14 +1161,15 @@ def set_thumb(link_id):
     """Use an uploaded picture for this link, in place of the fetched one."""
     f = request.files.get("file")
     with db() as c:
-        row = c.execute("SELECT thumb FROM links WHERE id=?", (link_id,)).fetchone()
+        row = own_link(c, link_id)
     if not row or not f:
         return jsonify(error="Not found" if not row else "Choose a picture."), 404 if not row else 400
     name = _save_thumb(link_id, f.read(20_000_000), "image")
     if not name:
         return jsonify(error="That file is not a usable picture (it may be too small or not an image)."), 400
     with db() as c:
-        c.execute("UPDATE links SET thumb=?, thumb_kind='image', custom_thumb=1 WHERE id=?", (name, link_id))
+        c.execute("UPDATE links SET thumb=?, thumb_kind='image', custom_thumb=1 WHERE id=? AND user_id=?",
+                  (name, link_id, me()))
     if row["thumb"] and row["thumb"] != name:
         _remove_thumb(row["thumb"])
     return jsonify(ok=True)
@@ -733,7 +1179,10 @@ def set_thumb(link_id):
 def drop_thumb(link_id):
     """Forget the own picture and fetch the site's one again."""
     with db() as c:
-        c.execute("UPDATE links SET custom_thumb=0, status='pending' WHERE id=?", (link_id,))
+        n = c.execute("UPDATE links SET custom_thumb=0, status='pending' WHERE id=? AND user_id=?",
+                      (link_id, me())).rowcount
+    if not n:
+        return jsonify(error="Not found"), 404
     queue(link_id)
     return jsonify(ok=True)
 
@@ -745,13 +1194,12 @@ def create_link():
     if not url:
         return jsonify(error="That does not look like a web link."), 400
     title, note = str(d.get("title") or "").strip()[:300], str(d.get("note") or "").strip()[:2000]
+    uid = me()
     with db() as c:
-        gid = d.get("group_id") or None
-        if gid is not None and not c.execute("SELECT 1 FROM groups WHERE id=?", (gid,)).fetchone():
-            gid = None
+        gid = own_group(c, uid, d.get("group_id")) if d.get("group_id") else None
         if gid is None and str(d.get("group") or "").strip():  # by name; created if it is new
-            gid = get_or_create_group(c, str(d["group"]))
-        link_id = add_link(c, url, gid, title)
+            gid = get_or_create_group(c, uid, str(d["group"]))
+        link_id = add_link(c, uid, url, gid, title)
         if link_id is not None and note:
             c.execute("UPDATE links SET note=? WHERE id=?", (note, link_id))
     if link_id is None:
@@ -764,13 +1212,14 @@ def create_link():
 def list_groups():
     """Group names only - what the "Save to LinkBoard" window and API-key clients need."""
     with db() as c:
-        return jsonify(groups=[dict(r) for r in c.execute("SELECT id, name, color FROM groups ORDER BY position, id")])
+        return jsonify(groups=[dict(r) for r in c.execute(
+            "SELECT id, name, color FROM groups WHERE user_id=? ORDER BY position, id", (me(),))])
 
 
 @app.post("/api/links/<int:link_id>/opened")
 def opened_link(link_id):
     with db() as c:
-        c.execute("UPDATE links SET opened_at=? WHERE id=?", (int(time.time()), link_id))
+        c.execute("UPDATE links SET opened_at=? WHERE id=? AND user_id=?", (int(time.time()), link_id, me()))
     return jsonify(ok=True)
 
 
@@ -778,15 +1227,23 @@ def _ids(d):
     return list(dict.fromkeys(int(i) for i in d.get("ids", []) if str(i).isdigit()))
 
 
+def _own_ids(c, ids):
+    """Keep only the ids of this user's links (order kept)."""
+    if not ids:
+        return []
+    mine = {r["id"] for r in c.execute(
+        f"SELECT id FROM links WHERE user_id=? AND id IN ({','.join('?' * len(ids))})", [me()] + ids)}
+    return [i for i in ids if i in mine]
+
+
 @app.post("/api/links/order")
 def order_links():
     """Body: {"ids": [...]} - these links, in the order they should appear. They
     swap places among themselves only, so other links keep their position."""
-    ids = _ids(request.get_json(force=True, silent=True) or {})
     with db() as c:
+        ids = _own_ids(c, _ids(request.get_json(force=True, silent=True) or {}))
         rows = {r["id"]: r["position"] for r in
                 c.execute(f"SELECT id, position FROM links WHERE id IN ({','.join('?' * len(ids))})", ids)} if ids else {}
-        ids = [i for i in ids if i in rows]
         slots = sorted(rows.values())
         if len(set(slots)) < len(slots):  # ties: spread them out below the smallest
             slots = list(range(slots[0], slots[0] + len(slots))) if slots else []
@@ -799,19 +1256,21 @@ def order_links():
 def bulk_links():
     """Body: {"ids": [...], "group_id": 3 or null} to move, or {"ids": [...], "delete": true}."""
     d = request.get_json(force=True, silent=True) or {}
-    ids = _ids(d)
-    if not ids:
-        return jsonify(error="Nothing selected."), 400
-    marks = ",".join("?" * len(ids))
     thumbs = []
     with db() as c:
+        ids = _own_ids(c, _ids(d))
+        if not ids:
+            return jsonify(error="Nothing selected."), 400
+        marks = ",".join("?" * len(ids))
         if d.get("delete"):
             thumbs = [r["thumb"] for r in c.execute(f"SELECT thumb FROM links WHERE id IN ({marks})", ids) if r["thumb"]]
             c.execute(f"DELETE FROM links WHERE id IN ({marks})", ids)
         elif "group_id" in d:
-            gid = d["group_id"] or None
-            if gid is not None and not c.execute("SELECT 1 FROM groups WHERE id=?", (gid,)).fetchone():
-                return jsonify(error="That group no longer exists."), 404
+            gid = None
+            if d["group_id"]:
+                gid = own_group(c, me(), d["group_id"])
+                if gid is None:
+                    return jsonify(error="That group no longer exists."), 404
             c.execute(f"UPDATE links SET group_id=? WHERE id IN ({marks})", [gid] + ids)
         elif d.get("refresh"):
             c.execute(f"UPDATE links SET status='pending' WHERE id IN ({marks})", ids)
@@ -829,31 +1288,32 @@ def bulk_links():
 def update_link(link_id):
     d = request.get_json(force=True, silent=True) or {}
     refetch = False
-    with db() as c:
-        row = c.execute("SELECT * FROM links WHERE id=?", (link_id,)).fetchone()
+    with db() as c:  # everything is checked before the first change
+        row = own_link(c, link_id)
         if not row:
             return jsonify(error="Not found"), 404
+        gid = own_group(c, me(), d.get("group_id")) if d.get("group_id") else None
+        if d.get("group_id") and gid is None:
+            return jsonify(error="That group no longer exists."), 404
+        url = normalize_url(d["url"]) if "url" in d else row["url"]
+        if not url:
+            return jsonify(error="That does not look like a web link."), 400
+        if url != row["url"] and c.execute("SELECT 1 FROM links WHERE user_id=? AND url=?", (me(), url)).fetchone():
+            return jsonify(error="This link is already saved."), 409
         if "title" in d:
             t = (d["title"] or "").strip()[:300]
             if t != row["title"]:
                 c.execute("UPDATE links SET title=?, custom_title=? WHERE id=?", (t, 1 if t else 0, link_id))
                 refetch = refetch or not t
         if "group_id" in d:
-            c.execute("UPDATE links SET group_id=? WHERE id=?", (d["group_id"] or None, link_id))
+            c.execute("UPDATE links SET group_id=? WHERE id=?", (gid, link_id))
         if "note" in d:
             c.execute("UPDATE links SET note=? WHERE id=?", (str(d["note"] or "").strip()[:2000], link_id))
         if "pinned" in d:
             c.execute("UPDATE links SET pinned=? WHERE id=?", (1 if d["pinned"] else 0, link_id))
-        if "url" in d:
-            url = normalize_url(d["url"])
-            if not url:
-                return jsonify(error="That does not look like a web link."), 400
-            if url != row["url"]:
-                try:
-                    c.execute("UPDATE links SET url=?, status='pending' WHERE id=?", (url, link_id))
-                except sqlite3.IntegrityError:
-                    return jsonify(error="This link is already saved."), 409
-                refetch = True
+        if url != row["url"]:
+            c.execute("UPDATE links SET url=?, status='pending' WHERE id=?", (url, link_id))
+            refetch = True
     if refetch:
         queue(link_id)
     return jsonify(ok=True)
@@ -862,7 +1322,9 @@ def update_link(link_id):
 @app.post("/api/links/<int:link_id>/refresh")
 def refresh_link(link_id):
     with db() as c:
-        c.execute("UPDATE links SET status='pending' WHERE id=?", (link_id,))
+        n = c.execute("UPDATE links SET status='pending' WHERE id=? AND user_id=?", (link_id, me())).rowcount
+    if not n:
+        return jsonify(error="Not found"), 404
     queue(link_id)
     return jsonify(ok=True)
 
@@ -870,8 +1332,8 @@ def refresh_link(link_id):
 @app.delete("/api/links/<int:link_id>")
 def delete_link(link_id):
     with db() as c:
-        row = c.execute("SELECT thumb FROM links WHERE id=?", (link_id,)).fetchone()
-        c.execute("DELETE FROM links WHERE id=?", (link_id,))
+        row = own_link(c, link_id)
+        c.execute("DELETE FROM links WHERE id=? AND user_id=?", (link_id, me()))
     if row and row["thumb"]:
         _remove_thumb(row["thumb"])
     return jsonify(ok=True)
@@ -886,7 +1348,7 @@ def _color(value):
 def create_group():
     d = request.get_json(force=True, silent=True) or {}
     with db() as c:
-        gid = get_or_create_group(c, d.get("name"))
+        gid = get_or_create_group(c, me(), d.get("name"))
         if gid is None:
             return jsonify(error="Give the group a name."), 400
         if _color(d.get("color")):
@@ -900,7 +1362,7 @@ def order_groups():
     d = request.get_json(force=True, silent=True) or {}
     ids = [int(i) for i in d.get("ids", []) if str(i).isdigit()]
     with db() as c:
-        known = [r["id"] for r in c.execute("SELECT id FROM groups ORDER BY position, id")]
+        known = [r["id"] for r in c.execute("SELECT id FROM groups WHERE user_id=? ORDER BY position, id", (me(),))]
         ordered = [i for i in dict.fromkeys(ids) if i in known] + [i for i in known if i not in ids]
         for pos, gid in enumerate(ordered, 1):
             c.execute("UPDATE groups SET position=? WHERE id=?", (pos, gid))
@@ -911,6 +1373,8 @@ def order_groups():
 def update_group(gid):
     d = request.get_json(force=True, silent=True) or {}
     with db() as c:
+        if own_group(c, me(), gid) is None:
+            return jsonify(error="Not found"), 404
         try:
             if (d.get("name") or "").strip():
                 c.execute("UPDATE groups SET name=? WHERE id=?", (d["name"].strip()[:60], gid))
@@ -925,12 +1389,14 @@ def update_group(gid):
 def delete_group(gid):
     """Deletes the group; its links stay, ungrouped (or go too with ?links=1)."""
     with db() as c:
+        if own_group(c, me(), gid) is None:
+            return jsonify(error="Not found"), 404
         if request.args.get("links") == "1":
-            for r in c.execute("SELECT thumb FROM links WHERE group_id=?", (gid,)).fetchall():
+            for r in c.execute("SELECT thumb FROM links WHERE group_id=? AND user_id=?", (gid, me())).fetchall():
                 if r["thumb"]:
                     _remove_thumb(r["thumb"])
-            c.execute("DELETE FROM links WHERE group_id=?", (gid,))
-        c.execute("DELETE FROM groups WHERE id=?", (gid,))
+            c.execute("DELETE FROM links WHERE group_id=? AND user_id=?", (gid, me()))
+        c.execute("DELETE FROM groups WHERE id=? AND user_id=?", (gid, me()))
     return jsonify(ok=True)
 
 
@@ -940,18 +1406,18 @@ def import_links():
     f = request.files.get("file")
     if f:
         text += "\n" + f.read().decode("utf-8", errors="replace")
-    target = request.form.get("group_id") or None
     is_bookmarks = bool(re.search(r"<a\b[^>]*href", text, re.I))
     items = parse_bookmarks_html(text) if is_bookmarks else parse_plain(text)
-    added, skipped, new_ids = 0, 0, []
+    added, skipped, new_ids, uid = 0, 0, [], me()
     with db() as c:
+        target = own_group(c, uid, request.form.get("group_id")) if request.form.get("group_id") else None
         for raw, title, folder in items:
             url = normalize_url(raw)
             if not url:
                 skipped += 1
                 continue
-            gid = target or (get_or_create_group(c, folder) if folder else None)
-            link_id = add_link(c, url, gid, title, top=False)
+            gid = target or (get_or_create_group(c, uid, folder) if folder else None)
+            link_id = add_link(c, uid, url, gid, title, top=False)
             if link_id is None:
                 skipped += 1
             else:
@@ -970,47 +1436,58 @@ def export_links():
            '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
            "<TITLE>Bookmarks</TITLE>", "<H1>Bookmarks</H1>", "<DL><p>"]
     with db() as c:
-        groups = c.execute("SELECT * FROM groups ORDER BY position, id").fetchall()
-        links = c.execute("SELECT * FROM links ORDER BY position, id DESC").fetchall()
+        groups = c.execute("SELECT * FROM groups WHERE user_id=? ORDER BY position, id", (me(),)).fetchall()
+        links = c.execute("SELECT * FROM links WHERE user_id=? ORDER BY position, id DESC", (me(),)).fetchall()
 
     def rows(gid, pad):
         return [f'{pad}<DT><A HREF="{e(l["url"])}" ADD_DATE="{l["created_at"]}">{e(l["title"] or l["url"])}</A>'
                 for l in links if l["group_id"] == gid]
 
-    for g in groups:
-        out += [f'    <DT><H3>{e(g["name"])}</H3>', "    <DL><p>", *rows(g["id"], "        "), "    </DL><p>"]
+    for grp in groups:
+        out += [f'    <DT><H3>{e(grp["name"])}</H3>', "    <DL><p>", *rows(grp["id"], "        "), "    </DL><p>"]
     out += rows(None, "    ") + ["</DL><p>", ""]
     return Response("\n".join(out), mimetype="text/html",
                     headers={"Content-Disposition": "attachment; filename=linkboard-bookmarks.html"})
 
 
 # ------------------------------------------------------- backup and restore
-# A backup is a zip holding the database and the thumbnails. With a password it is
-# wrapped as: MAGIC + 16-byte salt + 12-byte nonce + AES-256-GCM(zip), key = scrypt(password).
+# A backup holds one user's links, groups and thumbnails: a zip with a small
+# database (tables "groups" and "links", the same layout as LinkBoard 1.0, so 1.0
+# backups restore here and the other way round) and the thumbnails. With a password
+# it is wrapped as: MAGIC + 16-byte salt + 12-byte nonce + AES-256-GCM(zip), key =
+# scrypt(password). Accounts, passwords and API keys are never in a backup.
 MAGIC = b"LINKBOARD-BACKUP-1\n"
-PRIVATE_SETTINGS = ("auth_user", "auth_hash", "auth_ver", "secret_key", "api_key_hash")  # never leave the server
+MAX_BACKUP_DB = 512 * 1024 * 1024
 
 
 def _key(password, salt):
     return Scrypt(salt=salt, length=32, n=2 ** 15, r=8, p=1).derive(password.encode("utf-8"))
 
 
-def make_backup(password=""):
+def make_backup(uid, password=""):
     with tempfile.TemporaryDirectory() as tmp:
         snap = os.path.join(tmp, "linkboard.db")
-        src, dst = sqlite3.connect(DB_PATH, timeout=30), sqlite3.connect(snap)
-        with dst:
-            src.backup(dst)  # consistent copy, even while the app is in use
-        src.close()
-        dst.execute(f"DELETE FROM settings WHERE key IN ({','.join('?' * len(PRIVATE_SETTINGS))})", PRIVATE_SETTINGS)
-        dst.commit()
-        dst.execute("VACUUM")
-        dst.close()
+        cols = ",".join(LINK_COLS)
+        con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
+        con.row_factory = sqlite3.Row
+        try:
+            con.execute("ATTACH DATABASE ? AS b", (snap,))
+            con.execute("BEGIN")  # one transaction: a consistent copy, even while the app is in use
+            con.execute("CREATE TABLE b.groups AS SELECT id, name, color, position FROM main.groups WHERE user_id=?", (uid,))
+            con.execute(f"CREATE TABLE b.links AS SELECT {cols} FROM main.links WHERE user_id=?", (uid,))
+            con.execute("CREATE TABLE b.settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            thumbs = [r["thumb"] for r in con.execute("SELECT thumb FROM b.links WHERE thumb != ''")]
+            con.execute("COMMIT")
+            con.execute("DETACH DATABASE b")
+        finally:
+            con.close()
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
             z.write(snap, "linkboard.db")
-            for name in sorted(os.listdir(THUMB_DIR)):
-                z.write(os.path.join(THUMB_DIR, name), "thumbs/" + name, zipfile.ZIP_STORED)
+            for name in sorted(set(thumbs)):
+                path = os.path.join(THUMB_DIR, os.path.basename(name))
+                if os.path.isfile(path):
+                    z.write(path, "thumbs/" + os.path.basename(name), zipfile.ZIP_STORED)
     data = buf.getvalue()
     if password:
         salt, nonce = os.urandom(16), os.urandom(12)
@@ -1022,7 +1499,9 @@ class RestoreError(Exception):
     pass
 
 
-def restore_backup(data, password=""):
+def restore_backup(uid, data, password=""):
+    """Replace this user's links and groups with the ones in the backup. Ids are
+    given anew (other users' ids may be taken), so groups and pictures are mapped."""
     if data.startswith(MAGIC):
         if not password:
             raise RestoreError("This backup is protected. Enter its password.")
@@ -1033,7 +1512,8 @@ def restore_backup(data, password=""):
             raise RestoreError("Wrong password, or the backup file is damaged.")
     try:
         z = zipfile.ZipFile(io.BytesIO(data))
-        z.getinfo("linkboard.db")
+        if z.getinfo("linkboard.db").file_size > MAX_BACKUP_DB:
+            raise RestoreError("The backup's database is too large.")
     except (zipfile.BadZipFile, KeyError):
         raise RestoreError("This is not a LinkBoard backup file.")
     with tempfile.TemporaryDirectory() as tmp:
@@ -1048,37 +1528,63 @@ def restore_backup(data, password=""):
             old.close()
         except sqlite3.Error:
             raise RestoreError("The backup's database cannot be read.")
-        new_thumbs = os.path.join(tmp, "thumbs")
-        os.makedirs(new_thumbs)
-        wanted = {l.get("thumb") for l in links if l.get("thumb")}
+        files = {}
         for info in z.infolist():
             name = os.path.basename(info.filename)
-            if info.filename.startswith("thumbs/") and name in wanted and re.fullmatch(r"[\w.-]+\.(webp|png)", name):
-                with open(os.path.join(new_thumbs, name), "wb") as f:
-                    f.write(z.read(info))
+            if (info.filename.startswith("thumbs/") and re.fullmatch(r"[\w.-]+\.(webp|png)", name)
+                    and info.file_size <= 20_000_000):
+                files[name] = info
+        moves = []
         with db() as c:  # one transaction: either everything is replaced or nothing
-            g_cols = [r["name"] for r in c.execute("PRAGMA table_info(groups)")]
-            l_cols = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
-            c.execute("DELETE FROM links")
-            c.execute("DELETE FROM groups")
-            for table, cols, rows in (("groups", g_cols, groups), ("links", l_cols, links)):
-                for row in rows:
-                    row.setdefault("position", row["id"] if table == "groups" else -row["id"])
-                    use = [k for k in cols if k in row]
-                    c.execute(f"INSERT INTO {table} ({','.join(use)}) VALUES ({','.join('?' * len(use))})", [row[k] for k in use])
-            c.execute("UPDATE links SET status='error' WHERE status='pending'")
-        for name in os.listdir(THUMB_DIR):
+            l_cols = [r["name"] for r in c.execute("PRAGMA table_info(links)")
+                      if r["name"] not in ("id", "user_id", "group_id", "thumb")]
+            old_thumbs = [r["thumb"] for r in c.execute("SELECT thumb FROM links WHERE user_id=? AND thumb != ''", (uid,))]
+            c.execute("DELETE FROM links WHERE user_id=?", (uid,))
+            c.execute("DELETE FROM groups WHERE user_id=?", (uid,))
+            gmap = {}
+            for grp in sorted(groups, key=lambda r: (r.get("position", r["id"]), r["id"])):
+                name = str(grp.get("name") or "").strip()[:60]
+                if not name:
+                    continue
+                gid = get_or_create_group(c, uid, name)
+                if _color(grp.get("color")):
+                    c.execute("UPDATE groups SET color=?, position=? WHERE id=?",
+                              (grp["color"], grp.get("position", grp["id"]), gid))
+                gmap[grp["id"]] = gid
+            restored = 0
+            for row in links:
+                row.setdefault("position", -row["id"])
+                use = [k for k in l_cols if k in row]
+                try:
+                    new_id = c.execute(
+                        f"INSERT INTO links (user_id, group_id, {','.join(use)}) VALUES (?,?,{','.join('?' * len(use))})",
+                        [uid, gmap.get(row.get("group_id"))] + [row[k] for k in use]).lastrowid
+                except sqlite3.IntegrityError:  # the same address twice in the file
+                    continue
+                restored += 1
+                thumb = row.get("thumb") or ""
+                if thumb in files:
+                    new_name = f"{new_id}-{int(time.time() * 1000)}-{secrets.token_hex(3)}{os.path.splitext(thumb)[1]}"
+                    path = os.path.join(tmp, new_name)
+                    with open(path, "wb") as f:
+                        f.write(z.read(files[thumb]))
+                    moves.append((path, new_name))
+                    c.execute("UPDATE links SET thumb=? WHERE id=?", (new_name, new_id))
+                elif thumb:
+                    c.execute("UPDATE links SET thumb='', thumb_kind='', custom_thumb=0 WHERE id=?", (new_id,))
+            c.execute("UPDATE links SET status='error' WHERE status='pending' AND user_id=?", (uid,))
+            for path, new_name in moves:  # inside the transaction: a failed copy undoes the restore
+                shutil.move(path, os.path.join(THUMB_DIR, new_name))
+        for name in old_thumbs:
             _remove_thumb(name)
-        for name in os.listdir(new_thumbs):
-            shutil.move(os.path.join(new_thumbs, name), os.path.join(THUMB_DIR, name))
-    return len(links), len(groups)
+    return restored, len(gmap)
 
 
 @app.post("/api/backup")
 def api_backup():
     d = request.get_json(force=True, silent=True) or {}
     password = str(d.get("password", ""))
-    data = make_backup(password)
+    data = make_backup(me(), password)
     name = "linkboard-backup-" + time.strftime("%Y-%m-%d") + (".lbk" if password else ".zip")
     return Response(data, mimetype="application/octet-stream",
                     headers={"Content-Disposition": f"attachment; filename={name}", "X-Filename": name})
@@ -1090,10 +1596,26 @@ def api_restore():
     if not f:
         return jsonify(error="Choose a backup file."), 400
     try:
-        links, groups = restore_backup(f.read(), request.form.get("password", ""))
+        links, groups = restore_backup(me(), f.read(), request.form.get("password", ""))
     except RestoreError as e:
         return jsonify(error=str(e)), 400
     return jsonify(ok=True, links=links, groups=groups)
+
+
+# -------------------------------------------------------------------- start
+def reset_login(username=None):
+    """docker exec linkboard python app.py reset-login [username]
+    Gives that user (default: the first admin) a new random password and prints it."""
+    with db() as c:
+        if username:
+            row = c.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+        else:
+            row = c.execute("SELECT * FROM users WHERE is_admin=1 ORDER BY id LIMIT 1").fetchone()
+        if not row:
+            return None, None
+        pw = secrets.token_urlsafe(12)
+        c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), row["id"]))
+    return row["username"], pw
 
 
 init_db()
@@ -1102,16 +1624,20 @@ if not get_setting("secret_key"):
 app.secret_key = get_setting("secret_key")
 app.config.update(SESSION_COOKIE_NAME="linkboard", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   PERMANENT_SESSION_LIFETIME=timedelta(days=30))
-if sys.argv[1:] != ["reset-login"]:
+_CLI = sys.argv[1:2] == ["reset-login"]
+if not _CLI and not os.environ.get("LINKBOARD_NO_WORKERS"):
     threading.Thread(target=_check_scheduler, daemon=True).start()
-with db() as _c:  # pick up anything interrupted by a restart
-    for _r in _c.execute("SELECT id FROM links WHERE status='pending'").fetchall():
-        queue(_r["id"])
+    with db() as _c:  # pick up anything interrupted by a restart
+        for _r in _c.execute("SELECT id FROM links WHERE status='pending'").fetchall():
+            queue(_r["id"])
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["reset-login"]:  # docker exec linkboard python app.py reset-login
-        for _key in ("auth_user", "auth_hash", "auth_ver", "api_key_hash"):
-            set_setting(_key, None)
-        print("Login removed. LinkBoard is open again; set a new login in Settings.")
+    if _CLI:
+        who, new_pw = reset_login(sys.argv[2] if len(sys.argv) > 2 else None)
+        if not who:
+            print("No such account. With no accounts at all, open LinkBoard to create the first one.")
+            sys.exit(1)
+        print(f"New password for {who}: {new_pw}\nSign in with it, then change it in Settings. "
+              "Every device of this account has been signed out.")
         sys.exit(0)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))

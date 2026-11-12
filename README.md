@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" width="72" alt="LinkBoard logo">
+
 # LinkBoard
 
 A small self-hosted home for your web links. Paste a link and it becomes a card with a thumbnail. Everything lives on one page, organised in coloured groups, a bit like browser tab groups that you can open from any device.

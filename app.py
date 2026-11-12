@@ -430,7 +430,7 @@ def _note_login(ip, ok):
             _fails.clear()
 
 
-OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status"}
+OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "icon"}
 
 
 @app.before_request
@@ -447,6 +447,11 @@ def login_page():
     if not auth_enabled() or signed_in():
         return redirect("/")
     return send_from_directory(PAGES, "login.html", max_age=0)
+
+
+@app.get("/icon-<int:size>.png")
+def icon(size):
+    return send_from_directory(PAGES, f"icon-{size}.png", max_age=86400)
 
 
 @app.get("/api/auth")

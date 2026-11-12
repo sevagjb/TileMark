@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LinkBoard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234c8bf5'/><rect x='6' y='7' width='9' height='8' rx='2' fill='white'/><rect x='17' y='7' width='9' height='8' rx='2' fill='white' opacity='.7'/><rect x='6' y='17' width='9' height='8' rx='2' fill='white' opacity='.7'/><rect x='17' y='17' width='9' height='8' rx='2' fill='white'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='28' fill='%232f6fe4'/><rect x='22' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='22' y='63' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='63' width='35' height='35' rx='9' fill='%23fff'/><path d='M77 57h14v26l-7-6-7 6z' fill='%23f5b83d'/></svg>">
+<link rel="apple-touch-icon" href="/icon-180.png">
 <style>
 :root {
   --bg: #f3f4f7; --panel: #ffffff; --line: #dfe2e8; --text: #1b1f27; --muted: #667085;
@@ -25,7 +26,7 @@ option, optgroup { background-color: var(--panel); color: var(--text); }
 header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent);
          backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
-.brand { font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-right: 6px; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-right: 6px; }
 .add { flex: 2 1 280px; max-width: 520px; display: flex; background: var(--panel); border: 1px solid var(--line);
        border-radius: 10px; overflow: hidden; }
 .add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -174,7 +175,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 <body>
 <header>
   <div class="bar">
-    <div class="brand">LinkBoard</div>
+    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>LinkBoard</div>
     <form class="add" id="addForm">
       <input id="addUrl" type="text" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
       <select id="addGroup" aria-label="Group"></select>

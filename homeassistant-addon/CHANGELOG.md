@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.3 (unreleased)
+## 2.3.3
 
 ### Changed
 - **Home Assistant add-on: a complete Documentation tab.** It now explains every part of TileMark (saving links, groups, import, duplicates, broken links, settings, backups, sensors, TileMark's own address, troubleshooting) with screenshots, instead of a short summary. The Info tab got a picture and a feature list.

@@ -1,89 +1,68 @@
 # Roadmap
 
-Status of planned work. Numbers match the list agreed for the next rounds.
+What is planned next, and what each release brought. Changes per version in detail: [CHANGELOG.md](CHANGELOG.md).
+
+## Next: 1.3.0
+
+Small items plus two-factor sign-in, in one round.
+
+- [ ] **Clean addresses when saving:** strip tracking parameters (`utm_*`, `fbclid`, `si` …) and recognise duplicates that only differ by `http`/`https`, `www` or a trailing slash.
+- [ ] **Full JSON export and import:** keeps notes, favourites, order, colours and own pictures (the bookmarks file loses those).
+- [ ] **Keyboard shortcuts:** `/` for search, `n` for a new link, Esc to clear.
+- [ ] **Sign out other devices:** a list of active sessions in "Your account".
+- [ ] **Two-factor sign-in (TOTP)** with an authenticator app, for accounts reached from outside the home network.
+
+## Home Assistant add-on: tests on a real installation
+
+Before the add-on goes from "experimental" to stable:
+
+- [ ] A second Home Assistant user who is not an admin gets their own empty board, without the People and Installation sections.
+- [ ] Direct port: set a port and a password, sign in at `http://<home-assistant>:<port>`, and the browser button and API key work there.
+- [ ] A Home Assistant backup with LinkBoard in it restores cleanly.
+- [ ] Optional: the watchdog starts LinkBoard again after it stops.
+- [ ] **Promote the add-on to stable** (`stage` in `homeassistant-addon/config.yaml`).
+
+## After that (medium)
+
+- [ ] **Shared groups:** share a group with another account, read-only or editable.
+- [ ] **Home Assistant integration:** sensors for the number of links and broken links, and a webhook or notification when the weekly check finds broken links.
+- [ ] **Restore a daily backup from the admin settings**, instead of stopping the container and unzipping by hand.
+- [ ] **Interface languages (14):** English, Dutch and Arabic, including right-to-left layout for Arabic.
+
+## Parked (larger)
+
+- [ ] **Tags on links**, next to groups.
+- [ ] **Wider reach:** listings for Unraid, CasaOS and a Proxmox helper script, and a real browser extension with a toolbar icon.
+
+## Other ideas, not planned
+
+- Keep a readable copy of the page (12), so the text survives if the site goes away.
+- Screenshot thumbnails for sites without a preview image (needs a headless browser; would make the image much larger).
+- Desktop installer without Docker; Android app.
 
 ## Done
 
-- [x] **1. Backup and restore**, with optional password encryption (Settings → Backup / Restore).
+### 1.2.1
+- [x] Titles of bot-check and consent screens are no longer saved.
+- [x] Health check: Docker/Dockge show an unhealthy container, and Home Assistant's watchdog restarts the add-on.
+- [x] Add-on release notes shown in Home Assistant; a release is just publishing the tag (the add-on version follows by itself).
 
-## 2. Ready-made Docker image (in progress)
-
-Goal: anyone can install LinkBoard with a one-line `image:` in their compose, and updates are a pull instead of a build.
-
-What exists:
-
-- `.github/workflows/docker.yml` builds on every push to `main` and on `v*` tags, for `linux/amd64` and `linux/arm64`, and pushes to `ghcr.io/sevagjb/linkboard`.
-- The workflow has been running successfully since 2026-11-11 22:23 UTC (the very first run stayed queued and can be cancelled).
-
-What is left:
-
-1. ~~Make the package public.~~ Done. ~~ GitHub → profile → Packages → `linkboard` → Package settings → Change visibility → Public. Until then pulls are denied.~~
-2. **Verify an anonymous pull** from a machine that is not logged in to ghcr.io: `docker pull ghcr.io/sevagjb/linkboard:latest`.
-3. **Switch the own installation** from build-from-source to the image (compose below) and confirm Update in Dockge pulls a new version.
-4. ~~First release `v1.0.0`.~~ Done.
-5. ~~README for others: screenshots, install, update, login, backup, reverse proxy.~~ Done.
-6. Optional: add a changelog. (The image is already labelled with its source repository, so GitHub links the package to the repo.)
-
-Compose to use once the package is public:
-
-```yaml
-services:
-  linkboard:
-    image: ghcr.io/sevagjb/linkboard:latest
-    container_name: linkboard
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./data:/data
-```
-
-## Next rounds
-
-Saving links faster
-- [x] **3.** "Save to LinkBoard" browser button with group picker, and an API key in Settings.
-- [x] **4.** Install as an app on the phone and appear in the Share menu (needs HTTPS).
-
-Finding and keeping order
-- [x] **5.** Favourites: pinned to the top of a group, plus a Favourites list.
-- [x] **6.** Notes on a link (tags left for later).
-- [x] **7.** Sort options per group: own order, newest, oldest, name, site.
-- [x] **8.** Recently added and recently opened.
-
-Keeping the collection healthy
-- [x] **9.** Broken-link check: weekly and on demand, with a Broken links list.
-- [x] **10.** Own picture for a card (upload or paste).
-- [x] **11.** Refresh titles and pictures for a selection, a group or everything.
-
-## 1.1.0
-
-- [x] Accounts: the first one is the admin, who adds the others. Links, groups, settings, API key and backups are per account and private.
-- [x] A new installation asks for the first account before showing anything.
-- [x] Safe fetching: no loopback, link-local or metadata addresses; private addresses only when the admin allows it; redirects and the connected address are checked.
-- [x] Image tags: `edge` for every change on `main`, `latest` only for releases.
-- [x] Automated tests, run before every image build.
-
-## 1.2.0
-
-- [x] Home Assistant add-on with sidebar panel and Home Assistant sign-in.
+### 1.2.0
+- [x] Home Assistant add-on with a sidebar panel and Home Assistant sign-in; every HA user gets their own account.
 - [x] One-time setup code for a new installation.
-- [x] Daily backup of the whole installation.
+- [x] Daily backup of the whole installation, last 7 kept.
 - [x] Card options: picture size, open in the same or a new tab, default group.
 
-## Ideas for wider reach
+### 1.1.0
+- [x] Several accounts (13): the first is the admin, who adds the others; links, groups, settings, API key and backups are private per account.
+- [x] A new installation asks for the first account before showing anything (no open mode).
+- [x] Safe fetching: no loopback, link-local or metadata addresses; private addresses only when the admin allows it.
+- [x] Layout, appearance and sort order saved per account on the server.
+- [x] Image tags: `edge` for every change on `main`, `latest` only for releases. Automated tests before every build.
 
-- [x] Home Assistant add-on, signed in through Home Assistant (1.2.0).
-- [ ] App-catalogue entries: Unraid, CasaOS, Umbrel, Proxmox helper script.
-- [ ] Desktop installer for Windows, macOS and Linux (no Docker needed).
-- [ ] Browser extension with a real toolbar icon.
-- [ ] Android app in F-Droid or the Play Store.
-
-## Later
-
-- [ ] Tags on links (notes came first).
-- [x] Sort choice saved on the server instead of per browser (1.1.0, with layout and appearance).
-- [ ] **12.** Keep a readable copy of the page.
-- [x] **13.** Several users, each with their own links (1.1.0).
-- [ ] **14.** Interface in other languages.
-- [x] Daily automatic backup kept in the data folder, last 7 (1.2.0).
-- [x] Require creating an account on first start (1.1.0; no open mode any more).
+### 1.0.0
+- [x] Backup and restore, optionally encrypted (1).
+- [x] Ready-made Docker image for PC and ARM servers, on GitHub's registry (2).
+- [x] "Save to LinkBoard" browser button and API key (3); install as a phone app with Share menu (4).
+- [x] Favourites (5), notes (6), sort options per group (7), recently added and opened (8).
+- [x] Broken-link check (9), own picture for a card (10), refresh for a selection, a group or everything (11).

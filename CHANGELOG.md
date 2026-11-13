@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.1 (unreleased)
+
+### New
+- **Settings in cards:** every section opens and closes with a click on its title, and shows a short status while closed (for example "Two-factor sign-in: Off" or "Home Assistant sensors: Connected"). Open cards are remembered. Admin sections are grouped at the bottom.
+- **Home Assistant sensors:** a device name you can set, a **Visit** link on the device page back to TileMark (for the add-on, its sidebar page), and the device ID with a **New ID** button.
+
+### Fixed
+- Two TileMarks made from the same database (for example the add-on and a Docker one) showed up in Home Assistant as one device and kept pushing each other off the MQTT broker. Each connection now has its own client name, and **New ID** separates the devices.
+
 ## 2.3.0
 
 ### New

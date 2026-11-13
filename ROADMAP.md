@@ -23,6 +23,10 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.3.1
+- [x] Settings as collapsible cards with a status line each.
+- [x] Home Assistant device name, Visit link and device ID, so several TileMarks can live side by side.
+
 ### 2.3.0
 - [x] Interface languages (14): English, Dutch and Arabic, chosen by the browser or per account, with right-to-left layout for Arabic.
 

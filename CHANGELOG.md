@@ -1,6 +1,18 @@
 # Changelog
 
-## 1.2.0 (unreleased)
+## 1.2.1 (unreleased)
+
+### Fixed
+- Titles from bot-check and consent screens ("Just a moment…", "One moment, please…", "Security Check", Cloudflare's "Attention Required") are no longer saved as a link's title. The old title is kept, or the site name is shown. Links that already have such a title are fetched again once after the update.
+
+### New
+- Health check: `/healthz` answers when LinkBoard and its database work. Docker (and Dockge) show the container as unhealthy when it stops answering, and the Home Assistant add-on is restarted by HA's watchdog.
+- The add-on shows these release notes when Home Assistant offers an update.
+
+### Release process
+- Publishing a `v*` tag is the whole release: after the image is built and pushed, the workflow sets the add-on's version and copies this changelog into the add-on folder, so Home Assistant only offers versions whose image exists.
+
+## 1.2.0
 
 ### New
 - **Home Assistant add-on.** Add `https://github.com/sevagjb/linkboard` as an add-on repository and LinkBoard gets its own panel in the HA sidebar. Home Assistant signs people in: every HA user gets their own LinkBoard account on first visit (the first one and HA admins are admins). The direct port is off unless you set one. Data lives in the add-on folder, so HA backups include it.

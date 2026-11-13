@@ -52,3 +52,29 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # After a release image exists, point the Home Assistant add-on at it. Doing this
+  # here (instead of by hand in a pull request) means Home Assistant never offers an
+  # add-on version whose image has not been pushed yet.
+  addon-version:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set add-on version and changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          grep -q "^## ${version}\b" CHANGELOG.md || { echo "CHANGELOG.md has no '## ${version}' section"; exit 1; }
+          sed -i -E "s/^version: .*/version: \"${version}\"/" homeassistant-addon/config.yaml
+          sed -i -E "s/^## ${version} \(unreleased\)/## ${version}/" CHANGELOG.md
+          cp CHANGELOG.md homeassistant-addon/CHANGELOG.md
+          if git diff --quiet; then echo "Add-on already at ${version}"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Home Assistant add-on: version ${version}"
+          git push origin HEAD:main

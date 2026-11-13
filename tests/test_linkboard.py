@@ -330,6 +330,7 @@ def test_addr_rules(fresh, addr, private, ok):
 
 class _Handler(BaseHTTPRequestHandler):
     target = ""
+    body = None  # page served for any other path (None: a plain "secret local page")
 
     def do_GET(self):
         if self.path.startswith("/redirect"):
@@ -340,7 +341,7 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.end_headers()
-            self.wfile.write(b"<title>secret local page</title>")
+            self.wfile.write(_Handler.body or b"<title>secret local page</title>")
 
     def log_message(self, *a):
         pass
@@ -562,3 +563,78 @@ def test_card_prefs(two):
     assert bob.get("/api/state").get_json()["prefs"] == {"thumb": "l", "open": "same", "defgroup": str(gb)}
     bob.put("/api/prefs", json={"thumb": "huge", "open": "popup", "defgroup": ga})  # bad values, someone else's group
     assert bob.get("/api/state").get_json()["prefs"] == {"thumb": "l", "open": "same", "defgroup": ""}
+
+
+# ------------------------------------------------------------------- 1.2.1
+@pytest.mark.parametrize("title,wall", [
+    ("Just a moment...", True), ("One moment, please...", True), ("Security Check", True),
+    ("Attention Required! | Cloudflare", True), ("Checking your browser…", True), ("DDoS-Guard", True),
+    ("Before you continue", True), ("Access denied", True),
+    ("Security Check - Hetzner Docs", False), ("Just a moment in history", False), ("HA Yellow observer", False),
+    ("Please wait for the next episode", False), ("", False),
+])
+def test_wall_titles(fresh, title, wall):
+    assert fresh.is_wall_title(title) is wall
+
+
+def test_wall_page_does_not_replace_title(fresh, local_server, monkeypatch):
+    """A link whose site now shows a bot check keeps its real title; a saved wall
+    title is replaced by the site name."""
+    monkeypatch.setattr(fresh, "_addr_allowed", lambda a, p: True)  # let the local test server count as public
+    monkeypatch.setattr(fresh, "_oembed", lambda url: ("", ""))
+    _Handler.body = b"<title>Just a moment...</title><meta property='og:image' content='/wall.png'>"
+    c = setup_admin(fresh)
+    lid = c.post("/api/links", json={"url": local_server + "/page"}).get_json()["id"]
+    with fresh.db() as con:
+        con.execute("UPDATE links SET title='Real title' WHERE id=?", (lid,))
+    fresh.fetch_meta(lid)
+    with fresh.db() as con:
+        assert con.execute("SELECT title FROM links WHERE id=?", (lid,)).fetchone()[0] == "Real title"
+        con.execute("UPDATE links SET title='One moment, please...' WHERE id=?", (lid,))
+    fresh.fetch_meta(lid)
+    with fresh.db() as con:
+        assert con.execute("SELECT title FROM links WHERE id=?", (lid,)).fetchone()[0] == "127.0.0.1:" + local_server.rsplit(":", 1)[1]
+    _Handler.body = None
+
+
+def test_saved_wall_titles_fetched_again_once(tmp_path):
+    A = load_app(tmp_path)
+    c = setup_admin(A)
+    a = c.post("/api/links", json={"url": "https://a.example"}).get_json()["id"]
+    b = c.post("/api/links", json={"url": "https://b.example"}).get_json()["id"]
+    with A.db() as con:
+        con.execute("UPDATE links SET status='ok', title='Just a moment...' WHERE id=?", (a,))
+        con.execute("UPDATE links SET status='ok', title='Just a moment...', custom_title=1 WHERE id=?", (b,))  # the user's own: kept
+        con.execute("DELETE FROM settings WHERE key='wall_titles_fixed'")
+    queued = []
+    os.environ.pop("LINKBOARD_NO_WORKERS")
+    try:
+        import concurrent.futures
+        orig = concurrent.futures.ThreadPoolExecutor.submit
+        concurrent.futures.ThreadPoolExecutor.submit = lambda self, fn, *args: queued.append(args[0])
+        A = load_app(tmp_path)
+        assert queued == [a]
+        with A.db() as con:  # the fetch finished, but the site still shows its bot check
+            con.execute("UPDATE links SET status='ok', title='Just a moment...' WHERE id=?", (a,))
+        load_app(tmp_path)  # a second start does not do it again
+    finally:
+        concurrent.futures.ThreadPoolExecutor.submit = orig
+        os.environ["LINKBOARD_NO_WORKERS"] = "1"
+    assert queued == [a]
+
+
+def test_healthz_is_open_and_says_nothing(fresh):
+    r = fresh.app.test_client().get("/healthz")
+    assert r.status_code == 200 and r.get_data(as_text=True) == "ok\n"
+
+
+def test_addon_watchdog_and_changelog():
+    import re as _re
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(ROOT, "homeassistant-addon", "config.yaml")))
+    # the Supervisor's own pattern for a valid watchdog address
+    assert _re.match(r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:(\[PORT:\d+\]|\d+).*$", cfg["watchdog"])
+    assert cfg["watchdog"].endswith("/healthz")
+    root = open(os.path.join(ROOT, "CHANGELOG.md")).read()
+    assert open(os.path.join(ROOT, "homeassistant-addon", "CHANGELOG.md")).read() == root, \
+        "copy CHANGELOG.md to homeassistant-addon/CHANGELOG.md"

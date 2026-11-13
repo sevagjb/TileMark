@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1.0 (unreleased)
+
+### New
+- **Duplicates are caught.** Saving a page you already have tells you where it is. The same page counts even with or without `www`, `https`, a trailing slash, tracking parameters, in another parameter order, as a YouTube short form (`youtu.be`, `/shorts/`), or when one address redirects to the other.
+- **Import review:** an import no longer drops duplicates silently. They are listed next to the link they match; download them (TileMark or bookmarks file), keep some as separate links, discard the rest.
+- **Duplicates list** for links already saved: keep one per set and optionally take over notes, favourite, own title and picture from the others; "These are different" hides a set; every set can be downloaded first.
+- **Clean addresses:** tracking parameters (`utm_…`, `fbclid`, `gclid`, YouTube's and Spotify's `si` …) are removed when a link is saved.
+- **TileMark file:** Export → TileMark file (`.json`) keeps everything (groups and colours, order, notes, favourites, dates, own pictures); Import brings it all back.
+- **Two-factor sign-in (TOTP)**, optional per account, with a QR code for any authenticator app and ten single-use recovery codes. Not asked inside the Home Assistant sidebar. Admins can turn it off for someone who lost their phone; `reset-login` turns it off too.
+- **Signed-in devices** in Your account, with "Sign out" per device and "Sign out all other devices".
+- **Keyboard shortcuts:** `/` search, `n` add a link, `Esc` clear the search or leave a field.
+
+### Changed
+- After updating, every device signs in once more (sign-ins are now kept on the server so they can be listed and signed out).
+
 ## 2.0.0
 
 ### LinkBoard is now TileMark

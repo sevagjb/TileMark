@@ -2,20 +2,7 @@
 
 What is planned next, and what each release brought. Changes per version in detail: [CHANGELOG.md](CHANGELOG.md).
 
-## Next: 2.1.0
-
-Small items plus two-factor sign-in, in one round.
-
-- [ ] **Clean addresses when saving:** strip tracking parameters (`utm_*`, `fbclid`, `si` …) and recognise duplicates that only differ by `http`/`https`, `www` or a trailing slash.
-- [ ] **Same page, different address:** use the address a link finally lands on (after redirects and short links such as `youtu.be/…` → `youtube.com/watch?v=…`) when checking for duplicates.
-- [ ] **Duplicates from an import are reviewed, not dropped:** after an import, a list shows each duplicate next to the link already saved (title, group or folder, note). From there you can download them as a file (bookmarks or JSON) to keep a copy, keep one as a separate link where it really is different, and then remove the rest. Nothing is thrown away without being shown first.
-- [ ] **Duplicates list for links already saved:** a "Duplicates" entry in the left column, like "Broken links", for near-duplicates already in the collection (for example from earlier imports). Same choices: download a copy, choose which one to keep (its note, favourite and own picture are kept, details from the other can be taken over), remove the others.
-- [ ] **Full JSON export and import:** keeps notes, favourites, order, colours and own pictures (the bookmarks file loses those).
-- [ ] **Keyboard shortcuts:** `/` for search, `n` for a new link, Esc to clear.
-- [ ] **Sign out other devices:** a list of active sessions in "Your account".
-- [ ] **Two-factor sign-in (TOTP)** with an authenticator app, for accounts reached from outside the home network.
-
-## After that (medium)
+## Next (medium)
 
 - [ ] **Shared groups:** share a group with another account, read-only or editable.
 - [ ] **Home Assistant integration:** sensors for the number of links and broken links, and a webhook or notification when the weekly check finds broken links.
@@ -34,6 +21,15 @@ Small items plus two-factor sign-in, in one round.
 - Desktop installer without Docker; Android app.
 
 ## Done
+
+### 2.1.0
+- [x] Clean addresses (tracking parameters removed) and duplicates recognised across `http`/`https`, `www`, trailing slash, parameter order, YouTube short forms and redirects.
+- [x] Import review: duplicates from an import are listed, can be downloaded or kept, and are never dropped silently.
+- [x] Duplicates list for links already saved: keep one, take over details from the others, remove the rest.
+- [x] Full JSON export and import (TileMark file).
+- [x] Keyboard shortcuts.
+- [x] Signed-in devices with "sign out other devices".
+- [x] Two-factor sign-in (TOTP) with recovery codes.
 
 ### 2.0.0
 - [x] LinkBoard renamed to TileMark everywhere (clean break: fresh install, then restore the old backup).

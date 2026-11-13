@@ -689,3 +689,239 @@ def test_no_old_name_left():
     hits = [f for f in files if not f.endswith(".png") and f not in allowed
             and old in open(os.path.join(ROOT, f), encoding="utf-8").read().lower()]
     assert hits == []
+
+
+# ------------------------------------------------------------------- 2.1.0
+@pytest.mark.parametrize("raw,clean", [
+    ("https://example.com/a?utm_source=nl&utm_medium=mail&id=5", "https://example.com/a?id=5"),
+    ("https://example.com/a?fbclid=XYZ", "https://example.com/a"),
+    ("https://www.youtube.com/watch?v=abc&si=TRACK&t=42", "https://www.youtube.com/watch?v=abc&t=42"),
+    ("https://example.com/search?q=a%20b&si=keep", "https://example.com/search?q=a%20b&si=keep"),  # si is real elsewhere
+    ("https://example.com/p?gclid=1&x=1&_hsenc=2", "https://example.com/p?x=1"),
+    ("https://example.com/p", "https://example.com/p"),
+])
+def test_clean_url(fresh, raw, clean):
+    assert fresh.normalize_url(raw) == clean
+
+
+@pytest.mark.parametrize("a,b,same", [
+    ("http://example.com/page", "https://www.example.com/page/", True),
+    ("https://example.com/p?b=2&a=1", "https://example.com/p?a=1&b=2&utm_campaign=x", True),
+    ("https://example.com:443/p", "https://example.com/p", True),
+    ("https://example.com/p#section-2", "https://example.com/p", True),
+    ("https://youtu.be/abc123?si=x", "https://www.youtube.com/watch?v=abc123&t=30", True),
+    ("https://youtube.com/shorts/abc123", "https://m.youtube.com/watch?v=abc123", True),
+    ("https://example.com/app#/settings", "https://example.com/app#/home", False),  # app routes differ
+    ("https://example.com/Page", "https://example.com/page", False),  # paths are case-sensitive
+    ("https://example.com/p?id=1", "https://example.com/p?id=2", False),
+    ("https://youtu.be/abc123", "https://youtu.be/xyz789", False),
+    ("https://example.com:8080/p", "https://example.com/p", False),
+])
+def test_url_key(fresh, a, b, same):
+    assert (fresh.url_key(fresh.normalize_url(a)) == fresh.url_key(fresh.normalize_url(b))) is same
+
+
+def test_save_catches_near_duplicates(fresh):
+    c = setup_admin(fresh)
+    gid = c.post("/api/groups", json={"name": "Videos"}).get_json()["id"]
+    first = c.post("/api/links", json={"url": "https://www.youtube.com/watch?v=abc123", "group_id": gid}).get_json()["id"]
+    r = c.post("/api/links", json={"url": "https://youtu.be/abc123?si=share"})
+    assert r.status_code == 409
+    body = r.get_json()
+    assert body["existing"]["id"] == first and body["existing"]["group"] == "Videos" and "Videos" in body["error"]
+    # deliberately kept as a separate link (from the import review): allowed for a different address ...
+    assert c.post("/api/links", json={"url": "https://youtu.be/abc123", "allow_duplicate": True}).status_code == 201
+    # ... never for the identical address
+    assert c.post("/api/links", json={"url": "https://www.youtube.com/watch?v=abc123", "allow_duplicate": True}).status_code == 409
+    other = c.post("/api/links", json={"url": "https://example.org"}).get_json()["id"]
+    assert c.patch(f"/api/links/{other}", json={"url": "http://www.youtube.com/watch?v=abc123"}).status_code == 409
+
+
+def test_redirect_target_counts_as_same_page(fresh, local_server, monkeypatch):
+    real = fresh._addr_allowed
+    monkeypatch.setattr(fresh, "_addr_allowed", lambda a, p: a == "127.0.0.1" or real(a, p))
+    monkeypatch.setattr(fresh, "_oembed", lambda url: ("", ""))
+    _Handler.target = "/landing"
+    c = setup_admin(fresh)
+    lid = c.post("/api/links", json={"url": local_server + "/redirect"}).get_json()["id"]
+    fresh.fetch_meta(lid)
+    r = c.post("/api/links", json={"url": local_server + "/landing"})
+    assert r.status_code == 409 and r.get_json()["existing"]["id"] == lid
+
+
+def test_import_returns_duplicates_for_review(fresh):
+    c = setup_admin(fresh)
+    c.post("/api/links", json={"url": "https://example.com/a", "group": "Work"})
+    text = "\n".join(["https://www.example.com/a/?utm_source=x",  # same page as the saved one
+                      "https://example.com/new",
+                      "http://example.com/new/",                  # same page as the line above
+                      "https://example.com/a",                    # identical to the saved one
+                      "not a link at all"])
+    r = c.post("/api/import", data={"text": text}).get_json()
+    assert r["added"] == 1 and r["skipped"] == 0
+    dups = r["duplicates"]
+    assert len(dups) == 3
+    assert dups[0]["existing"]["group"] == "Work" and dups[0]["same_address"] is False
+    assert dups[1]["existing"]["earlier"] is True and dups[1]["existing"]["url"] == "https://example.com/new"
+    assert dups[2]["same_address"] is True
+    assert len(c.get("/api/state").get_json()["links"]) == 2  # nothing else was added
+
+
+def test_json_export_import_roundtrip(fresh, tmp_path):
+    c = setup_admin(fresh)
+    g1 = c.post("/api/groups", json={"name": "Lab", "color": "#112233"}).get_json()["id"]
+    c.post("/api/groups", json={"name": "Empty", "color": "#445566"})
+    a = c.post("/api/links", json={"url": "https://a.example", "group_id": g1, "note": "first"}).get_json()["id"]
+    b = c.post("/api/links", json={"url": "https://b.example", "title": "Bee"}).get_json()["id"]
+    c.patch(f"/api/links/{a}", json={"pinned": True, "title": "My own title"})
+    from PIL import Image
+    buf = io.BytesIO(); Image.new("RGB", (200, 120), (200, 30, 30)).save(buf, "PNG")
+    assert c.post(f"/api/links/{b}/thumb", data={"file": (io.BytesIO(buf.getvalue()), "p.png")}).status_code == 200
+    exp = c.get("/api/export?format=json")
+    assert exp.headers["Content-Disposition"].startswith("attachment; filename=tilemark-export-")
+    data = exp.get_json()
+    assert data["format"] == "tilemark-export" and [g["name"] for g in data["groups"]] == ["Lab", "Empty"]
+    # import into another account
+    add_user(c, "bob")
+    bob = sign_in(fresh, "bob", "userpass11")
+    r = bob.post("/api/import", data={"file": (io.BytesIO(exp.get_data()), "tm.json")}).get_json()
+    assert r["added"] == 2 and r["duplicates"] == []
+    s = bob.get("/api/state").get_json()
+    groups = {g["name"]: g for g in s["groups"]}
+    assert groups["Lab"]["color"] == "#112233" and groups["Empty"]["color"] == "#445566"
+    la = next(l for l in s["links"] if l["url"] == "https://a.example")
+    lb = next(l for l in s["links"] if l["url"] == "https://b.example")
+    assert (la["note"], la["pinned"], la["title"], la["custom_title"], la["group_id"]) == ("first", 1, "My own title", 1, groups["Lab"]["id"])
+    assert lb["custom_thumb"] == 1 and bob.get("/thumbs/" + lb["thumb"]).status_code == 200
+    # importing the same file again: everything comes back as duplicates, nothing is added
+    again = bob.post("/api/import", data={"file": (io.BytesIO(exp.get_data()), "tm.json")}).get_json()
+    assert again["added"] == 0 and len(again["duplicates"]) == 2 and again["duplicates"][0]["note"] in ("first", "")
+
+
+def test_merge_duplicates(two):
+    A, admin, bob, ga, gb, la, lb = two
+    keep = bob.post("/api/links", json={"url": "https://dup.example/x"}).get_json()["id"]
+    other = bob.post("/api/links", json={"url": "https://www.dup.example/x/", "allow_duplicate": True, "note": "remember this"}).get_json()["id"]
+    with A.db() as con:
+        con.execute("UPDATE links SET pinned=1, group_id=?, thumb='o.webp', custom_thumb=1 WHERE id=?", (gb, other))
+    open(os.path.join(A.THUMB_DIR, "o.webp"), "wb").write(b"x")
+    assert bob.post("/api/duplicates/merge", json={"keep": keep, "remove": [la], "merge": True}).status_code == 404  # admin's link
+    r = bob.post("/api/duplicates/merge", json={"keep": keep, "remove": [other], "merge": True})
+    assert r.get_json() == {"ok": True, "removed": 1}
+    k = next(l for l in bob.get("/api/state").get_json()["links"] if l["id"] == keep)
+    assert (k["note"], k["pinned"], k["group_id"], k["thumb"], k["custom_thumb"]) == ("remember this", 1, gb, "o.webp", 1)
+    assert os.path.exists(os.path.join(A.THUMB_DIR, "o.webp"))  # the picture moved over, it was not deleted
+    assert not any(l["id"] == other for l in bob.get("/api/state").get_json()["links"])
+
+
+def test_sessions_list_and_sign_out_others(fresh):
+    setup_admin(fresh)
+    laptop, phone = sign_in(fresh, "admin", "adminpass1"), sign_in(fresh, "admin", "adminpass1")
+    rows = laptop.get("/api/sessions").get_json()["sessions"]
+    assert len(rows) == 3 and sum(r["current"] for r in rows) == 1
+    phone_id = next(r["id"] for r in phone.get("/api/sessions").get_json()["sessions"] if r["current"])
+    assert laptop.delete(f"/api/sessions/{phone_id}").status_code == 200
+    assert phone.get("/api/state").status_code == 401
+    assert laptop.post("/api/sessions/others").status_code == 200
+    assert [r["current"] for r in laptop.get("/api/sessions").get_json()["sessions"]] == [True]
+    laptop.post("/api/logout")
+    with fresh.db() as con:
+        assert con.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
+
+
+def test_password_change_signs_out_other_devices(fresh):
+    a = setup_admin(fresh)
+    b = sign_in(fresh, "admin", "adminpass1")
+    assert a.post("/api/account", json={"username": "admin", "password": "newpass123", "current_password": "adminpass1"}).status_code == 200
+    assert a.get("/api/state").status_code == 200 and b.get("/api/state").status_code == 401
+
+
+def _totp_now(A, secret, offset=0):
+    import time as _t
+    return A._hotp(secret, int(_t.time() // 30) + offset)
+
+
+def _enable_totp(A, c):
+    s = c.post("/api/totp/setup").get_json()
+    assert s["qr"].startswith("<svg") and s["uri"].startswith("otpauth://totp/TileMark")
+    assert c.post("/api/totp/enable", json={"code": "000000" if _totp_now(A, s["secret"]) != "000000" else "111111"}).status_code == 400
+    r = c.post("/api/totp/enable", json={"code": _totp_now(A, s["secret"])})
+    assert r.status_code == 200 and len(r.get_json()["recovery"]) == 10
+    return s["secret"], r.get_json()["recovery"]
+
+
+def test_totp_login_flow(fresh):
+    a = setup_admin(fresh)
+    secret, recovery = _enable_totp(fresh, a)
+    assert a.get("/api/auth").get_json()["totp"] is True
+    c = fresh.app.test_client()
+    r = c.post("/api/login", json={"username": "admin", "password": "adminpass1"})
+    assert r.get_json() == {"totp": True}
+    assert c.get("/api/state").status_code == 401  # not signed in yet
+    assert c.post("/api/login/totp", json={"code": "123"}).status_code == 401
+    # the code used to turn it on cannot be used again (same time step)
+    with fresh.db() as con:
+        last = con.execute("SELECT totp_last FROM users").fetchone()[0]
+    assert fresh.totp_check(secret, _totp_now(fresh, secret), last) is None
+    with fresh.db() as con:  # pretend that was a while ago, then sign in with a fresh code
+        con.execute("UPDATE users SET totp_last = totp_last - 5")
+    assert c.post("/api/login/totp", json={"code": _totp_now(fresh, secret)}).status_code == 200
+    assert c.get("/api/state").status_code == 200
+    # replay: the same code on another device is refused
+    d = fresh.app.test_client()
+    d.post("/api/login", json={"username": "admin", "password": "adminpass1"})
+    assert d.post("/api/login/totp", json={"code": _totp_now(fresh, secret)}).status_code == 401
+    # a recovery code works once
+    assert d.post("/api/login/totp", json={"code": recovery[0].lower()}).status_code == 200
+    e = fresh.app.test_client()
+    e.post("/api/login", json={"username": "admin", "password": "adminpass1"})
+    assert e.post("/api/login/totp", json={"code": recovery[0]}).status_code == 401
+    assert a.get("/api/auth").get_json()["recovery_left"] == 9
+
+
+def test_totp_pending_expires_and_needs_password(fresh):
+    setup_admin(fresh)
+    c = fresh.app.test_client()
+    assert c.post("/api/login/totp", json={"code": "123456"}).get_json()["restart"] is True
+    with c.session_transaction() as s:
+        s["pending"] = {"uid": 1, "ver": "x", "exp": 0, "remember": False}
+    assert c.post("/api/login/totp", json={"code": "123456"}).get_json()["restart"] is True
+
+
+def test_totp_turned_off_by_owner_admin_and_reset(two):
+    A, admin, bob, *_ = two
+    _enable_totp(A, bob)
+    assert bob.delete("/api/totp", json={"current_password": "wrong"}).status_code == 403
+    assert bob.delete("/api/totp", json={"current_password": "userpass11"}).status_code == 200
+    _enable_totp(A, bob)
+    bob_id = next(u["id"] for u in admin.get("/api/users").get_json()["users"] if u["username"] == "bob")
+    assert next(u for u in admin.get("/api/users").get_json()["users"] if u["id"] == bob_id)["totp"] == 1
+    assert admin.patch(f"/api/users/{bob_id}", json={"totp": False}).status_code == 200
+    assert bob.get("/api/auth").get_json()["totp"] is False
+    _enable_totp(A, bob)
+    A.reset_login("bob")
+    with A.db() as con:
+        assert con.execute("SELECT totp_secret FROM users WHERE username='bob'").fetchone()[0] == ""
+
+
+def test_totp_not_asked_in_ha_sidebar(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c, h = ha_client(A)
+    assert c.get("/api/state", headers=h).status_code == 200
+    with A.db() as con:
+        con.execute("UPDATE users SET totp_secret='JBSWY3DPEHPK3PXP'")
+    assert c.get("/api/state", headers=h).status_code == 200
+
+
+def test_totp_rfc_vector(fresh):
+    # RFC 6238 test secret "12345678901234567890" at T=59 s -> 94287082 (8 digits); 6 digits -> 287082
+    secret = __import__("base64").b32encode(b"12345678901234567890").decode()
+    assert fresh._hotp(secret, 59 // 30) == "287082"
+    assert fresh.totp_check(secret, "287082", 0, now=59) == 1
+    assert fresh.totp_check(secret, "287082", 1, now=59) is None
+
+
+def test_dupok_pref(fresh):
+    c = setup_admin(fresh)
+    c.put("/api/prefs", json={"dupok": [[3, 1, 1], "junk", [2, "x"]]})
+    assert c.get("/api/state").get_json()["prefs"]["dupok"] == [[1, 3], [2]]

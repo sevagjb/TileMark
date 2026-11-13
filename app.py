@@ -1,7 +1,10 @@
 """TileMark - a tiny self-hosted page for your links, with thumbnails and groups."""
+import base64
+import hmac
 import html
 import ipaddress
 import hashlib
+import struct
 import io
 import json
 import os
@@ -17,9 +20,10 @@ import threading
 import time
 from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse, urlsplit
 
 import requests
+import segno
 from requests.adapters import HTTPAdapter
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -91,9 +95,26 @@ def init_db():
     if not (schema and int(schema["value"]) >= SCHEMA):
         _upgrade_v1()
         _migrate_v2()
-    with db() as c:  # columns added after 1.1.0
-        if "ha_user" not in [r["name"] for r in c.execute("PRAGMA table_info(users)")]:
-            c.execute("ALTER TABLE users ADD COLUMN ha_user TEXT NOT NULL DEFAULT ''")
+    with db() as c:  # columns and tables added after 1.1.0 (plain additions, no rebuild)
+        ucols = [r["name"] for r in c.execute("PRAGMA table_info(users)")]
+        for col, ddl in (("ha_user", "TEXT NOT NULL DEFAULT ''"), ("totp_secret", "TEXT NOT NULL DEFAULT ''"),
+                         ("totp_last", "INTEGER NOT NULL DEFAULT 0"), ("recovery", "TEXT NOT NULL DEFAULT ''")):
+            if col not in ucols:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
+        lcols = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
+        for col in ("ukey", "final_key"):
+            if col not in lcols:
+                c.execute(f"ALTER TABLE links ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+        c.execute("CREATE INDEX IF NOT EXISTS links_ukey ON links(user_id, ukey)")
+        c.execute("""CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at INTEGER NOT NULL,
+            last_seen INTEGER NOT NULL,
+            ua TEXT NOT NULL DEFAULT '',
+            ip TEXT NOT NULL DEFAULT '')""")
+        for r in c.execute("SELECT id, url FROM links WHERE ukey = ''").fetchall():  # links saved before 2.1
+            c.execute("UPDATE links SET ukey=? WHERE id=?", (url_key(r["url"]), r["id"]))
 
 
 def _upgrade_v1():
@@ -253,7 +274,74 @@ def normalize_url(raw):
         return None
     if p.path == "/" and not p.query and not p.fragment:
         raw = raw.rstrip("/")
-    return raw
+    return clean_url(raw)
+
+
+# Tracking parameters say who shared a link or which campaign it came from; they do
+# not change the page. They are removed when a link is saved, so the same page saved
+# twice (once from a newsletter, once from a friend) is recognised as one.
+TRACKING = re.compile(r"^(utm_[\w.-]*|fbclid|gclid|gclsrc|dclid|gbraid|wbraid|msclkid|yclid|twclid|ttclid|li_fat_id|"
+                      r"mc_cid|mc_eid|_hsenc|_hsmi|mkt_tok|igshid|igsh|ref_src|ref_url|vero_id|oly_anon_id|"
+                      r"oly_enc_id|wt\.mc_id|_ga|_gl)$", re.I)
+# Only meaningful as tracking on these sites ("si" is a real parameter elsewhere).
+SITE_TRACKING = {"youtube.com": ("si", "feature", "pp"), "youtu.be": ("si", "feature"), "spotify.com": ("si", "context"),
+                 "instagram.com": ("igsh",), "x.com": ("s", "t"), "twitter.com": ("s", "t")}
+
+
+def _host_of(p):
+    h = (p.hostname or "").lower()
+    return h[4:] if h.startswith("www.") else h
+
+
+def _tracking(name, host):
+    name = unquote(name).strip()
+    if TRACKING.match(name):
+        return True
+    return any((host == site or host.endswith("." + site)) and name.lower() in names for site, names in SITE_TRACKING.items())
+
+
+def _query_parts(query, host):
+    """The query split into its original pieces, without tracking parameters (encoding untouched)."""
+    return [part for part in query.split("&") if part and not _tracking(part.split("=", 1)[0], host)]
+
+
+def clean_url(url):
+    p = urlsplit(url)
+    if not p.query:
+        return url
+    parts = _query_parts(p.query, _host_of(p))
+    if len(parts) == len([x for x in p.query.split("&") if x]):
+        return url
+    return p._replace(query="&".join(parts)).geturl()
+
+
+def url_key(url):
+    """What two addresses must share to count as the same page: the scheme, a leading
+    "www.", the default port, a trailing slash, tracking parameters and the order of
+    the parameters do not matter, and YouTube's short forms are the same video."""
+    try:
+        p = urlsplit(url)
+        port = p.port
+    except ValueError:
+        return url
+    host = _host_of(p)
+    path, query, frag = p.path.rstrip("/"), p.query, p.fragment
+    if host in ("m.youtube.com", "music.youtube.com"):
+        host = "youtube.com"
+    if host == "youtu.be" and path.strip("/"):
+        host, query, path = "youtube.com", "v=" + path.strip("/").split("/")[0], "/watch"
+    elif host == "youtube.com":
+        m = re.match(r"^/(shorts|live|embed)/([\w-]+)", path)
+        if m:
+            query, path = "v=" + m.group(2), "/watch"
+        if path == "/watch":  # a video is its v= parameter; a start time is still the same video
+            query = "&".join(x for x in query.split("&") if x.split("=", 1)[0] in ("v", "list"))
+    parts = sorted(_query_parts(query, host))
+    port_part = f":{port}" if port and port not in (80, 443) else ""
+    key = host + port_part + path + ("?" + "&".join(parts) if parts else "")
+    if frag.startswith(("/", "!")):  # page routes in single-page apps; other #anchors are the same page
+        key += "#" + frag
+    return key
 
 
 def own_group(c, uid, gid):
@@ -285,10 +373,21 @@ def add_link(c, uid, url, group_id=None, title="", top=True):
                        (uid,)).fetchone()
     try:
         return c.execute(
-            "INSERT INTO links (user_id, url, title, group_id, custom_title, created_at, position) VALUES (?,?,?,?,?,?,?)",
-            (uid, url, title, group_id, 0, int(time.time()), lo - 1 if top else hi + 1)).lastrowid
+            "INSERT INTO links (user_id, url, title, group_id, custom_title, created_at, position, ukey) VALUES (?,?,?,?,?,?,?,?)",
+            (uid, url, title, group_id, 0, int(time.time()), lo - 1 if top else hi + 1, url_key(url))).lastrowid
     except sqlite3.IntegrityError:
         return None
+
+
+def find_duplicate(c, uid, key, exclude_id=0):
+    """A link of this user that is the same page (same key, or one that ended up there after redirects)."""
+    return c.execute("SELECT l.id, l.url, l.title, g.name AS group_name FROM links l LEFT JOIN groups g ON g.id = l.group_id "
+                     "WHERE l.user_id=? AND l.id != ? AND (l.ukey=? OR l.final_key=?) ORDER BY l.id LIMIT 1",
+                     (uid, exclude_id, key, key)).fetchone()
+
+
+def _dup_info(row):
+    return {"id": row["id"], "url": row["url"], "title": row["title"], "group": row["group_name"] or ""}
 
 
 # ------------------------------------------------------- safe outgoing fetch
@@ -571,8 +670,10 @@ def fetch_meta(link_id):
             if thumb and thumb != cur["thumb"]:
                 _remove_thumb(thumb)
             thumb, kind = cur["thumb"], cur["thumb_kind"]
-        c.execute("UPDATE links SET title=?, description=?, thumb=?, thumb_kind=?, status=? WHERE id=?",
-                  (new_title, desc[:500] or cur["description"], thumb, kind, status, link_id))
+        final_key = url_key(clean_url(info["final"])) if info.get("final") else ""
+        final_key = "" if final_key == cur["ukey"] else final_key  # only kept when a redirect led elsewhere
+        c.execute("UPDATE links SET title=?, description=?, thumb=?, thumb_kind=?, status=?, final_key=? WHERE id=?",
+                  (new_title, desc[:500] or cur["description"], thumb, kind, status, final_key, link_id))
         if status == "ok":
             c.execute("UPDATE links SET broken=0, checked_at=? WHERE id=?", (int(time.time()), link_id))
     if old and old != thumb:
@@ -868,14 +969,19 @@ def current_user():
     signs every other device out)."""
     if via_ingress():
         return ingress_user()
-    uid = session.get("uid")
-    if not uid:
+    uid, sid = session.get("uid"), session.get("sid")
+    if not uid or not sid:
         return None
     with db() as c:
         row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
-    if row and secrets.compare_digest(str(session.get("ver", "")), row["ver"]):
-        return row
-    return None
+        if not row or not secrets.compare_digest(str(session.get("ver", "")), row["ver"]):
+            return None
+        s_row = c.execute("SELECT last_seen FROM sessions WHERE id=? AND user_id=?", (sid, uid)).fetchone()
+        if not s_row:  # signed out from another device
+            return None
+        if time.time() - s_row["last_seen"] > 300:
+            c.execute("UPDATE sessions SET last_seen=? WHERE id=?", (int(time.time()), sid))
+    return row
 
 
 def key_user():
@@ -893,10 +999,90 @@ def me():
     return g.user["id"]
 
 
+# Every sign-in is a row in "sessions", so "Your account" can list the devices that
+# are signed in and sign any of them out. The cookie holds the row's id.
+SESSION_DAYS = 31
+
+
+def _visitor():
+    return (request.headers.get("X-Forwarded-For", "").split(",")[-1].strip() or request.remote_addr or "")[:64]
+
+
 def _sign_in(user):
+    sid, now = secrets.token_hex(16), int(time.time())
+    with db() as c:
+        c.execute("DELETE FROM sessions WHERE last_seen < ?", (now - SESSION_DAYS * 86400,))
+        c.execute("INSERT INTO sessions (id, user_id, created_at, last_seen, ua, ip) VALUES (?,?,?,?,?,?)",
+                  (sid, user["id"], now, now, request.headers.get("User-Agent", "")[:250], _visitor()))
     session.clear()
     session["uid"] = user["id"]
     session["ver"] = user["ver"]
+    session["sid"] = sid
+
+
+def _end_other_sessions(uid, keep=""):
+    with db() as c:
+        c.execute("DELETE FROM sessions WHERE user_id=? AND id != ?", (uid, keep))
+
+
+# ------------------------------------------------------- two-factor sign-in
+# Optional per account: after the password, a 6-digit code from an authenticator app
+# (TOTP, RFC 6238: HMAC-SHA1, 30 s steps), or one of ten single-use recovery codes.
+# A code is accepted once only (the last used time step is stored). Not asked inside
+# the Home Assistant sidebar, where Home Assistant has signed the person in already.
+TOTP_STEP, TOTP_DIGITS = 30, 6
+RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def _hotp(secret, counter):
+    key = base64.b32decode(secret + "=" * (-len(secret) % 8), casefold=True)
+    digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+    off = digest[-1] & 0x0F
+    code = (struct.unpack(">I", digest[off:off + 4])[0] & 0x7FFFFFFF) % 10 ** TOTP_DIGITS
+    return str(code).zfill(TOTP_DIGITS)
+
+
+def totp_check(secret, code, last_step=0, now=None):
+    """The time step the code belongs to (one step of clock drift allowed either way),
+    or None. Steps at or before last_step are refused, so a code works only once."""
+    code = re.sub(r"\s", "", str(code or ""))
+    if not secret or not re.fullmatch(rf"\d{{{TOTP_DIGITS}}}", code):
+        return None
+    step = int((time.time() if now is None else now) // TOTP_STEP)
+    for s in (step - 1, step, step + 1):
+        if s > last_step and hmac.compare_digest(_hotp(secret, s), code):
+            return s
+    return None
+
+
+def _recovery_hash(code):
+    return hashlib.sha256(re.sub(r"[^A-Z0-9]", "", str(code).upper()).encode()).hexdigest()
+
+
+def _new_recovery_codes():
+    codes = ["-".join("".join(secrets.choice(RECOVERY_ALPHABET) for _ in range(5)) for _ in range(2)) for _ in range(10)]
+    return codes, json.dumps([_recovery_hash(c) for c in codes])
+
+
+def _use_recovery_code(c, user, code):
+    """Consumes a recovery code. True if it was one of the user's unused codes."""
+    try:
+        left = json.loads(user["recovery"] or "[]")
+    except ValueError:
+        left = []
+    h = _recovery_hash(code)
+    if not re.sub(r"[^A-Z0-9]", "", str(code).upper()) or h not in left:
+        return False
+    left.remove(h)
+    c.execute("UPDATE users SET recovery=? WHERE id=?", (json.dumps(left), user["id"]))
+    return True
+
+
+def _recovery_left(user):
+    try:
+        return len(json.loads(user["recovery"] or "[]"))
+    except ValueError:
+        return 0
 
 
 # Wrong-password throttle. It works the same with or without a reverse proxy, so no
@@ -952,7 +1138,7 @@ def _check_new_credentials(username, password, need_password=True):
     return None
 
 
-OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "api_setup", "icon", "save_page", "manifest",
+OPEN_ENDPOINTS = {"login_page", "api_login", "api_login_totp", "auth_status", "api_setup", "icon", "save_page", "manifest",
                   "service_worker", "healthz"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
 ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings"}
@@ -1023,7 +1209,8 @@ def auth_status():
     u = g.user
     return jsonify(signed_in=bool(u), setup=not u and setup_needed(),
                    username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
-                   has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON)
+                   has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON,
+                   totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0)
 
 
 @app.post("/api/setup")
@@ -1082,15 +1269,133 @@ def api_login():
     _note_login(ip, ok)
     if not ok:
         return jsonify(error="Wrong username or password."), 401
+    if row["totp_secret"]:  # password right; the code comes next (5 minutes to enter it)
+        session.clear()
+        session["pending"] = {"uid": row["id"], "ver": row["ver"], "exp": int(time.time()) + 300,
+                              "remember": bool(d.get("remember"))}
+        return jsonify(totp=True)
     _sign_in(row)
     session.permanent = bool(d.get("remember"))  # otherwise the cookie ends with the browser session
     return jsonify(ok=True)
 
 
+@app.post("/api/login/totp")
+def api_login_totp():
+    d = request.get_json(force=True, silent=True) or {}
+    pend = session.get("pending") or {}
+    if not pend or pend.get("exp", 0) < time.time():
+        session.pop("pending", None)
+        return jsonify(error="That took too long. Enter your password again.", restart=True), 401
+    ip = _client()
+    wait = _wait_seconds(ip)
+    if wait:
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE id=?", (pend["uid"],)).fetchone()
+        if not row or row["ver"] != pend["ver"] or not row["totp_secret"]:
+            session.pop("pending", None)
+            return jsonify(error="Enter your password again.", restart=True), 401
+        step = totp_check(row["totp_secret"], d.get("code"), row["totp_last"])
+        if step is not None:
+            c.execute("UPDATE users SET totp_last=? WHERE id=?", (step, row["id"]))
+        ok = step is not None or _use_recovery_code(c, row, d.get("code"))
+    _note_login(ip, ok)
+    if not ok:
+        return jsonify(error="That code is not right."), 401
+    _sign_in(row)
+    session.permanent = bool(pend.get("remember"))
+    return jsonify(ok=True)
+
+
 @app.post("/api/logout")
 def api_logout():
+    if session.get("sid"):
+        with db() as c:
+            c.execute("DELETE FROM sessions WHERE id=?", (session["sid"],))
     session.clear()
     return jsonify(ok=True)
+
+
+@app.get("/api/sessions")
+def list_sessions():
+    with db() as c:
+        rows = c.execute("SELECT id, created_at, last_seen, ua, ip FROM sessions WHERE user_id=? ORDER BY last_seen DESC",
+                         (me(),)).fetchall()
+    cur = session.get("sid") if not via_ingress() else None
+    return jsonify(sessions=[dict(r) | {"current": r["id"] == cur} for r in rows])
+
+
+@app.delete("/api/sessions/<sid>")
+def end_session(sid):
+    with db() as c:
+        n = c.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (sid, me())).rowcount
+    return (jsonify(ok=True), 200) if n else (jsonify(error="Not found"), 404)
+
+
+@app.post("/api/sessions/others")
+def end_other_sessions():
+    """Signs out every other device of this account (this one stays signed in)."""
+    _end_other_sessions(me(), "" if via_ingress() else session.get("sid", ""))
+    return jsonify(ok=True)
+
+
+@app.post("/api/totp/setup")
+def totp_setup():
+    """Starts turning on two-factor sign-in: a new secret, shown as a QR code. It only
+    takes effect after a code from the app has been confirmed (totp/enable)."""
+    secret = base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
+    set_user_setting(me(), "totp_pending", json.dumps({"secret": secret, "exp": int(time.time()) + 900}))
+    label = f"TileMark:{g.user['username']}"
+    uri = f"otpauth://totp/{requests.utils.quote(label)}?secret={secret}&issuer=TileMark&digits={TOTP_DIGITS}&period={TOTP_STEP}"
+    qr = segno.make(uri, error="m").svg_inline(scale=5, border=2, dark="#000", light="#fff")
+    return jsonify(secret=secret, uri=uri, qr=qr)
+
+
+@app.post("/api/totp/enable")
+def totp_enable():
+    d = request.get_json(force=True, silent=True) or {}
+    try:
+        pend = json.loads(get_user_setting(me(), "totp_pending", "{}"))
+    except ValueError:
+        pend = {}
+    if not pend.get("secret") or pend.get("exp", 0) < time.time():
+        return jsonify(error="Start again: the QR code has expired."), 400
+    step = totp_check(pend["secret"], d.get("code"))
+    if step is None:
+        return jsonify(error="That code is not right. Check that the time on your phone is correct."), 400
+    codes, hashes = _new_recovery_codes()
+    with db() as c:
+        c.execute("UPDATE users SET totp_secret=?, totp_last=?, recovery=? WHERE id=?", (pend["secret"], step, hashes, me()))
+        c.execute("DELETE FROM user_settings WHERE user_id=? AND key='totp_pending'", (me(),))
+    return jsonify(ok=True, recovery=codes)
+
+
+def _password_or_ha(d):
+    return via_ingress() or check_password_hash(g.user["pw_hash"], str(d.get("current_password", "")))
+
+
+@app.delete("/api/totp")
+def totp_disable():
+    d = request.get_json(force=True, silent=True) or {}
+    if not _password_or_ha(d):
+        return jsonify(error="The current password is not correct."), 403
+    with db() as c:
+        c.execute("UPDATE users SET totp_secret='', totp_last=0, recovery='' WHERE id=?", (me(),))
+    return jsonify(ok=True)
+
+
+@app.post("/api/totp/recovery")
+def totp_new_recovery():
+    """New recovery codes; the old ones stop working."""
+    d = request.get_json(force=True, silent=True) or {}
+    if not g.user["totp_secret"]:
+        return jsonify(error="Two-factor sign-in is not on."), 400
+    if not _password_or_ha(d):
+        return jsonify(error="The current password is not correct."), 403
+    codes, hashes = _new_recovery_codes()
+    with db() as c:
+        c.execute("UPDATE users SET recovery=? WHERE id=?", (hashes, me()))
+    return jsonify(ok=True, recovery=codes)
 
 
 @app.post("/api/account")
@@ -1116,6 +1421,8 @@ def update_account():
     if not via_ingress():
         _sign_in(row)
         session.permanent = True
+    if pw:  # a new password signs out every other device
+        _end_other_sessions(me(), "" if via_ingress() else session.get("sid", ""))
     return jsonify(ok=True)
 
 
@@ -1143,7 +1450,7 @@ def _admins(c):
 @app.get("/api/users")
 def list_users():
     with db() as c:
-        rows = c.execute("SELECT u.id, u.username, u.is_admin, u.created_at, "
+        rows = c.execute("SELECT u.id, u.username, u.is_admin, u.created_at, u.totp_secret != '' AS totp, "
                          "(SELECT COUNT(*) FROM links l WHERE l.user_id=u.id) AS links "
                          "FROM users u ORDER BY u.username").fetchall()
     return jsonify(users=[dict(r) | {"me": r["id"] == me()} for r in rows])
@@ -1168,7 +1475,8 @@ def create_user():
 
 @app.patch("/api/users/<int:uid>")
 def update_user(uid):
-    """Rename, set a new password (signs that user out everywhere) or change admin rights."""
+    """Rename, set a new password (signs that user out everywhere), change admin rights,
+    or turn off their two-factor sign-in ("totp": false, for a lost phone)."""
     d = request.get_json(force=True, silent=True) or {}
     user = str(d.get("username") or "").strip() if "username" in d else None
     pw = str(d.get("password") or "")
@@ -1191,8 +1499,12 @@ def update_user(uid):
             c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), uid))
         if make is not None:
             c.execute("UPDATE users SET is_admin=? WHERE id=?", (make, uid))
+        if d.get("totp") is False:
+            c.execute("UPDATE users SET totp_secret='', totp_last=0, recovery='' WHERE id=?", (uid,))
+        if pw:
+            c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         fresh = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
-    if uid == me():  # keep the admin who changed their own password signed in here
+    if uid == me() and pw and not via_ingress():  # keep the admin who changed their own password signed in here
         _sign_in(fresh)
     return jsonify(ok=True)
 
@@ -1280,6 +1592,9 @@ def save_prefs():
         with db() as c:
             gid = own_group(c, me(), d["defgroup"]) if d["defgroup"] else None
         prefs["defgroup"] = str(gid) if gid else ""
+    if isinstance(d.get("dupok"), list):  # sets of links marked "not duplicates" in the Duplicates list
+        prefs["dupok"] = [sorted({int(i) for i in grp if isinstance(i, int)})[:50]
+                          for grp in d["dupok"][:500] if isinstance(grp, list)]
     if isinstance(d.get("sorts"), dict):
         prefs["sorts"] = {str(k)[:40]: v for k, v in list(d["sorts"].items())[:500] if v in SORT_MODES}
     set_user_setting(me(), "ui", json.dumps(prefs))
@@ -1350,6 +1665,11 @@ def create_link():
     title, note = str(d.get("title") or "").strip()[:300], str(d.get("note") or "").strip()[:2000]
     uid = me()
     with db() as c:
+        dup = find_duplicate(c, uid, url_key(url))
+        if dup and (not d.get("allow_duplicate") or dup["url"] == url):  # an identical address is never saved twice
+            where = f' in "{dup["group_name"]}"' if dup["group_name"] else ""
+            return jsonify(error=f"This page is already saved{where}: {dup['title'] or dup['url']}",
+                           existing=_dup_info(dup)), 409
         gid = own_group(c, uid, d.get("group_id")) if d.get("group_id") else None
         if gid is None and str(d.get("group") or "").strip():  # by name; created if it is new
             gid = get_or_create_group(c, uid, str(d["group"]))
@@ -1452,8 +1772,9 @@ def update_link(link_id):
         url = normalize_url(d["url"]) if "url" in d else row["url"]
         if not url:
             return jsonify(error="That does not look like a web link."), 400
-        if url != row["url"] and c.execute("SELECT 1 FROM links WHERE user_id=? AND url=?", (me(), url)).fetchone():
-            return jsonify(error="This link is already saved."), 409
+        if url != row["url"] and (find_duplicate(c, me(), url_key(url), link_id)
+                                  or c.execute("SELECT 1 FROM links WHERE user_id=? AND url=?", (me(), url)).fetchone()):
+            return jsonify(error="This page is already saved."), 409
         if "title" in d:
             t = (d["title"] or "").strip()[:300]
             if t != row["title"]:
@@ -1466,7 +1787,7 @@ def update_link(link_id):
         if "pinned" in d:
             c.execute("UPDATE links SET pinned=? WHERE id=?", (1 if d["pinned"] else 0, link_id))
         if url != row["url"]:
-            c.execute("UPDATE links SET url=?, status='pending' WHERE id=?", (url, link_id))
+            c.execute("UPDATE links SET url=?, ukey=?, final_key='', status='pending' WHERE id=?", (url, url_key(url), link_id))
             refetch = True
     if refetch:
         queue(link_id)
@@ -1554,37 +1875,158 @@ def delete_group(gid):
     return jsonify(ok=True)
 
 
+# Import never drops a duplicate silently. Links that are new are added; links that
+# are the same page as one already saved (or as one earlier in the same file) are
+# returned in "duplicates", each next to the link it matches, so the person can
+# download them, keep some as separate links, and discard the rest.
+EXPORT_FORMAT = "tilemark-export"
+MAX_REVIEW = 2000
+
+
+def _parse_export(text):
+    """A TileMark export file (JSON) as (groups, links), or None if the text is not one."""
+    head = text.lstrip()[:200]
+    if not head.startswith("{") or EXPORT_FORMAT not in head:
+        return None
+    try:
+        d = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(d, dict) or d.get("format") != EXPORT_FORMAT:
+        return None
+    groups = [g for g in d.get("groups", []) if isinstance(g, dict)]
+    links = [l for l in d.get("links", []) if isinstance(l, dict) and isinstance(l.get("url"), str)]
+    return groups, links
+
+
 @app.post("/api/import")
 def import_links():
     text = request.form.get("text", "")
     f = request.files.get("file")
     if f:
-        text += "\n" + f.read().decode("utf-8", errors="replace")
-    is_bookmarks = bool(re.search(r"<a\b[^>]*href", text, re.I))
-    items = parse_bookmarks_html(text) if is_bookmarks else parse_plain(text)
-    added, skipped, new_ids, uid = 0, 0, [], me()
+        text += ("\n" if text else "") + f.read().decode("utf-8", errors="replace")
+    export = _parse_export(text)
+    if export:
+        groups, rich = export
+        items = [(l["url"], str(l.get("title") or ""), str(l.get("group") or ""), l)
+                 for l in sorted(rich, key=lambda l: (l.get("position", 0) if isinstance(l.get("position"), int) else 0))]
+    else:
+        groups = []
+        is_bookmarks = bool(re.search(r"<a\b[^>]*href", text, re.I))
+        items = [(u, t, folder, None) for u, t, folder in (parse_bookmarks_html(text) if is_bookmarks else parse_plain(text))]
+    added, skipped, new_ids, dups, uid = 0, 0, [], [], me()
     with db() as c:
         target = own_group(c, uid, request.form.get("group_id")) if request.form.get("group_id") else None
-        for raw, title, folder in items:
+        colours = {str(g.get("name") or "").strip()[:60].lower(): g for g in groups}
+        if target is None:  # an export's groups come first, in their order and colours (empty ones too)
+            for g in sorted(groups, key=lambda g: g.get("position", 0) if isinstance(g.get("position"), int) else 0):
+                name = str(g.get("name") or "").strip()[:60]
+                if name and not c.execute("SELECT 1 FROM groups WHERE user_id=? AND name=?", (uid, name)).fetchone():
+                    gid = get_or_create_group(c, uid, name)
+                    if _color(g.get("color")):
+                        c.execute("UPDATE groups SET color=? WHERE id=?", (g["color"], gid))
+        seen = {}  # key -> the link earlier in this same import
+        for raw, title, folder, extra in items:
             url = normalize_url(raw)
             if not url:
                 skipped += 1
                 continue
-            gid = target or (get_or_create_group(c, uid, folder) if folder else None)
+            key = url_key(url)
+            match = find_duplicate(c, uid, key)
+            earlier = seen.get(key)
+            if match or earlier:
+                if len(dups) < MAX_REVIEW:
+                    dups.append({"url": url, "title": title.strip()[:300], "folder": folder, "note": str((extra or {}).get("note") or "")[:2000],
+                                 "existing": {"id": None, "earlier": True, **earlier} if earlier else _dup_info(match),
+                                 "same_address": (earlier["url"] if earlier else match["url"]) == url})
+                continue
+            gid = target
+            if gid is None and folder:
+                is_new = not c.execute("SELECT 1 FROM groups WHERE user_id=? AND name=?", (uid, folder.strip()[:60])).fetchone()
+                gid = get_or_create_group(c, uid, folder)
+                g = colours.get(folder.strip()[:60].lower())
+                if is_new and g and _color(g.get("color")):
+                    c.execute("UPDATE groups SET color=? WHERE id=?", (g["color"], gid))
             link_id = add_link(c, uid, url, gid, title, top=False)
             if link_id is None:
                 skipped += 1
-            else:
-                added += 1
-                new_ids.append(link_id)
+                continue
+            seen[key] = {"url": url, "title": title.strip()[:300], "group": folder}
+            if extra:
+                _apply_export_fields(c, link_id, extra)
+            added += 1
+            new_ids.append(link_id)
     for link_id in new_ids:
         queue(link_id)
-    return jsonify(added=added, skipped=skipped)
+    return jsonify(added=added, skipped=skipped, duplicates=dups)
+
+
+def _apply_export_fields(c, link_id, d):
+    """Notes, favourite, dates, own title and own picture from a TileMark export."""
+    def num(v):
+        return v if isinstance(v, int) and v >= 0 else 0
+    c.execute("UPDATE links SET description=?, note=?, pinned=?, created_at=COALESCE(NULLIF(?, 0), created_at), "
+              "opened_at=?, custom_title=? WHERE id=?",
+              (str(d.get("description") or "")[:500], str(d.get("note") or "")[:2000], 1 if d.get("pinned") else 0,
+               num(d.get("created_at")), num(d.get("opened_at")), 1 if d.get("custom_title") and d.get("title") else 0, link_id))
+    pic = d.get("picture")
+    if isinstance(pic, str) and pic:
+        try:
+            name = _save_thumb(link_id, base64.b64decode(pic, validate=True), "image")
+        except (ValueError, TypeError):
+            name = None
+        if name:
+            c.execute("UPDATE links SET thumb=?, thumb_kind='image', custom_thumb=1 WHERE id=?", (name, link_id))
+
+
+@app.post("/api/duplicates/merge")
+def merge_duplicates():
+    """Keep one link of a set of duplicates and remove the others. With "merge", the
+    kept link takes over what the others had: notes, favourite, own title and own
+    picture (if it has none), a group (if it has none), the earliest saved date."""
+    d = request.get_json(force=True, silent=True) or {}
+    keep = d.get("keep")
+    remove = [i for i in _ids({"ids": d.get("remove", [])}) if i != keep]
+    with db() as c:
+        k = own_link(c, keep) if isinstance(keep, int) else None
+        others = [own_link(c, i) for i in remove]
+        if not k or not others or not all(others):
+            return jsonify(error="Those links were not found."), 404
+        moved = None
+        if d.get("merge"):
+            notes = [n for n in dict.fromkeys(x["note"].strip() for x in [k] + others) if n]
+            upd = {"note": "\n\n".join(notes)[:2000], "pinned": max(x["pinned"] for x in [k] + others),
+                   "created_at": min(x["created_at"] for x in [k] + others), "opened_at": max(x["opened_at"] for x in [k] + others)}
+            if not k["custom_title"]:
+                t = next((x for x in others if x["custom_title"]), None)
+                if t:
+                    upd.update(title=t["title"], custom_title=1)
+            if not k["custom_thumb"]:
+                t = next((x for x in others if x["custom_thumb"] and x["thumb"]), None)
+                if t:
+                    moved = t["thumb"]
+                    upd.update(thumb=t["thumb"], thumb_kind="image", custom_thumb=1)
+            if k["group_id"] is None:
+                g = next((x["group_id"] for x in others if x["group_id"] is not None), None)
+                if g is not None:
+                    upd["group_id"] = g
+            c.execute(f"UPDATE links SET {', '.join(f'{col}=?' for col in upd)} WHERE id=?", [*upd.values(), keep])
+        thumbs = [x["thumb"] for x in others if x["thumb"] and x["thumb"] != moved]
+        if moved and k["thumb"] and k["thumb"] != moved:
+            thumbs.append(k["thumb"])
+        c.execute(f"DELETE FROM links WHERE user_id=? AND id IN ({','.join('?' * len(remove))})", [me()] + remove)
+    for name in thumbs:
+        _remove_thumb(name)
+    return jsonify(ok=True, removed=len(remove))
 
 
 @app.get("/api/export")
 def export_links():
-    """Standard bookmarks file: re-importable here and in any browser."""
+    """Standard bookmarks file (re-importable here and in any browser), or with
+    ?format=json a TileMark file with everything: notes, favourites, order, colours,
+    dates and own pictures (fetched thumbnails are left out; they come back by themselves)."""
+    if request.args.get("format") == "json":
+        return _export_json()
     e = html.escape
     out = ["<!DOCTYPE NETSCAPE-Bookmark-file-1>",
            '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
@@ -1602,6 +2044,30 @@ def export_links():
     out += rows(None, "    ") + ["</DL><p>", ""]
     return Response("\n".join(out), mimetype="text/html",
                     headers={"Content-Disposition": "attachment; filename=tilemark-bookmarks.html"})
+
+
+def _export_json():
+    with db() as c:
+        groups = c.execute("SELECT id, name, color, position FROM groups WHERE user_id=? ORDER BY position, id", (me(),)).fetchall()
+        links = c.execute("SELECT * FROM links WHERE user_id=? ORDER BY position, id DESC", (me(),)).fetchall()
+    names = {g["id"]: g["name"] for g in groups}
+    out_links = []
+    for pos, l in enumerate(links):
+        item = {"url": l["url"], "title": l["title"], "custom_title": bool(l["custom_title"]), "description": l["description"],
+                "note": l["note"], "pinned": bool(l["pinned"]), "group": names.get(l["group_id"], ""), "position": pos,
+                "created_at": l["created_at"], "opened_at": l["opened_at"]}
+        if l["custom_thumb"] and l["thumb"]:
+            try:
+                with open(os.path.join(THUMB_DIR, os.path.basename(l["thumb"])), "rb") as f:
+                    item["picture"] = base64.b64encode(f.read()).decode()
+            except OSError:
+                pass
+        out_links.append(item)
+    body = json.dumps({"format": EXPORT_FORMAT, "version": 1, "exported_at": int(time.time()),
+                       "groups": [{"name": g["name"], "color": g["color"], "position": i} for i, g in enumerate(groups)],
+                       "links": out_links}, ensure_ascii=False, indent=1)
+    return Response(body, mimetype="application/json",
+                    headers={"Content-Disposition": "attachment; filename=tilemark-export-" + time.strftime("%Y-%m-%d") + ".json"})
 
 
 # ------------------------------------------------------- backup and restore
@@ -1826,8 +2292,10 @@ def reset_login(username=None):
             row = c.execute("SELECT * FROM users WHERE is_admin=1 ORDER BY id LIMIT 1").fetchone()
         if not row:
             return None, None
-        pw = secrets.token_urlsafe(12)
-        c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), row["id"]))
+        pw = secrets.token_urlsafe(12)  # also turns off two-factor sign-in: a lost phone never locks anyone out
+        c.execute("UPDATE users SET pw_hash=?, ver=?, totp_secret='', totp_last=0, recovery='' WHERE id=?",
+                  (_hash(pw), secrets.token_hex(16), row["id"]))
+        c.execute("DELETE FROM sessions WHERE user_id=?", (row["id"],))
     return row["username"], pw
 
 

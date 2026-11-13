@@ -5,7 +5,6 @@ What is planned next, and what each release brought. Changes per version in deta
 ## Next (medium)
 
 - [ ] **Shared groups:** share a group with another account, read-only or editable.
-- [ ] **Interface languages (14):** English, Dutch and Arabic, including right-to-left layout for Arabic.
 
 ## Parked (larger)
 
@@ -19,6 +18,9 @@ What is planned next, and what each release brought. Changes per version in deta
 - Desktop installer without Docker; Android app.
 
 ## Done
+
+### 2.3.0
+- [x] Interface languages (14): English, Dutch and Arabic, chosen by the browser or per account, with right-to-left layout for Arabic.
 
 ### 2.2.0
 - [x] Home Assistant sensors and link-check event through MQTT discovery (add-on: Home Assistant's broker by itself).

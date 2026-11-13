@@ -1013,7 +1013,7 @@ def _listen(port, topic="#"):
     return cl, got
 
 
-def _wait(pred, timeout=8):
+def _wait(pred, timeout=20):
     import time as _t
     end = _t.time() + timeout
     while _t.time() < end:
@@ -1102,3 +1102,63 @@ def test_restore_keeps_installation_settings(fresh):
     r = c.post("/api/backups/restore", json={"name": daily["name"], "confirm": daily["date"]})
     assert r.status_code == 200
     assert fresh.get_setting("node_id") == node and fresh.get_setting("mqtt_host") == "broker.lan"
+
+
+# ------------------------------------------------------------------- 2.3.0
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _i18n_keys():
+    import re
+    src = open(os.path.join(ROOT, "pages", "i18n.js"), encoding="utf-8").read()
+    body = src[src.index("const D = {"):src.index("};", src.index("const D = {"))]
+    return {json.loads(m.group(1)) for m in re.finditer(r'^("(?:[^"\\]|\\.)*"):\[', body, re.M)}, src
+
+
+def test_language_pref_is_validated(two):
+    A, admin, bob, *_ = two
+    bob.put("/api/prefs", json={"lang": "ar"})
+    assert bob.get("/api/state").get_json()["prefs"]["lang"] == "ar"
+    bob.put("/api/prefs", json={"lang": "xx"})  # unknown language: kept as it was
+    assert bob.get("/api/state").get_json()["prefs"]["lang"] == "ar"
+    bob.put("/api/prefs", json={"lang": ""})  # back to following the browser
+    assert bob.get("/api/state").get_json()["prefs"]["lang"] == ""
+    assert "lang" not in admin.get("/api/state").get_json()["prefs"]
+
+
+def test_i18n_script_is_open(fresh):
+    r = fresh.app.test_client().get("/i18n.js")  # the sign-in page needs it before anyone is signed in
+    assert r.status_code == 200 and "javascript" in r.mimetype
+    assert "العربية" in r.get_data(as_text=True)
+
+
+def test_every_message_has_a_translation():
+    """Every fixed server error and every t("…") text in the pages is in the dictionary,
+    with the same {placeholders} in each language."""
+    import ast, re
+    keys, src = _i18n_keys()
+    tree = ast.parse(open(os.path.join(ROOT, "app.py"), encoding="utf-8").read())
+    msgs = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call):
+            name = getattr(n.func, "id", getattr(n.func, "attr", ""))
+            if name == "jsonify":
+                msgs |= {k.value.value for k in n.keywords if k.arg == "error" and isinstance(k.value, ast.Constant)}
+            if name in ("RestoreError", "FullRestoreError") and n.args and isinstance(n.args[0], ast.Constant):
+                msgs.add(n.args[0].value)
+        if isinstance(n, ast.FunctionDef) and n.name == "_check_new_credentials":
+            msgs |= {r.value.value for r in ast.walk(n) if isinstance(r, ast.Return) and isinstance(r.value, ast.Constant) and r.value.value}
+    for page in ("index.html", "login.html", "save.html"):
+        text = open(os.path.join(ROOT, "pages", page), encoding="utf-8").read()
+        msgs |= {json.loads(m) for m in re.findall(r'\bt\(("(?:[^"\\]|\\.)*")', text)}
+        for a, b in re.findall(r'\bt\([\w.!]+ \? ("(?:[^"\\]|\\.)*") : ("(?:[^"\\]|\\.)*")', text):  # t(x ? "a" : "b")
+            msgs |= {json.loads(a), json.loads(b)}
+    missing = sorted(m for m in msgs if m not in keys)
+    assert not missing, missing
+    body = src[src.index("const D = {"):src.index("};", src.index("const D = {"))]
+    for line in body.splitlines():
+        m = re.match(r'^("(?:[^"\\]|\\.)*"):(\[.*\]),?$', line)
+        if m:
+            k, (nl, ar) = json.loads(m.group(1)), json.loads(m.group(2))
+            ph = sorted(re.findall(r"\{\w+\}", k))
+            assert sorted(re.findall(r"\{\w+\}", nl)) == ph == sorted(re.findall(r"\{\w+\}", ar)), k

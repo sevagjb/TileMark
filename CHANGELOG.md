@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.2.0 (unreleased)
+## 2.2.0
 
 ### New
 - **Home Assistant sensors over MQTT:** TileMark appears in Home Assistant as a device with sensors for links, broken links and the last weekly check, plus an event when that check finishes (with the number of newly broken links), set up by MQTT discovery. Settings → Home Assistant sensors; in the add-on it uses Home Assistant's broker by itself.

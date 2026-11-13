@@ -33,8 +33,12 @@ One container, one data folder, no external services.
 - **Refresh** titles and pictures for one link, a selection, a whole group or everything.
 - **Share** a link from its card: the phone's share sheet where there is one, otherwise the address is copied.
 - **Open all in tabs** for a whole group at once.
-- **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox. Folders become groups, duplicates are skipped.
-- **Export** to a standard bookmarks file that any browser can import.
+- **Import in one go:** paste a list of links, or upload a bookmarks/favorites export from Edge, Chrome or Firefox, or a TileMark file. Folders become groups.
+- **Duplicates are caught, never dropped silently:** the same page saved twice (with or without `www`, `https`, a trailing slash, tracking parameters, or behind a redirect or short link) is recognised. An import lists them for you to download, keep or discard, and a **Duplicates** list helps clean up what you already have.
+- **Clean addresses:** tracking parameters (`utm_…`, `fbclid`, YouTube's `si` …) are removed when a link is saved.
+- **Export** to a TileMark file with everything (groups, colours, notes, favourites, own pictures), or to a standard bookmarks file that any browser can import.
+- **Two-factor sign-in** with an authenticator app, optional per account, plus a list of signed-in devices you can sign out.
+- **Keyboard shortcuts:** `/` to search, `n` to add a link, `Esc` to clear.
 - **Backup and restore** from Settings, optionally encrypted with a password.
 - **Accounts for everyone in the house:** each person has their own links, groups, settings, API key and backups. The first account is the admin and adds the others.
 - **Never open by accident:** a new installation asks for the first account, protected by a one-time setup code from the container log.
@@ -120,6 +124,17 @@ Each folder becomes a group. Thumbnails are fetched in the background, a few at 
 
 You can also paste a plain list of links (one per line) into the import box, or paste several lines straight into the "add" field.
 
+**Duplicates.** Links you already have are not added again, and they are not thrown away silently either: after the import a list shows each one next to the link it matches (or "earlier in this import"). From there you can download them as a TileMark or bookmarks file, tick the ones to keep as separate links anyway, and discard the rest. Two addresses count as the same page when they only differ by `http`/`https`, `www`, a trailing slash, the order of their parameters or tracking parameters, when one is a YouTube short form of the other (`youtu.be/…`, `/shorts/…`), or when one redirects to the other.
+
+The **Duplicates** button (and entry in the left column) appears when your saved links contain such pairs. For each set you choose the link to keep; it can take over notes, the favourite star, an own title and picture from the others, which are then removed. "These are different" hides a set for good, and every set can be downloaded first.
+
+## Export
+
+**Export** offers two files:
+
+- **TileMark file (`.json`):** everything, including groups and their colours, order, notes, favourites, dates and your own pictures. Import it into TileMark (this one or another, any account) to get it all back. Fetched thumbnails are left out; they come back by themselves.
+- **Bookmarks file (`.html`):** addresses, titles and groups as folders, for importing into Edge, Chrome or Firefox.
+
 ## Save from anywhere
 
 **Browser button.** In **⚙ Settings → Save from anywhere**, drag **🔖 Save to TileMark** to your favorites bar. Clicking it on any page opens a small window where you pick the group, add an optional note and save. You need to be signed in to TileMark in that browser.
@@ -141,6 +156,8 @@ curl -X POST https://tilemark.example.com/api/links \
 Every page, link, thumbnail, import, export and backup requires signing in. There is no open mode: a new installation shows a welcome screen that creates the first account, which is the admin.
 
 - **⚙ Settings → Your account:** change your username or password (needs the current password). A new password signs out your other devices.
+- **Two-factor sign-in** (optional, per account): in **Your account → Two-factor sign-in → Turn on**, scan the QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …) and confirm one code. From then on TileMark asks for a code after the password. You get ten single-use **recovery codes** for when the phone is not at hand; save them. A code is accepted only once. Inside the Home Assistant sidebar no code is asked: Home Assistant's own sign-in (and its two-factor, if you use it) applies there.
+- **Signed-in devices:** **Your account** lists every device signed in on TileMark's own address, with browser, address and when it was last active. Sign out any of them, or all others at once.
 - **⚙ Settings → People** (admin only): add people, give them a new password, make them admin or remove them (with all their links). There is no public sign-up page; only an admin adds accounts.
 - Links are private per account. The admin manages accounts but cannot see anyone else's links.
 - Layout, appearance and sort order are saved with the account, so they are the same on every device.
@@ -148,7 +165,7 @@ Every page, link, thumbnail, import, export and backup requires signing in. Ther
 - After five wrong attempts, further tries from that address have to wait (15 seconds, doubling up to 5 minutes).
 - Passwords are stored only as salted hashes.
 
-Forgot a password? This gives the first admin (or the account you name) a new random password and prints it:
+Lost the phone with the authenticator app? Sign in with a recovery code, or ask an admin: **People → Turn off 2FA**. Forgot a password? This gives the first admin (or the account you name) a new random password, turns off their two-factor sign-in, signs out their devices, and prints the password:
 
 ```bash
 docker exec tilemark python app.py reset-login

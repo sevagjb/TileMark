@@ -33,8 +33,10 @@ button:disabled { opacity: .6; cursor: default; }
   <p id="intro">Sign in to see your links.</p>
   <div id="codeWrap" hidden><label for="c">Setup code</label><input id="c" type="text" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX" style="text-transform:uppercase;letter-spacing:.08em">
     <p class="small">Printed in the container log: <code>docker logs tilemark</code>, or the log of the stack in Dockge.</p></div>
-  <label for="u">Username</label><input id="u" type="text" autocomplete="username" maxlength="60" autofocus required>
-  <label for="p" id="pLbl">Password</label><input id="p" type="password" autocomplete="current-password" required>
+  <div id="credWrap"><label for="u">Username</label><input id="u" type="text" autocomplete="username" maxlength="60" autofocus required>
+  <label for="p" id="pLbl">Password</label><input id="p" type="password" autocomplete="current-password" required></div>
+  <div id="tfWrap" hidden><label for="t">Code from your authenticator app</label><input id="t" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12" spellcheck="false">
+    <p class="small">No phone at hand? Enter one of your recovery codes instead.</p></div>
   <div id="p2Wrap" hidden><label for="p2">Repeat the password</label><input id="p2" type="password" autocomplete="new-password"></div>
   <label class="remember" id="rWrap"><input id="r" type="checkbox" checked> Keep me signed in on this device for 30 days</label>
   <div id="err" role="alert"></div>
@@ -43,7 +45,7 @@ button:disabled { opacity: .6; cursor: default; }
 <script>
 try { const t = JSON.parse(localStorage.getItem("tm.settings") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
 const $ = id => document.getElementById(id);
-let setup = false;
+let setup = false, second = false;
 fetch("api/auth").then(r => r.json()).then(a => {
   if (!a.setup) return;
   setup = true;  // a new installation: the first account is created here and becomes the admin
@@ -58,13 +60,22 @@ $("f").onsubmit = async e => {
   if (setup && $("p").value !== $("p2").value) { $("err").textContent = "The two passwords are not the same."; return; }
   $("go").disabled = true;
   try {
-    const r = await fetch(setup ? "api/setup" : "api/login", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: $("u").value, password: $("p").value, remember: $("r").checked, code: $("c").value }) });
+    const r = second
+      ? await fetch("api/login/totp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: $("t").value }) })
+      : await fetch(setup ? "api/setup" : "api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: $("u").value, password: $("p").value, remember: $("r").checked, code: $("c").value }) });
     if (setup && r.status === 409) { location.reload(); return; }  // someone else finished the setup first
     const d = await r.json().catch(() => ({}));
+    if (r.ok && d.totp) {  // password right; two-factor sign-in is on: ask for the code
+      second = true; $("credWrap").hidden = $("rWrap").hidden = true; $("tfWrap").hidden = false;
+      $("u").required = $("p").required = false; $("intro").textContent = "Two-factor sign-in";
+      $("go").textContent = "Continue"; $("go").disabled = false; $("t").focus(); return;
+    }
     if (r.ok) { const n = new URLSearchParams(location.search).get("next") || ""; location.href = n.startsWith("/save") ? n.slice(1) : "./"; return; }
     $("err").textContent = d.error || "Could not sign in.";
-    if (!setup) { $("p").value = ""; $("p").focus(); }  // a wrong setup code keeps the chosen passwords
+    if (second && d.restart) { setTimeout(() => location.reload(), 1500); }
+    else if (second) { $("t").value = ""; $("t").focus(); }
+    else if (!setup) { $("p").value = ""; $("p").focus(); }  // a wrong setup code keeps the chosen passwords
     else if (d.code) $("c").select();
   } catch { $("err").textContent = "Could not reach TileMark."; }
   $("go").disabled = false;

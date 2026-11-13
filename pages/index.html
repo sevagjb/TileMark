@@ -187,6 +187,18 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1b1f27; color: #fff;
          padding: 10px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; max-width: 90vw; }
 #toast.show { opacity: 1; }
+dialog.wide { width: min(760px, calc(100vw - 32px)); }
+.dupset { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+.dupset .pick, .revrow { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 14px; }
+.dupset .pick + .pick, .revrow + .revrow { border-top: 1px solid var(--line); }
+.pick small, .revrow small { display: block; color: var(--muted); word-break: break-all; }
+.pill { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+.qr { background: #fff; display: inline-block; padding: 6px; border-radius: 8px; margin-top: 10px; }
+.codes { font-family: ui-monospace, Consolas, monospace; display: grid; grid-template-columns: repeat(2, max-content); gap: 4px 24px; margin: 10px 0; }
+.sess { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 14px; }
+.sess + .sess { border-top: 1px solid var(--line); }
+.sess div { flex: 1; min-width: 0; } .sess small { display: block; color: var(--muted); }
+kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
 </style>
 </head>
 <body>
@@ -200,7 +212,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     </form>
     <input class="search" id="search" type="search" placeholder="Search" aria-label="Search links">
     <button class="btn" id="importBtn">Import</button>
-    <a class="btn" href="api/export" style="text-decoration:none">Export</a>
+    <button class="btn" id="exportBtn">Export</button>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
@@ -224,6 +236,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
           <option value="name">Name</option><option value="site">Site</option></select>
         <button class="btn not-selecting" id="refreshAll" title="Fetch titles and pictures again for the links shown here" aria-label="Refresh these links">↻</button>
         <button class="btn not-selecting" id="openAll" hidden>Open all in tabs</button>
+        <button class="btn not-selecting" id="dupBtn" hidden title="Links that lead to the same page">Duplicates</button>
         <button class="btn not-selecting" id="selBtn">Select</button></div>
       <div id="board"></div>
       <div class="empty" id="empty" hidden></div>
@@ -256,13 +269,39 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="gSave">Save</button></div>
 </form></dialog>
 
+<dialog id="exportDlg"><form method="dialog">
+  <h2>Export</h2>
+  <label class="choice"><input type="radio" name="expKind" value="json" checked><div><b>TileMark file (.json)</b><span>Everything: groups and colours, order, notes, favourites, dates and your own pictures. Import it here or in another TileMark.</span></div></label>
+  <label class="choice"><input type="radio" name="expKind" value="html"><div><b>Bookmarks file (.html)</b><span>Addresses, titles and groups as folders, for importing into Edge, Chrome or Firefox.</span></div></label>
+  <div class="row"><button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="expGo">Download</button></div>
+</form></dialog>
+
+<dialog id="reviewDlg" class="wide"><form method="dialog">
+  <h2>Duplicates in this import</h2>
+  <p class="hint" style="margin-top:0" id="revIntro"></p>
+  <div class="row" style="justify-content:flex-start;margin:6px 0 4px"><button class="btn" type="button" id="revDlJson">Download as TileMark file</button>
+    <button class="btn" type="button" id="revDlHtml">Download as bookmarks file</button></div>
+  <div id="revList"></div>
+  <p class="hint">Tick a link to keep it as a separate link anyway (not possible for identical addresses). The others are not saved.</p>
+  <div class="row"><button class="btn" value="cancel">Discard all</button><button class="btn primary" type="button" id="revKeep">Keep ticked, discard the rest</button></div>
+</form></dialog>
+
+<dialog id="dupsDlg" class="wide"><form method="dialog">
+  <h2>Duplicates</h2>
+  <p class="hint" style="margin-top:0">Links that lead to the same page: the same address apart from <i>https</i>, <i>www</i>, a trailing slash or tracking parameters, or an address that redirects to one you already have. For each set, choose the one to keep.</p>
+  <div class="row" style="justify-content:flex-start;margin:6px 0 4px"><button class="btn" type="button" id="dupsDlJson">Download all as TileMark file</button>
+    <button class="btn" type="button" id="dupsDlHtml">Download all as bookmarks file</button></div>
+  <div id="dupsList"></div>
+  <div class="row"><button class="btn primary" value="close">Done</button></div>
+</form></dialog>
+
 <dialog id="importDlg"><form method="dialog">
   <h2>Import links</h2>
   <label for="iText">Paste links, one per line</label>
   <textarea id="iText" placeholder="https://example.com&#10;https://another.example/page"></textarea>
   <label for="iFile">Or choose a file</label>
-  <input id="iFile" type="file" accept=".html,.htm,.txt,.csv">
-  <p class="hint">A bookmarks/favorites export from Edge, Chrome or Firefox works: folders become groups. A plain text file with links works too.</p>
+  <input id="iFile" type="file" accept=".json,.html,.htm,.txt,.csv">
+  <p class="hint">A TileMark file brings everything back (groups, colours, notes, favourites, own pictures). A bookmarks/favorites export from Edge, Chrome or Firefox works too: folders become groups. So does a plain text file with links. Links you already have are listed for you to review; nothing is dropped without being shown.</p>
   <label for="iGroup">Put everything in</label><select id="iGroup"></select>
   <div class="row"><button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="iGo">Import</button></div>
 </form></dialog>
@@ -279,6 +318,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
   <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
   <p class="hint">Layout, appearance and these card choices are saved with your account, so all your devices look the same.</p>
+  <p class="hint">Keyboard: <kbd>/</kbd> search, <kbd>n</kbd> add a link, <kbd>Esc</kbd> clear the search or leave a field.</p>
   <h3 class="sect">Your account</h3>
   <p class="hint" id="authState" style="margin-top:0"></p>
   <div id="authForm">
@@ -290,6 +330,29 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <button class="btn primary" type="button" id="auSave">Save account</button>
     <button class="btn" type="button" id="auOut">Sign out</button>
   </div>
+  <div id="tfBox">
+    <h3 class="sect">Two-factor sign-in</h3>
+    <p class="hint" id="tfState" style="margin-top:0"></p>
+    <div id="tfSetup" hidden>
+      <p class="hint" style="margin-top:0">Scan this with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …), then enter the 6-digit code it shows.</p>
+      <div class="qr" id="tfQr"></div>
+      <p class="hint">Can't scan? Enter this key in the app: <span class="keybox" id="tfSecret"></span></p>
+      <label for="tfCode">Code from the app</label><input id="tfCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8">
+      <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" type="button" id="tfConfirm">Confirm and turn on</button><button class="btn" type="button" id="tfCancel">Cancel</button></div>
+    </div>
+    <div id="tfCodes" hidden>
+      <p class="hint" style="margin-top:0"><b>Recovery codes.</b> Each one signs you in once if your phone is not at hand. Save them somewhere safe now; they are not shown again.</p>
+      <div class="codes" id="tfCodeList"></div>
+      <div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="tfCodesDl">Download</button><button class="btn primary" type="button" id="tfCodesDone">I have saved them</button></div>
+    </div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px" id="tfButtons">
+      <button class="btn primary" type="button" id="tfOn">Turn on</button>
+      <button class="btn" type="button" id="tfNewCodes">New recovery codes</button>
+      <button class="btn danger" type="button" id="tfOff">Turn off</button></div>
+  </div>
+  <h3 class="sect">Signed-in devices</h3>
+  <div id="sessList"></div>
+  <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="sessOthers">Sign out all other devices</button></div>
   <div id="adminBox" hidden>
     <h3 class="sect">People (admin)</h3>
     <p class="hint" style="margin-top:0">Everyone has their own links, groups, API key and backups. Nobody, the admin included, can see someone else's links.</p>
@@ -391,6 +454,7 @@ function takePrefs(p) {
 async function load() {
   try { S = await api("GET", "api/state"); } catch (e) { toast(e.message); return; }
   if (!prefsLoaded) takePrefs(S.prefs);
+  dupok = (S.prefs && S.prefs.dupok) || [];
   if (filter === "none" ? !S.links.some(l => l.group_id === null) : !(filter in SPECIAL) && !group(+filter))
     filter = S.groups.length ? String(S.groups[0].id) : "all";  // nothing (valid) chosen yet: open the first group
   render();
@@ -592,6 +656,7 @@ function renderSelection() {
 }
 function render() {
   renderSelection();
+  showDupCount();
   if (cfg.layout === "sections") {
     fillSelect($("addGroup"), addGroupValue(null), "No group");
     return renderSections(visible());
@@ -604,6 +669,8 @@ function render() {
   const favs = S.links.filter(l => l.pinned).length, opened = S.links.filter(l => l.opened_at).length;
   const broken = S.links.filter(l => l.broken).length;
   if (broken) side.append(sideItem(SPECIAL.broken, "broken", "#e5534b", broken));
+  const dups = dupSets().length;
+  if (dups) { const d = sideItem("Duplicates", "dups", "#e0a31b", dups); d.onclick = () => $("dupBtn").click(); d.onkeydown = e => { if (e.key === "Enter") $("dupBtn").click(); }; side.append(d); }
   if (favs) side.append(sideItem(SPECIAL.fav, "fav", "#f5b83d", favs));
   side.append(sideItem(SPECIAL.all, "all", null, S.links.length));
   if (S.links.length) side.append(sideItem(SPECIAL.recent, "recent", null, Math.min(30, S.links.length)));
@@ -777,6 +844,7 @@ async function refreshAuth() {
   $("auCurWrap").hidden = $("auOut").hidden = !!a.ha;
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
   $("adminBox").hidden = !a.is_admin;
+  showTf(a); refreshSessions();
   if (a.is_admin) refreshUsers();
   $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? "Replace API key" : "Create API key"; $("keyShow").hidden = true;
   const base = new URL(".", location.href).href.replace(/\/$/, "");  // works at / and under a path prefix
@@ -809,7 +877,7 @@ async function refreshUsers() {
   $("userList").replaceChildren(...r.users.map(u => {
     const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
     const info = el("div", { style: "flex:1;min-width:0" }, el("b", { textContent: u.username }),
-      el("span", { className: "hint", textContent: "  " + (u.is_admin ? "admin · " : "") + u.links + (u.links === 1 ? " link" : " links") + (u.me ? " · you" : "") }));
+      el("span", { className: "hint", textContent: "  " + (u.is_admin ? "admin · " : "") + (u.totp ? "2FA · " : "") + u.links + (u.links === 1 ? " link" : " links") + (u.me ? " · you" : "") }));
     const row = el("div", { className: "row", style: "justify-content:flex-start;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap" }, info,
       btn("New password", async () => {
         const pw = prompt("New password for " + u.username + " (at least 8 characters).\nThey are signed out on all their devices.");
@@ -819,6 +887,10 @@ async function refreshUsers() {
       btn(u.is_admin ? "Remove admin" : "Make admin", async () => {
         try { await api("PATCH", "api/users/" + u.id, { is_admin: !u.is_admin }); refreshUsers(); if (u.me) refreshAuth(); } catch (e) { toast(e.message); }
       }));
+    if (u.totp && !u.me) row.append(btn("Turn off 2FA", async () => {
+      if (!confirm("Turn off two-factor sign-in for " + u.username + "? Use this when they lost their phone; they can turn it on again.")) return;
+      try { await api("PATCH", "api/users/" + u.id, { totp: false }); toast("Two-factor sign-in is off for " + u.username + "."); refreshUsers(); } catch (e) { toast(e.message); }
+    }));
     if (!u.me) row.append(btn("Remove", async () => {
       if (!confirm("Remove " + u.username + "?\nTheir " + u.links + (u.links === 1 ? " link" : " links") + ", groups and pictures are deleted too. This cannot be undone.")) return;
       try { await api("DELETE", "api/users/" + u.id); toast(u.username + " removed."); refreshUsers(); } catch (e) { toast(e.message); }
@@ -856,6 +928,201 @@ $("auOut").onclick = async () => { try { await api("POST", "api/logout"); } catc
 applySettings();
 if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});
 
+
+// ---------------------------------------------------------------- files to download
+function download(name, text, type) {
+  const a = el("a", { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+const today = () => new Date().toISOString().slice(0, 10);
+// items: [{url, title, note, group}] -> a TileMark file (importable here) or a browser bookmarks file
+function tileMarkFile(items) {
+  const groups = [...new Set(items.map(i => i.group).filter(Boolean))].map((name, i) => ({ name, position: i }));
+  return JSON.stringify({ format: "tilemark-export", version: 1, exported_at: Math.floor(Date.now() / 1000), groups,
+    links: items.map((i, n) => ({ url: i.url, title: i.title || "", note: i.note || "", group: i.group || "", position: n })) }, null, 1);
+}
+function bookmarksFile(items) {
+  const esc = t => String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const out = ["<!DOCTYPE NETSCAPE-Bookmark-file-1>", '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">', "<TITLE>Bookmarks</TITLE>", "<H1>Bookmarks</H1>", "<DL><p>"];
+  const byGroup = new Map(); for (const i of items) { const g = i.group || ""; if (!byGroup.has(g)) byGroup.set(g, []); byGroup.get(g).push(i); }
+  for (const [g, list] of byGroup) {
+    const rows = list.map(i => (g ? "        " : "    ") + '<DT><A HREF="' + esc(i.url) + '">' + esc(i.title || i.url) + "</A>");
+    if (g) out.push("    <DT><H3>" + esc(g) + "</H3>", "    <DL><p>", ...rows, "    </DL><p>"); else out.push(...rows);
+  }
+  out.push("</DL><p>", ""); return out.join("\n");
+}
+const asItem = l => ({ url: l.url, title: l.title, note: l.note, group: (group(l.group_id) || {}).name || "" });
+
+// ---------------------------------------------------------------- export
+$("exportBtn").onclick = () => $("exportDlg").showModal();
+$("expGo").onclick = () => {
+  const kind = document.querySelector('input[name="expKind"]:checked').value;
+  location.href = kind === "json" ? "api/export?format=json" : "api/export";
+  $("exportDlg").close();
+};
+
+// ---------------------------------------------------------------- import review
+let review = [];
+function openReview(dups) {
+  review = dups;
+  const same = dups.filter(d => d.same_address).length;
+  $("revIntro").textContent = dups.length + (dups.length === 1 ? " link was" : " links were") + " not added because you already have " + (dups.length === 1 ? "it" : "them")
+    + (same ? " (" + same + " with exactly the same address)" : "") + ". Download them to keep a copy, keep some as separate links, or discard them.";
+  $("revList").replaceChildren(...dups.map((d, i) => {
+    const box = el("input", { type: "checkbox", disabled: d.same_address, title: d.same_address ? "Identical address: already saved" : "Keep as a separate link" });
+    box.dataset.i = i;
+    const ex = d.existing || {};
+    const match = ex.earlier ? "the same page appears earlier in this import" + (ex.group ? " (" + ex.group + ")" : "")
+      : "already saved as “" + (ex.title || ex.url) + "”" + (ex.group ? " in " + ex.group : "");
+    return el("label", { className: "revrow" }, box, el("div", {},
+      el("b", { textContent: d.title || host(d.url) }), d.folder ? el("span", { className: "pill", textContent: d.folder }) : "",
+      d.same_address ? el("span", { className: "pill", textContent: "identical address" }) : "",
+      el("small", { textContent: d.url }), el("small", { textContent: "↳ " + match })));
+  }));
+  $("reviewDlg").showModal();
+}
+const reviewItems = () => review.map(d => ({ url: d.url, title: d.title, note: d.note, group: d.folder }));
+$("revDlJson").onclick = () => download("tilemark-duplicates-" + today() + ".json", tileMarkFile(reviewItems()), "application/json");
+$("revDlHtml").onclick = () => download("tilemark-duplicates-" + today() + ".html", bookmarksFile(reviewItems()), "text/html");
+$("revKeep").onclick = async () => {
+  const picked = [...$("revList").querySelectorAll("input:checked")].map(b => review[+b.dataset.i]);
+  let kept = 0;
+  for (const d of picked) {
+    const gid = (S.groups.find(g => g.name.toLowerCase() === (d.folder || "").toLowerCase()) || {}).id || null;
+    try { await api("POST", "api/links", { url: d.url, title: d.title, note: d.note, group_id: gid, group: gid ? "" : d.folder, allow_duplicate: true }); kept++; }
+    catch (e) { toast(e.message); }
+  }
+  $("reviewDlg").close(); toast(kept ? "Kept " + kept + (kept === 1 ? " link" : " links") + " as separate links; the rest were discarded." : "Duplicates discarded.");
+  load();
+};
+
+// ---------------------------------------------------------------- duplicates among saved links
+let dupok = [];
+function dupSets() {
+  const parent = new Map(), find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const byKey = new Map();
+  for (const l of S.links) parent.set(l.id, l.id);
+  for (const l of S.links) for (const k of [l.ukey, l.final_key]) if (k) {
+    if (byKey.has(k)) parent.set(find(l.id), find(byKey.get(k))); else byKey.set(k, l.id);
+  }
+  const sets = new Map();
+  for (const l of S.links) { const r = find(l.id); if (!sets.has(r)) sets.set(r, []); sets.get(r).push(l); }
+  return [...sets.values()].filter(set => set.length > 1 && !dupok.some(ok => set.every(l => ok.includes(l.id))));
+}
+function showDupCount() {
+  const n = dupSets().length;
+  $("dupBtn").hidden = !n; $("dupBtn").textContent = "Duplicates (" + n + ")";
+  return n;
+}
+function renderDups() {
+  const sets = dupSets();
+  if (!sets.length) { $("dupsList").replaceChildren(el("p", { className: "hint", textContent: "No duplicates left." })); return; }
+  $("dupsList").replaceChildren(...sets.map((set, si) => {
+    const name = "keep" + si, ordered = [...set].sort((a, b) => (b.custom_thumb + b.pinned + !!b.note) - (a.custom_thumb + a.pinned + !!a.note) || a.id - b.id);
+    const rows = ordered.map((l, i) => el("label", { className: "pick" },
+      el("input", { type: "radio", name, value: l.id, checked: i === 0 }),
+      el("div", {}, el("b", { textContent: l.title || host(l.url) }),
+        group(l.group_id) ? el("span", { className: "pill", textContent: group(l.group_id).name }) : "",
+        l.pinned ? el("span", { className: "pill", textContent: "★ favourite" }) : "",
+        l.custom_thumb ? el("span", { className: "pill", textContent: "own picture" }) : "",
+        el("small", { textContent: l.url }), l.note ? el("small", { textContent: "Note: " + l.note }) : "")));
+    const merge = el("input", { type: "checkbox", checked: true });
+    const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
+    return el("div", { className: "dupset" }, ...rows,
+      el("label", { className: "check" }, merge, "Take over notes, favourite, own title and picture from the others"),
+      el("div", { className: "row", style: "justify-content:flex-start;margin-top:8px;flex-wrap:wrap" },
+        btn("Keep the selected one, remove the others", async () => {
+          const keep = +rows.map(r => r.querySelector("input")).find(r => r.checked).value;
+          try { const r = await api("POST", "api/duplicates/merge", { keep, remove: set.map(l => l.id).filter(id => id !== keep), merge: merge.checked });
+                toast("Removed " + r.removed + (r.removed === 1 ? " duplicate." : " duplicates.")); await load(); renderDups(); }
+          catch (e) { toast(e.message); }
+        }, "btn primary"),
+        btn("Download this set", () => download("tilemark-duplicates-" + today() + ".json", tileMarkFile(set.map(asItem)), "application/json")),
+        btn("These are different", async () => {
+          dupok.push(set.map(l => l.id).sort((a, b) => a - b));
+          try { await api("PUT", "api/prefs", { dupok }); } catch (e) { toast(e.message); }
+          renderDups(); render();
+        })));
+  }));
+}
+const allDupItems = () => dupSets().flat().map(asItem);
+$("dupBtn").onclick = () => { renderDups(); $("dupsDlg").showModal(); };
+$("dupsDlJson").onclick = () => download("tilemark-duplicates-" + today() + ".json", tileMarkFile(allDupItems()), "application/json");
+$("dupsDlHtml").onclick = () => download("tilemark-duplicates-" + today() + ".html", bookmarksFile(allDupItems()), "text/html");
+
+// ---------------------------------------------------------------- keyboard
+document.addEventListener("keydown", e => {
+  if (document.querySelector("dialog[open]") || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target, typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+  if (e.key === "Escape") {
+    if (t === $("search") && $("search").value) { $("search").value = ""; q = ""; render(); }
+    else if (typing) t.blur();
+    return;
+  }
+  if (typing) return;
+  if (e.key === "/") { e.preventDefault(); $("search").focus(); $("search").select(); }
+  else if (e.key === "n") { e.preventDefault(); $("addUrl").focus(); }
+});
+
+// ---------------------------------------------------------------- signed-in devices
+function device(ua) {
+  const b = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const o = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
+  return b + (o ? " on " + o : "");
+}
+function ago(t) {
+  const s = Math.max(0, Date.now() / 1000 - t);
+  return s < 120 ? "just now" : s < 7200 ? Math.round(s / 60) + " minutes ago" : s < 172800 ? Math.round(s / 3600) + " hours ago" : new Date(t * 1000).toLocaleDateString();
+}
+async function refreshSessions() {
+  let r; try { r = await api("GET", "api/sessions"); } catch (e) { return; }
+  $("sessOthers").hidden = r.sessions.filter(x => !x.current).length === 0;
+  $("sessList").replaceChildren(...(r.sessions.length ? r.sessions.map(x => {
+    const out = el("button", { className: "btn", type: "button", textContent: "Sign out", hidden: x.current });
+    out.onclick = async () => { try { await api("DELETE", "api/sessions/" + x.id); refreshSessions(); } catch (e) { toast(e.message); } };
+    return el("div", { className: "sess" }, el("div", {}, el("b", { textContent: device(x.ua) }), x.current ? el("span", { className: "pill", textContent: "this device" }) : "",
+      el("small", { textContent: "Active " + ago(x.last_seen) + (x.ip ? " · " + x.ip : "") + " · signed in " + new Date(x.created_at * 1000).toLocaleDateString() })), out);
+  }) : [el("p", { className: "hint", style: "margin-top:0", textContent: "No devices are signed in on TileMark's own address." })]));
+}
+$("sessOthers").onclick = async () => {
+  if (!confirm("Sign out all other devices? They will need your password again.")) return;
+  try { await api("POST", "api/sessions/others"); toast("Other devices are signed out."); refreshSessions(); } catch (e) { toast(e.message); }
+};
+
+// ---------------------------------------------------------------- two-factor sign-in
+let tfAuth = {};
+function showTf(a) {
+  tfAuth = a;
+  $("tfBox").hidden = !!a.ha;  // inside Home Assistant, HA's own sign-in (and its two-factor) applies
+  $("tfState").textContent = a.totp ? "On. After your password, TileMark asks for a code from your authenticator app. " + a.recovery_left + " recovery codes left."
+    : "Off. Turn it on to also ask for a code from an authenticator app on your phone after the password.";
+  $("tfOn").hidden = !!a.totp; $("tfOff").hidden = $("tfNewCodes").hidden = !a.totp;
+}
+const tfPassword = what => tfAuth.ha ? "" : prompt("Enter your current password to " + what + ".");
+function showCodes(codes) {
+  $("tfCodeList").replaceChildren(...codes.map(c => el("span", { textContent: c })));
+  $("tfCodesDl").onclick = () => download("tilemark-recovery-codes.txt", "TileMark recovery codes for " + $("auUser").value + "\nEach code works once.\n\n" + codes.join("\n") + "\n", "text/plain");
+  $("tfCodes").hidden = false; $("tfSetup").hidden = true; $("tfButtons").hidden = $("tfState").hidden = true;
+}
+$("tfOn").onclick = async () => {
+  try { const r = await api("POST", "api/totp/setup"); $("tfQr").innerHTML = r.qr; $("tfSecret").textContent = r.secret.replace(/(.{4})/g, "$1 ").trim();
+        $("tfCode").value = ""; $("tfSetup").hidden = false; $("tfButtons").hidden = $("tfState").hidden = true; $("tfCode").focus(); } catch (e) { toast(e.message); }
+};
+$("tfCancel").onclick = () => { $("tfSetup").hidden = true; $("tfButtons").hidden = $("tfState").hidden = false; };
+$("tfConfirm").onclick = async () => {
+  try { const r = await api("POST", "api/totp/enable", { code: $("tfCode").value }); showCodes(r.recovery); } catch (e) { toast(e.message); }
+};
+$("tfCode").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("tfConfirm").click(); } };
+$("tfCodesDone").onclick = () => { $("tfCodes").hidden = true; $("tfButtons").hidden = $("tfState").hidden = false; refreshAuth(); };
+$("tfNewCodes").onclick = async () => {
+  const pw = tfPassword("make new recovery codes"); if (pw === null) return;
+  try { showCodes((await api("POST", "api/totp/recovery", { current_password: pw })).recovery); } catch (e) { toast(e.message); }
+};
+$("tfOff").onclick = async () => {
+  const pw = tfPassword("turn off two-factor sign-in"); if (pw === null) return;
+  try { await api("DELETE", "api/totp", { current_password: pw }); toast("Two-factor sign-in is off."); refreshAuth(); } catch (e) { toast(e.message); }
+};
+
 // import
 $("importBtn").onclick = () => { $("iText").value = ""; $("iFile").value = ""; fillSelect($("iGroup"), "", "Keep folders as groups / no group"); $("importDlg").showModal(); };
 $("iGo").onclick = async () => {
@@ -864,7 +1131,9 @@ $("iGo").onclick = async () => {
   if (!$("iText").value.trim() && !$("iFile").files[0]) return toast("Paste some links or choose a file.");
   $("iGo").disabled = true;
   try { const r = await api("POST", "api/import", fd); $("importDlg").close();
-        toast("Imported " + r.added + (r.added === 1 ? " link" : " links") + (r.skipped ? ", skipped " + r.skipped + " (duplicates or not web links)" : "") + "."); load(); }
+        toast("Imported " + r.added + (r.added === 1 ? " link" : " links") + (r.skipped ? ", skipped " + r.skipped + " that are not web links" : "")
+          + (r.duplicates.length ? "; " + r.duplicates.length + " already saved, see the list." : "."));
+        await load(); if (r.duplicates.length) openReview(r.duplicates); }
   catch (e) { toast(e.message); } finally { $("iGo").disabled = false; }
 };
 // pasting several links into the add box sends them to import

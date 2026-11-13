@@ -16,5 +16,9 @@ COPY pages ./pages
 VOLUME /data
 EXPOSE 8080
 
+# Marks the container unhealthy (and lets Docker/Dockge show it) when LinkBoard stops answering.
+HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=4)"]
+
 # One worker on purpose: thumbnail fetching runs in a thread pool inside it.
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "8", "--timeout", "120", "app:app"]

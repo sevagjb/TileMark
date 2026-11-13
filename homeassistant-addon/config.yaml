@@ -1,5 +1,8 @@
 # Home Assistant add-on for LinkBoard. It runs the same image as the Docker install
 # (ghcr.io/sevagjb/linkboard:<version>), so "version" must be a released LinkBoard version.
+# Do not change "version" by hand: when a v* tag has been built and pushed, the release
+# workflow sets it (and copies CHANGELOG.md here), so Home Assistant never offers an
+# update whose image does not exist yet.
 name: LinkBoard
 version: "1.2.0"
 slug: linkboard
@@ -25,5 +28,8 @@ ports_description:
   8080/tcp: LinkBoard's own address (browser button, phone app, API key). Leave empty to use only the sidebar.
 environment:
   LINKBOARD_HA_ADDON: "1"
+# Home Assistant restarts LinkBoard when this stops answering (checked on the add-on's own
+# address, so it works whether or not the direct port is turned on).
+watchdog: http://[HOST]:[PORT:8080]/healthz
 # Stopped for a moment while Home Assistant makes a backup, so the database copy is consistent.
 backup: cold

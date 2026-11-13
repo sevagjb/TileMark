@@ -473,6 +473,22 @@ def _oembed(url):
     return "", ""
 
 
+# Bot-protection and consent screens ("Just a moment...", "Security Check") answer
+# with their own title instead of the page's. Saving that would replace a real
+# title with a meaningless one, so such pages count as "no information": the
+# previous title is kept, or the site name is used.
+WALL_TITLE = re.compile(
+    r"^\s*(just a moment|one moment,? please|please wait|attention required|security check|"
+    r"checking (your|if the site connection is secure|your browser)|verify(ing)? you are (a )?human|"
+    r"are you a (robot|human)|access denied|ddos[- ]guard|bot verification|human verification|"
+    r"captcha|redirecting|request blocked|before you continue|too many requests)\b[\s.!…|:-]*"
+    r"(\|\s*cloudflare)?[\s.!…]*$", re.I)
+
+
+def is_wall_title(title):
+    return bool(title) and bool(WALL_TITLE.match(title))
+
+
 def _scrape(url, headers):
     data, ctype, final = _download(url, 2_000_000, headers)
     out = {"title": "", "desc": "", "images": [], "icons": [], "final": final}
@@ -492,6 +508,8 @@ def _scrape(url, headers):
             out["icons"].insert(0, urljoin(final, tag["href"]))
         elif "icon" in rel:
             out["icons"].append(urljoin(final, tag["href"]))
+    if is_wall_title(out["title"]):  # the wall's own picture and text say nothing about the page
+        out.update(title="", desc="", images=[])
     return out
 
 
@@ -543,7 +561,8 @@ def fetch_meta(link_id):
             if thumb:
                 _remove_thumb(thumb)
             return
-        new_title = cur["title"] if (cur["custom_title"] or (not title and cur["title"])) else title
+        keep_old = cur["title"] and not is_wall_title(cur["title"])
+        new_title = cur["title"] if (cur["custom_title"] or (not title and keep_old)) else title
         new_title = (new_title or urlparse(url).netloc)[:300]
         old = cur["thumb"]
         if not thumb:  # keep whatever we had before
@@ -934,7 +953,7 @@ def _check_new_credentials(username, password, need_password=True):
 
 
 OPEN_ENDPOINTS = {"login_page", "api_login", "auth_status", "api_setup", "icon", "save_page", "manifest",
-                  "service_worker"}
+                  "service_worker", "healthz"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
 ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings"}
 
@@ -953,6 +972,18 @@ def require_login():
     if request.endpoint in ADMIN_ENDPOINTS and not g.user["is_admin"]:
         return jsonify(error="Only an admin can do this."), 403
     return None
+
+
+@app.get("/healthz")
+def healthz():
+    """For the Docker health check and the Home Assistant watchdog: the app answers
+    and its database can be read. Says nothing else."""
+    try:
+        with db() as c:
+            c.execute("SELECT 1 FROM settings LIMIT 1").fetchone()
+    except sqlite3.Error:
+        return Response("database unavailable\n", status=503, mimetype="text/plain")
+    return Response("ok\n", mimetype="text/plain")
 
 
 @app.get("/login")
@@ -1802,6 +1833,12 @@ if not _CLI and not os.environ.get("LINKBOARD_NO_WORKERS"):
     if setup_needed():  # (as an add-on, opening it from the HA sidebar also creates the first account)
         print_setup_code()
     threading.Thread(target=_check_scheduler, daemon=True).start()
+    with db() as _c:  # once: fetch again the titles saved from a bot-check page before 1.2.1
+        if not _c.execute("SELECT 1 FROM settings WHERE key='wall_titles_fixed'").fetchone():
+            for _r in _c.execute("SELECT id, title FROM links WHERE custom_title=0").fetchall():
+                if is_wall_title(_r["title"]):
+                    _c.execute("UPDATE links SET status='pending' WHERE id=?", (_r["id"],))
+            _c.execute("INSERT INTO settings (key, value) VALUES ('wall_titles_fixed', '1')")
     with db() as _c:  # pick up anything interrupted by a restart
         for _r in _c.execute("SELECT id FROM links WHERE status='pending'").fetchall():
             queue(_r["id"])

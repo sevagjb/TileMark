@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LinkBoard</title>
+<title>TileMark</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='28' fill='%232f6fe4'/><rect x='22' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='22' y='63' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='63' width='35' height='35' rx='9' fill='%23fff'/><path d='M77 57h14v26l-7-6-7 6z' fill='%23f5b83d'/></svg>">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -192,7 +192,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>LinkBoard</div>
+    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>TileMark</div>
     <form class="add" id="addForm">
       <input id="addUrl" type="text" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
       <select id="addGroup" aria-label="Group"></select>
@@ -303,11 +303,11 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <label class="check"><input id="dbOn" type="checkbox"> Keep a daily backup of the whole installation in the data folder (last 7 days)</label>
     <p class="hint" id="dbState"></p>
     <label class="check"><input id="fpOn" type="checkbox"> Fetch titles and pictures for local network addresses (192.168.x.x, nas.local, …)</label>
-    <p class="hint">Off by default. When on, anyone with an account can make LinkBoard open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.</p>
+    <p class="hint">Off by default. When on, anyone with an account can make TileMark open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.</p>
   </div>
   <h3 class="sect">Save from anywhere</h3>
   <p class="hint" style="margin-top:0"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
-  <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">🔖 Save to LinkBoard</a></div>
+  <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">🔖 Save to TileMark</a></div>
   <p class="hint" id="pwaHint"></p>
   <p class="hint"><b>API key</b> for scripts and phone shortcuts. It can only add links and read group names.</p>
   <div id="keyShow" hidden><input class="keybox" id="keyVal" type="text" readonly>
@@ -324,8 +324,8 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
   <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
   <h3 class="sect">Restore</h3>
-  <p class="hint" style="margin-top:0">Replaces all your current links and groups with the ones from a backup file (a backup from LinkBoard 1.0 works too). Your account and other people's links stay as they are.</p>
-  <input id="rsFile" type="file" accept=".lbk,.zip">
+  <p class="hint" style="margin-top:0">Replaces all your current links and groups with the ones from a backup file (a backup from TileMark 1.0 works too). Your account and other people's links stay as they are.</p>
+  <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
   <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
   <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
   <div class="row"><button class="btn primary" value="close">Done</button></div>
@@ -338,24 +338,24 @@ const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
 let cfg = { layout: "panel", theme: "system", thumb: "m", open: "new", defgroup: "" };
-try { Object.assign(cfg, JSON.parse(localStorage.getItem("lb.settings") || "{}")); } catch {}
+try { Object.assign(cfg, JSON.parse(localStorage.getItem("tm.settings") || "{}")); } catch {}
 if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
 function applySettings() {
-  try { localStorage.setItem("lb.settings", JSON.stringify(cfg)); } catch {}
+  try { localStorage.setItem("tm.settings", JSON.stringify(cfg)); } catch {}
   document.body.classList.remove("lay-panel", "lay-sections", "thumb-s", "thumb-m", "thumb-l");
   document.body.classList.add("lay-" + cfg.layout, "thumb-" + (["s", "m", "l"].includes(cfg.thumb) ? cfg.thumb : "m"));
   if (cfg.theme === "light" || cfg.theme === "dark") document.documentElement.dataset.theme = cfg.theme;
   else delete document.documentElement.dataset.theme;
 }
 let expanded = new Set();  // sections layout: groups start collapsed; only the opened ones are remembered
-try { expanded = new Set(JSON.parse(localStorage.getItem("lb.expanded") || "[]")); } catch {}
-const saveExpanded = () => { try { localStorage.setItem("lb.expanded", JSON.stringify([...expanded])); } catch {} };
+try { expanded = new Set(JSON.parse(localStorage.getItem("tm.expanded") || "[]")); } catch {}
+const saveExpanded = () => { try { localStorage.setItem("tm.expanded", JSON.stringify([...expanded])); } catch {} };
 const SPECIAL = { broken: "Broken links", fav: "Favourites", recent: "Recently added", opened: "Recently opened", all: "All links", none: "Ungrouped" };
-let sorts = {}; try { sorts = JSON.parse(localStorage.getItem("lb.sort") || "{}"); } catch {}
+let sorts = {}; try { sorts = JSON.parse(localStorage.getItem("tm.sort") || "{}"); } catch {}
 const sortMode = () => sorts[filter] || "manual";
 const isGroupView = () => filter === "none" || !!group(+filter);
 let selecting = false, selected = new Set(), dragIds = [];
-let S = { groups: [], links: [] }, filter = localStorage.getItem("lb.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
+let S = { groups: [], links: [] }, filter = localStorage.getItem("tm.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
 
 async function api(method, path, body) {
   const opt = { method };
@@ -384,7 +384,7 @@ function takePrefs(p) {
   if (p.layout) cfg.layout = p.layout;
   if (p.theme) cfg.theme = p.theme;
   for (const k of ["thumb", "open", "defgroup"]) if (k in p) cfg[k] = p[k];
-  if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("lb.sort", JSON.stringify(sorts)); } catch {} }
+  if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} }
   applySettings();
 }
 
@@ -398,7 +398,7 @@ async function load() {
   if (S.links.some(l => l.status === "pending") || (S.check && S.check.running)) timer = setTimeout(load, 2000);
   if ($("settingsDlg").open) showCheck();
 }
-function setFilter(f) { filter = String(f); localStorage.setItem("lb.filter", filter); render(); }
+function setFilter(f) { filter = String(f); localStorage.setItem("tm.filter", filter); render(); }
 
 function visible() {
   const needle = q.trim().toLowerCase();
@@ -433,8 +433,8 @@ function makeDrop(c, key) {  // drop a card on a group to move it; drop a group 
   c.ondragover = e => { e.preventDefault(); c.classList.add("drop"); };
   c.ondragleave = () => c.classList.remove("drop");
   c.ondrop = async e => { e.preventDefault(); c.classList.remove("drop");
-    const gid = +e.dataTransfer.getData("text/linkboard-group");
-    const ids = e.dataTransfer.getData("text/linkboard").split(",").map(Number).filter(Boolean);
+    const gid = +e.dataTransfer.getData("text/tilemark-group");
+    const ids = e.dataTransfer.getData("text/tilemark").split(",").map(Number).filter(Boolean);
     try {
       if (gid) { if (key !== "none" && gid !== key) await moveGroup(gid, S.groups.findIndex(g => g.id === key)); }
       else if (ids.length) { await api("POST", "api/links/bulk", { ids, group_id: key === "none" ? null : key }); selected.clear(); }
@@ -448,7 +448,7 @@ async function moveGroup(gid, index) {
   ids.splice(Math.max(0, Math.min(index, ids.length)), 0, gid);
   await api("POST", "api/groups/order", { ids });
 }
-const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => { e.dataTransfer.setData("text/linkboard-group", g.id); e.dataTransfer.effectAllowed = "move"; }; };
+const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => { e.dataTransfer.setData("text/tilemark-group", g.id); e.dataTransfer.effectAllowed = "move"; }; };
 function openMany(list) {
   if (list.length > 8 && !confirm("Open " + list.length + " tabs?")) return;
   let blocked = 0; for (const l of list) if (!window.open(l.url, "_blank", "noopener")) blocked++;
@@ -495,7 +495,7 @@ function card(l) {
   a.append(el("span", { className: "tick", textContent: selected.has(l.id) ? "✓" : "" }));
   a.ondragstart = e => {  // dragging a selected card takes the whole selection along
     dragIds = selected.has(l.id) ? [...selected] : [l.id];
-    e.dataTransfer.setData("text/linkboard", dragIds.join(",")); e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/tilemark", dragIds.join(",")); e.dataTransfer.effectAllowed = "move";
   };
   a.ondragend = () => { dragIds = []; clearIns(); };
   a.ondragover = e => {  // reorder inside a group: show where the card will land
@@ -620,7 +620,7 @@ function render() {
   else if (g) { pt.style.setProperty("--c", g.color); pt.append(el("i"), g.name); }
   else pt.append(SPECIAL[filter] || "All links");
   const ss = $("sortSel"); ss.hidden = searching || filter === "recent" || filter === "opened"; ss.value = sortMode();
-  ss.onchange = () => { sorts[filter] = ss.value; try { localStorage.setItem("lb.sort", JSON.stringify(sorts)); } catch {} savePrefs(); render(); };
+  ss.onchange = () => { sorts[filter] = ss.value; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} savePrefs(); render(); };
   $("board").replaceChildren(el("div", { className: "list" }, ...list.map(card)));
   $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
   $("openAll").hidden = list.length < 2;
@@ -700,7 +700,7 @@ $("gSave").onclick = async () => {
     if (gid) await api("PATCH", "api/groups/" + gid, { name, color: pickedColor });
     else gid = (await api("POST", "api/groups", { name, color: pickedColor })).id;
     if ($("gPos").value !== $("gPos").dataset.was) await moveGroup(gid, +$("gPos").value);
-    if (!editingGroup) { filter = String(gid); localStorage.setItem("lb.filter", filter); expanded.add(filter); saveExpanded(); }
+    if (!editingGroup) { filter = String(gid); localStorage.setItem("tm.filter", filter); expanded.add(filter); saveExpanded(); }
     $("groupDlg").close(); load();
   } catch (e) { toast(e.message); }
 };
@@ -717,7 +717,7 @@ function showCheck() {
   if (S.admin) {
     $("fpOn").checked = !!S.admin.fetch_private; $("dbOn").checked = !!S.admin.daily_backup;
     $("dbState").textContent = (S.admin.backup_last ? "Last daily backup: " + new Date(S.admin.backup_last * 1000).toLocaleString() + " (" + S.admin.backups + " kept). " : "No daily backup yet. ")
-      + "Each holds every account; to restore one, stop LinkBoard and unzip it into the data folder." + (S.admin.addon ? " Home Assistant's own backups already include LinkBoard." : "");
+      + "Each holds every account; to restore one, stop TileMark and unzip it into the data folder." + (S.admin.addon ? " Home Assistant's own backups already include TileMark." : "");
   }
   $("ckState").textContent = c.running && !c.total ? "A check is running."
     : c.running ? "Checking… " + c.done + " of " + c.total + " links done."
@@ -726,7 +726,7 @@ function showCheck() {
 $("ckOn").onchange = async e => { try { await api("POST", "api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("dbOn").onchange = async e => { try { await api("POST", "api/settings", { daily_backup: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("fpOn").onchange = async e => {
-  if (e.target.checked && !confirm("Allow LinkBoard to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make LinkBoard reach devices on your network.")) { e.target.checked = false; return; }
+  if (e.target.checked && !confirm("Allow TileMark to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make TileMark reach devices on your network.")) { e.target.checked = false; return; }
   try { await api("POST", "api/settings", { fetch_private: e.target.checked }); toast(e.target.checked ? "Local addresses will be fetched. Use ↻ to refresh existing local links." : "Local addresses will no longer be fetched."); load(); }
   catch (err) { toast(err.message); }
 };
@@ -772,7 +772,7 @@ $("settingsBtn").onclick = () => {
 async function refreshAuth() {
   let a; try { a = await api("GET", "api/auth"); } catch (e) { return; }
   $("authState").textContent = a.ha
-    ? "Signed in through Home Assistant as " + a.username + (a.is_admin ? " (admin)" : "") + ". Set a password here only if you also want to sign in on LinkBoard's own port."
+    ? "Signed in through Home Assistant as " + a.username + (a.is_admin ? " (admin)" : "") + ". Set a password here only if you also want to sign in on TileMark's own port."
     : "Signed in as " + a.username + (a.is_admin ? " (admin)." : ".");
   $("auCurWrap").hidden = $("auOut").hidden = !!a.ha;
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
@@ -780,15 +780,15 @@ async function refreshAuth() {
   if (a.is_admin) refreshUsers();
   $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? "Replace API key" : "Create API key"; $("keyShow").hidden = true;
   const base = new URL(".", location.href).href.replace(/\/$/, "");  // works at / and under a path prefix
-  $("bmLink").href = "javascript:(function(){window.open('" + base + "/save?u='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'linkboard-save','width=480,height=600')})()";
+  $("bmLink").href = "javascript:(function(){window.open('" + base + "/save?u='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'tilemark-save','width=480,height=600')})()";
   $("pwaHint").replaceChildren(el("b", { textContent: "Phone: " }), window.isSecureContext && location.protocol === "https:"
-    ? "open " + base + " in the phone's browser and choose \"Install app\" or \"Add to Home screen\". On Android, LinkBoard then appears in the Share menu of other apps."
-    : "installing LinkBoard as an app and sharing to it needs the HTTPS address. Open LinkBoard through HTTPS to see the steps.");
+    ? "open " + base + " in the phone's browser and choose \"Install app\" or \"Add to Home screen\". On Android, TileMark then appears in the Share menu of other apps."
+    : "installing TileMark as an app and sharing to it needs the HTTPS address. Open TileMark through HTTPS to see the steps.");
   // Inside the Home Assistant sidebar the address changes every session, so the button
-  // and the phone app need LinkBoard's own port (add-on → Configuration → Network).
+  // and the phone app need TileMark's own port (add-on → Configuration → Network).
   $("bmLink").hidden = !!a.ha;
   if (a.ha) $("pwaHint").replaceChildren(el("b", { textContent: "Inside Home Assistant: " }),
-    "the browser button and the phone app need LinkBoard's own address. Turn on the port under the add-on's Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well.");
+    "the browser button and the phone app need TileMark's own address. Turn on the port under the add-on's Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well.");
 }
 $("bmLink").onclick = e => { e.preventDefault(); toast("Drag this button to your favorites bar; don't click it here."); };
 $("keyNew").onclick = async () => {
@@ -837,7 +837,7 @@ $("bkGo").onclick = async () => {
     const r = await fetch("api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("bkPass").value }) });
     if (r.status === 401) { location.href = "login"; return; }
     if (!r.ok) throw new Error("The backup could not be made (" + r.status + ").");
-    const a = el("a", { href: URL.createObjectURL(await r.blob()), download: r.headers.get("X-Filename") || "linkboard-backup" });
+    const a = el("a", { href: URL.createObjectURL(await r.blob()), download: r.headers.get("X-Filename") || "tilemark-backup" });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     toast($("bkPass").value ? "Encrypted backup downloaded. Keep the password: without it the file cannot be opened." : "Backup downloaded (not encrypted).");
     $("bkPass").value = "";

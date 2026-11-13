@@ -1,6 +1,6 @@
 {
-  "name": "LinkBoard",
-  "short_name": "LinkBoard",
+  "name": "TileMark",
+  "short_name": "TileMark",
   "description": "Your saved links, with thumbnails and groups.",
   "start_url": "./",
   "scope": "./",

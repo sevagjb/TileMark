@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in - LinkBoard</title>
+<title>Sign in - TileMark</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='28' fill='%232f6fe4'/><rect x='22' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='22' y='63' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='63' width='35' height='35' rx='9' fill='%23fff'/><path d='M77 57h14v26l-7-6-7 6z' fill='%23f5b83d'/></svg>">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
@@ -29,10 +29,10 @@ button:disabled { opacity: .6; cursor: default; }
 <body>
 <form id="f">
   <svg viewBox="0 0 120 120" width="44" height="44" aria-hidden="true" style="display:block;margin-bottom:12px"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>
-  <h1>LinkBoard</h1>
+  <h1>TileMark</h1>
   <p id="intro">Sign in to see your links.</p>
   <div id="codeWrap" hidden><label for="c">Setup code</label><input id="c" type="text" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX" style="text-transform:uppercase;letter-spacing:.08em">
-    <p class="small">Printed in the container log: <code>docker logs linkboard</code>, or the log of the stack in Dockge.</p></div>
+    <p class="small">Printed in the container log: <code>docker logs tilemark</code>, or the log of the stack in Dockge.</p></div>
   <label for="u">Username</label><input id="u" type="text" autocomplete="username" maxlength="60" autofocus required>
   <label for="p" id="pLbl">Password</label><input id="p" type="password" autocomplete="current-password" required>
   <div id="p2Wrap" hidden><label for="p2">Repeat the password</label><input id="p2" type="password" autocomplete="new-password"></div>
@@ -41,13 +41,13 @@ button:disabled { opacity: .6; cursor: default; }
   <button id="go" type="submit">Sign in</button>
 </form>
 <script>
-try { const t = JSON.parse(localStorage.getItem("lb.settings") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+try { const t = JSON.parse(localStorage.getItem("tm.settings") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
 const $ = id => document.getElementById(id);
 let setup = false;
 fetch("api/auth").then(r => r.json()).then(a => {
   if (!a.setup) return;
   setup = true;  // a new installation: the first account is created here and becomes the admin
-  document.title = "Set up - LinkBoard";
+  document.title = "Set up - TileMark";
   $("intro").textContent = "Welcome! Create the first account. It becomes the admin, who can add more people later.";
   $("codeWrap").hidden = false; $("c").required = true; $("c").focus();
   $("pLbl").textContent = "Password (at least 8 characters)"; $("p").autocomplete = "new-password"; $("p").minLength = 8;
@@ -66,7 +66,7 @@ $("f").onsubmit = async e => {
     $("err").textContent = d.error || "Could not sign in.";
     if (!setup) { $("p").value = ""; $("p").focus(); }  // a wrong setup code keeps the chosen passwords
     else if (d.code) $("c").select();
-  } catch { $("err").textContent = "Could not reach LinkBoard."; }
+  } catch { $("err").textContent = "Could not reach TileMark."; }
   $("go").disabled = false;
 };
 </script>

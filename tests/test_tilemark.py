@@ -1,4 +1,4 @@
-"""Tests for LinkBoard 1.1: upgrade from 1.0, first start, several users, safe fetching.
+"""Tests for TileMark 1.1: upgrade from 1.0, first start, several users, safe fetching.
 
 Run: pip install -r requirements.txt pytest && pytest -q
 """
@@ -16,11 +16,11 @@ import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-os.environ["LINKBOARD_NO_WORKERS"] = "1"
+os.environ["TILEMARK_NO_WORKERS"] = "1"
 for _var in ("NO_PROXY", "no_proxy"):  # the local test servers are reached directly
     os.environ[_var] = ",".join(filter(None, [os.environ.get(_var, ""), "127.0.0.1", "localhost"]))
 
-# The 1.0 schema, exactly as LinkBoard 1.0 left it after all its column upgrades.
+# The 1.0 schema, exactly as TileMark 1.0 left it after all its column upgrades.
 V1_SCHEMA = """
 CREATE TABLE groups (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE,
     color TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0);
@@ -42,7 +42,7 @@ INSERT INTO links (id, url, title, group_id, status, created_at, position, thumb
 
 def load_app(data_dir, addon=False):
     os.environ["DATA_DIR"] = str(data_dir)
-    os.environ["LINKBOARD_HA_ADDON"] = "1" if addon else ""
+    os.environ["TILEMARK_HA_ADDON"] = "1" if addon else ""
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.queue = lambda link_id: None  # no fetching from the internet during tests
@@ -51,7 +51,7 @@ def load_app(data_dir, addon=False):
 
 def make_v1(data_dir, login=True):
     os.makedirs(os.path.join(data_dir, "thumbs"), exist_ok=True)
-    con = sqlite3.connect(os.path.join(data_dir, "linkboard.db"))
+    con = sqlite3.connect(os.path.join(data_dir, "tilemark.db"))
     con.executescript(V1_SCHEMA)
     if login:
         from werkzeug.security import generate_password_hash
@@ -104,7 +104,7 @@ def test_upgrade_from_v1_with_login(tmp_path):
     # the old API key keeps working, now as this user's key
     r = A.app.test_client().post("/api/links", json={"url": "https://ha.io"}, headers={"Authorization": "Bearer lb_oldkey"})
     assert r.status_code == 201
-    con = sqlite3.connect(os.path.join(tmp_path, "linkboard.db"))
+    con = sqlite3.connect(os.path.join(tmp_path, "tilemark.db"))
     keys = {r[0] for r in con.execute("SELECT key FROM settings")}
     assert not keys & {"auth_user", "auth_hash", "auth_ver", "api_key_hash"}
     assert con.execute("PRAGMA foreign_key_check").fetchall() == []
@@ -239,9 +239,9 @@ def test_backup_restore_per_user(two):
         A.restore_backup(1, data, "wrong")
     plain = bob.post("/api/backup", json={}).get_data()
     z = zipfile.ZipFile(io.BytesIO(plain))
-    assert sorted(z.namelist()) == ["linkboard.db", f"thumbs/{lb}-b.webp"]  # nothing of admin's
+    assert sorted(z.namelist()) == sorted(["tilemark.db", f"thumbs/{lb}-b.webp"])  # nothing of admin's
     bob.post("/api/links", json={"url": "https://after-backup.example"})
-    r = bob.post("/api/restore", data={"file": (io.BytesIO(data), "b.lbk"), "password": "bk-pass"})
+    r = bob.post("/api/restore", data={"file": (io.BytesIO(data), "b.tmk"), "password": "bk-pass"})
     assert r.status_code == 200 and r.get_json()["links"] == 1
     sb = bob.get("/api/state").get_json()
     assert [l["url"] for l in sb["links"]] == ["https://admin.example"]
@@ -257,7 +257,7 @@ def test_restore_v1_backup_into_user(two, tmp_path):
     make_v1(v1)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
-        z.write(v1 / "linkboard.db", "linkboard.db")
+        z.write(v1 / "tilemark.db", "tilemark.db")
         z.write(v1 / "thumbs" / "1-1.webp", "thumbs/1-1.webp")
     r = bob.post("/api/restore", data={"file": (io.BytesIO(buf.getvalue()), "old.zip")})
     assert r.get_json() == {"ok": True, "links": 3, "groups": 2}
@@ -425,7 +425,7 @@ def test_setup_code_attempts_are_limited(fresh):
 
 def test_setup_code_cli(tmp_path):
     import subprocess
-    env = dict(os.environ, DATA_DIR=str(tmp_path), LINKBOARD_NO_WORKERS="1")
+    env = dict(os.environ, DATA_DIR=str(tmp_path), TILEMARK_NO_WORKERS="1")
     out = subprocess.run([sys.executable, "app.py", "setup-code"], cwd=ROOT, env=env, capture_output=True, text=True)
     A = load_app(tmp_path)
     assert out.returncode == 0 and A.setup_code() in out.stdout
@@ -455,14 +455,14 @@ def test_ingress_signs_in_and_creates_accounts(tmp_path):
     s2 = c2.get("/api/state", headers=h2).get_json()
     assert s2["me"] == {"username": "sevag-2", "is_admin": False} and s2["links"] == []
     assert c2.get("/api/users", headers=h2).status_code == 403
-    # an HA admin becomes a LinkBoard admin
+    # an HA admin becomes a TileMark admin
     c3, h3 = ha_client(A, uid="ha-3", name="mama", groups="system-users,system-admin")
     assert c3.get("/api/state", headers=h3).get_json()["me"]["is_admin"] is True
     # the same HA user comes back to the same account
     assert len(c.get("/api/state", headers=h).get_json()["links"]) == 1
     with A.db() as con:
         assert con.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 3
-    assert "linkboard" not in (c.get("/api/state", headers=h).headers.get("Set-Cookie") or "")
+    assert "tilemark" not in (c.get("/api/state", headers=h).headers.get("Set-Cookie") or "")
 
 
 def test_ingress_headers_ignored_from_elsewhere(tmp_path):
@@ -517,12 +517,12 @@ def test_pages_use_relative_addresses():
 def test_addon_config_matches_image():
     import yaml
     cfg = yaml.safe_load(open(os.path.join(ROOT, "homeassistant-addon", "config.yaml")))
-    assert cfg["image"] == "ghcr.io/sevagjb/linkboard" and cfg["ingress_port"] == 8080
-    assert cfg["environment"]["LINKBOARD_HA_ADDON"] == "1"
+    assert cfg["image"] == "ghcr.io/sevagjb/tilemark" and cfg["ingress_port"] == 8080
+    assert cfg["environment"]["TILEMARK_HA_ADDON"] == "1"
     assert set(cfg["arch"]) == {"amd64", "aarch64"}  # the two platforms the image is built for
     import re as _re
     changelog = open(os.path.join(ROOT, "CHANGELOG.md")).read()
-    assert f"## {cfg['version']}" in changelog  # the add-on version is a LinkBoard release
+    assert f"## {cfg['version']}" in changelog  # the add-on version is a TileMark release
 
 
 # ------------------------------------------------------ daily backup, prefs
@@ -537,14 +537,14 @@ def test_daily_backup_keeps_seven(fresh, monkeypatch):
         open(os.path.join(fresh.THUMB_DIR, n), "wb").write(b"x")
     os.makedirs(fresh.BACKUP_DIR, exist_ok=True)
     for day in range(1, 10):  # nine older ones
-        open(os.path.join(fresh.BACKUP_DIR, f"linkboard-2026-01-0{day}.zip"), "wb").write(b"old")
+        open(os.path.join(fresh.BACKUP_DIR, f"tilemark-2026-01-0{day}.zip"), "wb").write(b"old")
     path = fresh.daily_backup()
     names = fresh.list_backups()
-    assert len(names) == 7 and os.path.basename(path) == names[-1] and "linkboard-2026-01-01.zip" not in names
+    assert len(names) == 7 and os.path.basename(path) == names[-1] and "tilemark-2026-01-01.zip" not in names
     z = zipfile.ZipFile(path)
-    assert sorted(z.namelist()) == ["linkboard.db", "thumbs/own.webp"]
+    assert sorted(z.namelist()) == sorted(["tilemark.db", "thumbs/own.webp"])
     snap = os.path.join(fresh.DATA_DIR, "check.db")
-    open(snap, "wb").write(z.read("linkboard.db"))
+    open(snap, "wb").write(z.read("tilemark.db"))
     assert sqlite3.connect(snap).execute("SELECT COUNT(*) FROM links").fetchone()[0] == 2
     s = c.get("/api/state").get_json()["admin"]
     assert s["daily_backup"] is True and s["backups"] == 7 and s["backup_last"] > 0
@@ -607,7 +607,7 @@ def test_saved_wall_titles_fetched_again_once(tmp_path):
         con.execute("UPDATE links SET status='ok', title='Just a moment...', custom_title=1 WHERE id=?", (b,))  # the user's own: kept
         con.execute("DELETE FROM settings WHERE key='wall_titles_fixed'")
     queued = []
-    os.environ.pop("LINKBOARD_NO_WORKERS")
+    os.environ.pop("TILEMARK_NO_WORKERS")
     try:
         import concurrent.futures
         orig = concurrent.futures.ThreadPoolExecutor.submit
@@ -619,7 +619,7 @@ def test_saved_wall_titles_fetched_again_once(tmp_path):
         load_app(tmp_path)  # a second start does not do it again
     finally:
         concurrent.futures.ThreadPoolExecutor.submit = orig
-        os.environ["LINKBOARD_NO_WORKERS"] = "1"
+        os.environ["TILEMARK_NO_WORKERS"] = "1"
     assert queued == [a]
 
 
@@ -638,3 +638,54 @@ def test_addon_watchdog_and_changelog():
     root = open(os.path.join(ROOT, "CHANGELOG.md")).read()
     assert open(os.path.join(ROOT, "homeassistant-addon", "CHANGELOG.md")).read() == root, \
         "copy CHANGELOG.md to homeassistant-addon/CHANGELOG.md"
+
+
+# ------------------------------------------------------------------- 2.0.0
+def _old_backup(src_dir, password=""):
+    """A backup file exactly as the app wrote it under its previous name."""
+    import os as _os
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.write(src_dir / "tilemark.db", "link" + "board.db")
+        z.write(src_dir / "thumbs" / "1-1.webp", "thumbs/1-1.webp")
+    data = buf.getvalue()
+    if password:
+        magic = b"LINK" + b"BOARD-BACKUP-1\n"
+        salt, nonce = _os.urandom(16), _os.urandom(12)
+        key = Scrypt(salt=salt, length=32, n=2 ** 15, r=8, p=1).derive(password.encode())
+        data = magic + salt + nonce + AESGCM(key).encrypt(nonce, data, magic)
+    return data
+
+
+@pytest.mark.parametrize("password", ["", "old-pass"])
+def test_restore_backup_from_previous_name(two, tmp_path, password):
+    A, admin, bob, *_ = two
+    old = tmp_path / "old"
+    make_v1(old)
+    data = _old_backup(old, password)
+    r = bob.post("/api/restore", data={"file": (io.BytesIO(data), "old.lbk" if password else "old.zip"), "password": password})
+    assert r.get_json() == {"ok": True, "links": 3, "groups": 2}, r.get_json()
+    prox = next(l for l in bob.get("/api/state").get_json()["links"] if l["url"] == "https://proxmox.com")
+    assert prox["note"] == "hypervisor" and bob.get("/thumbs/" + prox["thumb"]).status_code == 200
+
+
+def test_new_backups_use_new_format(two):
+    A, admin, bob, *_ = two
+    enc = bob.post("/api/backup", json={"password": "x"})
+    assert enc.get_data().startswith(b"TILEMARK-BACKUP-1\n") and enc.headers["X-Filename"].endswith(".tmk")
+    assert enc.headers["X-Filename"].startswith("tilemark-backup-")
+    plain = bob.post("/api/backup", json={}).get_data()
+    assert "tilemark.db" in zipfile.ZipFile(io.BytesIO(plain)).namelist()
+
+
+def test_no_old_name_left():
+    """Apart from reading old backups, nothing in the app carries the previous name."""
+    import subprocess
+    files = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).split()
+    old = "link" + "board"
+    allowed = {"CHANGELOG.md", "homeassistant-addon/CHANGELOG.md", "README.md", "ROADMAP.md"}  # the "formerly" notes
+    hits = [f for f in files if not f.endswith(".png") and f not in allowed
+            and old in open(os.path.join(ROOT, f), encoding="utf-8").read().lower()]
+    assert hits == []

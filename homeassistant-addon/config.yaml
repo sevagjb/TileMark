@@ -4,7 +4,7 @@
 # workflow sets it (and copies CHANGELOG.md here), so Home Assistant never offers an
 # update whose image does not exist yet.
 name: LinkBoard
-version: "1.2.0"
+version: "1.2.1"
 slug: linkboard
 description: Your saved links, with thumbnails and groups, in the Home Assistant sidebar.
 url: https://github.com/sevagjb/linkboard

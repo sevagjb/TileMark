@@ -40,8 +40,9 @@ INSERT INTO links (id, url, title, group_id, status, created_at, position, thumb
 """
 
 
-def load_app(data_dir):
+def load_app(data_dir, addon=False):
     os.environ["DATA_DIR"] = str(data_dir)
+    os.environ["LINKBOARD_HA_ADDON"] = "1" if addon else ""
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.queue = lambda link_id: None  # no fetching from the internet during tests
@@ -71,7 +72,8 @@ def fresh(tmp_path):
 
 def setup_admin(A, name="admin", pw="adminpass1"):
     c = A.app.test_client()
-    assert c.post("/api/setup", json={"username": name, "password": pw}).status_code == 201
+    r = c.post("/api/setup", json={"username": name, "password": pw, "code": A.setup_code()})
+    assert r.status_code == 201, r.get_json()
     return c
 
 
@@ -140,7 +142,7 @@ def test_new_install_is_never_open(fresh):
 def test_setup_only_once(fresh):
     setup_admin(fresh)
     other = fresh.app.test_client()
-    assert other.post("/api/setup", json={"username": "evil", "password": "evilpass11"}).status_code == 409
+    assert other.post("/api/setup", json={"username": "evil", "password": "evilpass11", "code": "x"}).status_code == 409
     assert other.get("/api/auth").get_json()["setup"] is False
 
 
@@ -396,3 +398,167 @@ def test_lan_link_saved_but_not_fetched(fresh, local_server, monkeypatch):
         row = con.execute("SELECT title, thumb FROM links WHERE id=?", (lid,)).fetchone()
     assert "secret" not in row["title"] and row["thumb"] == ""
     assert fresh._probe(local_server + "/") == "unknown"
+
+
+# --------------------------------------------------------------- setup code
+def test_setup_needs_the_code(fresh):
+    c = fresh.app.test_client()
+    code = fresh.setup_code()
+    assert code == fresh.setup_code()  # stays the same until used
+    for wrong in ("", "AAAA-BBBB-CCCC"):
+        r = c.post("/api/setup", json={"username": "evil", "password": "evilpass11", "code": wrong})
+        assert r.status_code == 403 and r.get_json()["code"] is True
+    assert fresh.setup_needed()
+    # typed in lower case and without dashes still counts
+    r = c.post("/api/setup", json={"username": "me", "password": "mypass123", "code": code.lower().replace("-", " ")})
+    assert r.status_code == 201
+    assert fresh.get_setting("setup_code") is None
+
+
+def test_setup_code_attempts_are_limited(fresh):
+    c = fresh.app.test_client()
+    codes = [c.post("/api/setup", json={"username": "e", "password": "evilpass11", "code": "WRONG"}).status_code
+             for _ in range(7)]
+    assert 429 in codes  # throttled like wrong passwords
+
+
+def test_setup_code_cli(tmp_path):
+    import subprocess
+    env = dict(os.environ, DATA_DIR=str(tmp_path), LINKBOARD_NO_WORKERS="1")
+    out = subprocess.run([sys.executable, "app.py", "setup-code"], cwd=ROOT, env=env, capture_output=True, text=True)
+    A = load_app(tmp_path)
+    assert out.returncode == 0 and A.setup_code() in out.stdout
+
+
+# ----------------------------------------------------- Home Assistant add-on
+HA = "172.30.32.2"
+
+
+def ha_client(A, uid="ha-1", name="sevag", groups="system-users,system-admin", addr=HA, prefix="/api/hassio_ingress/tok_123"):
+    c = A.app.test_client()
+    c.environ_base.update(REMOTE_ADDR=addr)
+    h = {"X-Remote-User-Id": uid, "X-Remote-User-Name": name, "X-Remote-User-Groups": groups, "X-Ingress-Path": prefix}
+    return c, h
+
+
+def test_ingress_signs_in_and_creates_accounts(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c, h = ha_client(A, groups="system-users")  # first visitor: admin even without HA admin rights
+    s = c.get("/api/state", headers=h).get_json()
+    assert s["me"] == {"username": "sevag", "is_admin": True}
+    assert c.get("/api/auth", headers=h).get_json()["ha"] is True
+    assert not A.setup_needed() and A.get_setting("setup_code") is None
+    c.post("/api/links", json={"url": "https://mine.example"}, headers=h)
+    # a second HA user, not an HA admin: own empty account, no admin rights
+    c2, h2 = ha_client(A, uid="ha-2", name="sevag", groups="system-users")
+    s2 = c2.get("/api/state", headers=h2).get_json()
+    assert s2["me"] == {"username": "sevag-2", "is_admin": False} and s2["links"] == []
+    assert c2.get("/api/users", headers=h2).status_code == 403
+    # an HA admin becomes a LinkBoard admin
+    c3, h3 = ha_client(A, uid="ha-3", name="mama", groups="system-users,system-admin")
+    assert c3.get("/api/state", headers=h3).get_json()["me"]["is_admin"] is True
+    # the same HA user comes back to the same account
+    assert len(c.get("/api/state", headers=h).get_json()["links"]) == 1
+    with A.db() as con:
+        assert con.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 3
+    assert "linkboard" not in (c.get("/api/state", headers=h).headers.get("Set-Cookie") or "")
+
+
+def test_ingress_headers_ignored_from_elsewhere(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    for addr in ("172.30.32.1", "192.168.1.50", "127.0.0.1"):  # the direct port, a LAN client, the container
+        c, h = ha_client(A, addr=addr)
+        assert c.get("/api/state", headers=h).status_code == 401
+    assert A.setup_needed()
+
+
+def test_ingress_headers_ignored_outside_addon(tmp_path):
+    A = load_app(tmp_path, addon=False)
+    c, h = ha_client(A)
+    assert c.get("/api/state", headers=h).status_code == 401
+    assert c.get("/", headers=h).headers["Location"] == "/login"  # no prefix either
+
+
+def test_ingress_redirects_keep_the_prefix(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c, h = ha_client(A)
+    h.pop("X-Remote-User-Id")  # e.g. an old Home Assistant that sends no user
+    assert c.get("/", headers=h).headers["Location"] == "/api/hassio_ingress/tok_123/login"
+    h["X-Ingress-Path"] = "/evil.example/x"  # not an ingress path: ignored
+    assert c.get("/", headers=h).headers["Location"] == "/login"
+
+
+def test_ingress_account_password_without_current(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c, h = ha_client(A)
+    c.get("/api/state", headers=h)
+    r = c.post("/api/account", json={"username": "sevag", "password": "portpass1"}, headers=h)
+    assert r.status_code == 200
+    sign_in(A, "sevag", "portpass1")  # now usable on the direct port too
+
+
+def test_addon_still_allows_normal_login_on_port(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c = setup_admin(A)  # direct port, no HA headers: the welcome screen and code still apply
+    assert c.get("/api/state").get_json()["me"]["username"] == "admin"
+
+
+def test_pages_use_relative_addresses():
+    """Under ingress the pages live at /api/hassio_ingress/<token>/, so nothing may point at the root."""
+    import re as _re
+    for name in ("index.html", "login.html", "save.html", "manifest.webmanifest"):
+        text = open(os.path.join(ROOT, "pages", name)).read()
+        bad = _re.findall(r"""["'`](/(?:api|thumbs|login|save|sw\.js|manifest|icon-)[^"'`]*)""", text)
+        bad = [b for b in bad if not b.startswith("/save?u=") and not b.startswith("/save\"")]
+        assert not [b for b in bad if not b.startswith("/save")], (name, bad)
+
+
+def test_addon_config_matches_image():
+    import yaml
+    cfg = yaml.safe_load(open(os.path.join(ROOT, "homeassistant-addon", "config.yaml")))
+    assert cfg["image"] == "ghcr.io/sevagjb/linkboard" and cfg["ingress_port"] == 8080
+    assert cfg["environment"]["LINKBOARD_HA_ADDON"] == "1"
+    assert set(cfg["arch"]) == {"amd64", "aarch64"}  # the two platforms the image is built for
+    import re as _re
+    changelog = open(os.path.join(ROOT, "CHANGELOG.md")).read()
+    assert f"## {cfg['version']}" in changelog  # the add-on version is a LinkBoard release
+
+
+# ------------------------------------------------------ daily backup, prefs
+def test_daily_backup_keeps_seven(fresh, monkeypatch):
+    c = setup_admin(fresh)
+    lid = c.post("/api/links", json={"url": "https://own-pic.example"}).get_json()["id"]
+    c.post("/api/links", json={"url": "https://fetched-pic.example"})
+    with fresh.db() as con:
+        con.execute("UPDATE links SET thumb='own.webp', custom_thumb=1 WHERE id=?", (lid,))
+        con.execute("UPDATE links SET thumb='fetched.webp' WHERE id!=?", (lid,))
+    for n in ("own.webp", "fetched.webp"):
+        open(os.path.join(fresh.THUMB_DIR, n), "wb").write(b"x")
+    os.makedirs(fresh.BACKUP_DIR, exist_ok=True)
+    for day in range(1, 10):  # nine older ones
+        open(os.path.join(fresh.BACKUP_DIR, f"linkboard-2026-01-0{day}.zip"), "wb").write(b"old")
+    path = fresh.daily_backup()
+    names = fresh.list_backups()
+    assert len(names) == 7 and os.path.basename(path) == names[-1] and "linkboard-2026-01-01.zip" not in names
+    z = zipfile.ZipFile(path)
+    assert sorted(z.namelist()) == ["linkboard.db", "thumbs/own.webp"]
+    snap = os.path.join(fresh.DATA_DIR, "check.db")
+    open(snap, "wb").write(z.read("linkboard.db"))
+    assert sqlite3.connect(snap).execute("SELECT COUNT(*) FROM links").fetchone()[0] == 2
+    s = c.get("/api/state").get_json()["admin"]
+    assert s["daily_backup"] is True and s["backups"] == 7 and s["backup_last"] > 0
+    c.post("/api/settings", json={"daily_backup": False})
+    assert c.get("/api/state").get_json()["admin"]["daily_backup"] is False
+
+
+def test_daily_backup_default_off_in_addon(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    assert A.daily_backup_on() is False
+
+
+def test_card_prefs(two):
+    A, admin, bob, ga, gb, la, lb = two
+    bob.put("/api/prefs", json={"thumb": "l", "open": "same", "defgroup": gb})
+    assert bob.get("/api/state").get_json()["prefs"] == {"thumb": "l", "open": "same", "defgroup": str(gb)}
+    bob.put("/api/prefs", json={"thumb": "huge", "open": "popup", "defgroup": ga})  # bad values, someone else's group
+    assert bob.get("/api/state").get_json()["prefs"] == {"thumb": "l", "open": "same", "defgroup": ""}

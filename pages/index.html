@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LinkBoard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='28' fill='%232f6fe4'/><rect x='22' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='22' y='63' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='63' width='35' height='35' rx='9' fill='%23fff'/><path d='M77 57h14v26l-7-6-7 6z' fill='%23f5b83d'/></svg>">
-<link rel="apple-touch-icon" href="/icon-180.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#14161b">
 <style>
 :root {
@@ -19,7 +19,7 @@
 :root[data-theme="dark"] { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3;
   --accent: #6ea0ff; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; } [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--text);
        font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -54,7 +54,9 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
 main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 60px; }
 .tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--muted); font-size: 13.5px; }
 .tools .spacer { flex: 1; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card, 230px), 1fr)); gap: 16px; }
+body.thumb-s { --card: 170px; } body.thumb-l { --card: 320px; }
+body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex-basis: 220px; }
 .card { position: relative; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
         border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; box-shadow: var(--shadow);
         transition: transform .12s ease, border-color .12s ease; }
@@ -198,7 +200,7 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     </form>
     <input class="search" id="search" type="search" placeholder="Search" aria-label="Search links">
     <button class="btn" id="importBtn">Import</button>
-    <a class="btn" href="/api/export" style="text-decoration:none">Export</a>
+    <a class="btn" href="api/export" style="text-decoration:none">Export</a>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
@@ -272,13 +274,17 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
   <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
   <h3 class="sect">Appearance</h3>
   <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
-  <p class="hint">Layout, appearance and sort order are saved with your account, so all your devices look the same.</p>
+  <h3 class="sect">Cards</h3>
+  <label for="setThumb">Picture size</label><select id="setThumb"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select>
+  <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
+  <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
+  <p class="hint">Layout, appearance and these card choices are saved with your account, so all your devices look the same.</p>
   <h3 class="sect">Your account</h3>
   <p class="hint" id="authState" style="margin-top:0"></p>
   <div id="authForm">
     <label for="auUser">Username</label><input id="auUser" type="text" maxlength="60" autocomplete="username">
     <label for="auPass">New password (leave empty to keep the current one)</label><input id="auPass" type="password" autocomplete="new-password">
-    <label for="auCur">Current password</label><input id="auCur" type="password" autocomplete="current-password">
+    <div id="auCurWrap"><label for="auCur">Current password</label><input id="auCur" type="password" autocomplete="current-password"></div>
   </div>
   <div class="row" style="justify-content:flex-start;margin-top:12px">
     <button class="btn primary" type="button" id="auSave">Save account</button>
@@ -294,6 +300,8 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="nuGo">Add person</button></div>
     <h3 class="sect">Installation (admin)</h3>
     <label class="check" style="margin-top:0"><input id="ckOn" type="checkbox"> Check everyone's links automatically once a week</label>
+    <label class="check"><input id="dbOn" type="checkbox"> Keep a daily backup of the whole installation in the data folder (last 7 days)</label>
+    <p class="hint" id="dbState"></p>
     <label class="check"><input id="fpOn" type="checkbox"> Fetch titles and pictures for local network addresses (192.168.x.x, nas.local, …)</label>
     <p class="hint">Off by default. When on, anyone with an account can make LinkBoard open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.</p>
   </div>
@@ -329,12 +337,13 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8793a","#e5534b","#d6589f","#b455c9","#8e6ad8","#5b63d6","#a0714f","#7d8590","#4a5568","#c9a227"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
-let cfg = { layout: "panel", theme: "system" };
+let cfg = { layout: "panel", theme: "system", thumb: "m", open: "new", defgroup: "" };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("lb.settings") || "{}")); } catch {}
 if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
 function applySettings() {
   try { localStorage.setItem("lb.settings", JSON.stringify(cfg)); } catch {}
-  document.body.classList.remove("lay-panel", "lay-sections"); document.body.classList.add("lay-" + cfg.layout);
+  document.body.classList.remove("lay-panel", "lay-sections", "thumb-s", "thumb-m", "thumb-l");
+  document.body.classList.add("lay-" + cfg.layout, "thumb-" + (["s", "m", "l"].includes(cfg.thumb) ? cfg.thumb : "m"));
   if (cfg.theme === "light" || cfg.theme === "dark") document.documentElement.dataset.theme = cfg.theme;
   else delete document.documentElement.dataset.theme;
 }
@@ -353,7 +362,7 @@ async function api(method, path, body) {
   if (body instanceof FormData) opt.body = body;
   else if (body) { opt.headers = { "Content-Type": "application/json" }; opt.body = JSON.stringify(body); }
   const r = await fetch(path, opt), d = await r.json().catch(() => ({}));
-  if (r.status === 401 && !path.startsWith("/api/login")) { location.href = "/login"; throw new Error("Please sign in."); }
+  if (r.status === 401 && !path.startsWith("api/login")) { location.href = "login"; throw new Error("Please sign in."); }
   if (!r.ok) throw new Error(d.error || "Something went wrong (" + r.status + ")");
   return d;
 }
@@ -367,19 +376,20 @@ const group = id => S.groups.find(g => g.id === id);
 let prefsLoaded = false, prefsTimer = null;
 function savePrefs() {
   clearTimeout(prefsTimer);
-  prefsTimer = setTimeout(() => api("PUT", "/api/prefs", { layout: cfg.layout, theme: cfg.theme, sorts }).catch(() => {}), 400);
+  prefsTimer = setTimeout(() => api("PUT", "api/prefs", { layout: cfg.layout, theme: cfg.theme, thumb: cfg.thumb, open: cfg.open, defgroup: cfg.defgroup, sorts }).catch(() => {}), 400);
 }
 function takePrefs(p) {
   prefsLoaded = true;
   if (!p || !Object.keys(p).length) { savePrefs(); return; }
   if (p.layout) cfg.layout = p.layout;
   if (p.theme) cfg.theme = p.theme;
+  for (const k of ["thumb", "open", "defgroup"]) if (k in p) cfg[k] = p[k];
   if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("lb.sort", JSON.stringify(sorts)); } catch {} }
   applySettings();
 }
 
 async function load() {
-  try { S = await api("GET", "/api/state"); } catch (e) { toast(e.message); return; }
+  try { S = await api("GET", "api/state"); } catch (e) { toast(e.message); return; }
   if (!prefsLoaded) takePrefs(S.prefs);
   if (filter === "none" ? !S.links.some(l => l.group_id === null) : !(filter in SPECIAL) && !group(+filter))
     filter = S.groups.length ? String(S.groups[0].id) : "all";  // nothing (valid) chosen yet: open the first group
@@ -427,7 +437,7 @@ function makeDrop(c, key) {  // drop a card on a group to move it; drop a group 
     const ids = e.dataTransfer.getData("text/linkboard").split(",").map(Number).filter(Boolean);
     try {
       if (gid) { if (key !== "none" && gid !== key) await moveGroup(gid, S.groups.findIndex(g => g.id === key)); }
-      else if (ids.length) { await api("POST", "/api/links/bulk", { ids, group_id: key === "none" ? null : key }); selected.clear(); }
+      else if (ids.length) { await api("POST", "api/links/bulk", { ids, group_id: key === "none" ? null : key }); selected.clear(); }
       else return;
       load();
     } catch (err) { toast(err.message); } };
@@ -436,7 +446,7 @@ function makeDrop(c, key) {  // drop a card on a group to move it; drop a group 
 async function moveGroup(gid, index) {
   const ids = S.groups.map(g => g.id).filter(i => i !== gid);
   ids.splice(Math.max(0, Math.min(index, ids.length)), 0, gid);
-  await api("POST", "/api/groups/order", { ids });
+  await api("POST", "api/groups/order", { ids });
 }
 const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => { e.dataTransfer.setData("text/linkboard-group", g.id); e.dataTransfer.effectAllowed = "move"; }; };
 function openMany(list) {
@@ -445,6 +455,14 @@ function openMany(list) {
   if (blocked) toast("Your browser blocked " + blocked + " tabs. Allow pop-ups for this page to open them all.");
 }
 
+// The "add" box: the open group if there is one, else what was last picked there,
+// else the default group from Settings.
+let addGroupPicked = null;
+function addGroupValue(current) {
+  if (current) return current;
+  if (addGroupPicked !== null) return addGroupPicked;
+  return group(+cfg.defgroup) ? cfg.defgroup : "";
+}
 function fillSelect(sel, value, noneLabel) {
   sel.replaceChildren(el("option", { value: "", textContent: noneLabel }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })));
   sel.value = value == null ? "" : String(value);
@@ -471,7 +489,7 @@ async function shareLink(l) {
 }
 function card(l) {
   const g = group(l.group_id);
-  const a = el("a", { className: "card", href: l.url, target: "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
+  const a = el("a", { className: "card", href: l.url, target: cfg.open === "same" ? "_top" : "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
   if (g) a.style.setProperty("--c", g.color);
   if (selected.has(l.id)) a.classList.add("sel");
   a.append(el("span", { className: "tick", textContent: selected.has(l.id) ? "✓" : "" }));
@@ -492,18 +510,18 @@ function card(l) {
     const ids = S.links.filter(x => x.group_id === l.group_id).map(x => x.id);
     const rest = ids.filter(i => !moving.includes(i)), picked = ids.filter(i => moving.includes(i));
     rest.splice(rest.indexOf(l.id) + (after ? 1 : 0), 0, ...picked);
-    try { await api("POST", "/api/links/order", { ids: rest }); load(); } catch (err) { toast(err.message); }
+    try { await api("POST", "api/links/order", { ids: rest }); load(); } catch (err) { toast(err.message); }
   };
   a.onclick = e => {  // plain click: open a fresh, independent tab
     if (selecting) { e.preventDefault(); selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); return; }
-    try { navigator.sendBeacon("/api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); setTimeout(render, 0); } catch {}
-    if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    try { navigator.sendBeacon("api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); setTimeout(render, 0); } catch {}
+    if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || cfg.open === "same") return;
     const w = window.open(l.url, "_blank", "noopener,noreferrer");
     if (w !== undefined) e.preventDefault();
   };
   const th = el("div", { className: "thumb" });
   const letter = () => el("span", { className: "letter", textContent: (host(l.url)[0] || "?") });
-  if (l.thumb) { const img = el("img", { className: l.thumb_kind === "image" ? "full" : "icon", src: "/thumbs/" + l.thumb, alt: "", loading: "lazy", draggable: false });
+  if (l.thumb) { const img = el("img", { className: l.thumb_kind === "image" ? "full" : "icon", src: "thumbs/" + l.thumb, alt: "", loading: "lazy", draggable: false });
                  img.onerror = () => img.replaceWith(letter()); th.append(img); }
   else th.append(l.status === "pending" ? el("span", { className: "spin" }) : letter());
   const meta = el("div", { className: "meta" }, el("span", { className: "host", textContent: host(l.url) }));
@@ -512,10 +530,10 @@ function card(l) {
   const btn = (txt, tip, fn) => { const b = el("button", { type: "button", textContent: txt, title: tip }); b.setAttribute("aria-label", tip);
     b.onclick = e => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
   const star = btn(l.pinned ? "★" : "☆", l.pinned ? "Remove from favourites" : "Add to favourites",
-    async () => { try { await api("PATCH", "/api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
+    async () => { try { await api("PATCH", "api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
   if (l.pinned) star.classList.add("on");
   act.append(star, btn("↗", "Share", () => shareLink(l)), btn("✎", "Edit", () => openLink(l)),
-             btn("↻", "Refresh thumbnail", async () => { await api("POST", "/api/links/" + l.id + "/refresh"); load(); }),
+             btn("↻", "Refresh thumbnail", async () => { await api("POST", "api/links/" + l.id + "/refresh"); load(); }),
              btn("✕", "Delete", () => removeLink(l)));
   if (g && cfg.layout === "panel" && (!isGroupView() || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
   const ttl = el("div", { className: "title" }); if (l.pinned) ttl.append(el("span", { className: "pin", textContent: "★", title: "Favourite" }));
@@ -575,7 +593,7 @@ function renderSelection() {
 function render() {
   renderSelection();
   if (cfg.layout === "sections") {
-    const keep = $("addGroup").value; fillSelect($("addGroup"), keep, "No group");
+    fillSelect($("addGroup"), addGroupValue(null), "No group");
     return renderSections(visible());
   }
   const side = $("side"), ungrouped = S.links.filter(l => l.group_id === null).length, searching = !!q.trim();
@@ -594,8 +612,7 @@ function render() {
   add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
   side.append(add);
 
-  const keep = $("addGroup").value;
-  fillSelect($("addGroup"), group(+filter) ? filter : keep, "No group");
+  fillSelect($("addGroup"), addGroupValue(group(+filter) ? filter : null), "No group");
 
   const list = visible(), g = group(+filter), pt = $("ptitle");
   pt.replaceChildren();
@@ -616,17 +633,18 @@ function render() {
 
 async function removeLink(l) {
   if (!confirm("Delete this link?\n" + (l.title || l.url))) return;
-  try { await api("DELETE", "/api/links/" + l.id); load(); } catch (e) { toast(e.message); }
+  try { await api("DELETE", "api/links/" + l.id); load(); } catch (e) { toast(e.message); }
 }
 
 // add
 $("addForm").onsubmit = async e => {
   e.preventDefault();
   const url = $("addUrl").value.trim(); if (!url) return;
-  try { await api("POST", "/api/links", { url, group_id: +$("addGroup").value || null }); $("addUrl").value = ""; load(); }
+  try { await api("POST", "api/links", { url, group_id: +$("addGroup").value || null }); $("addUrl").value = ""; load(); }
   catch (err) { toast(err.message); }
 };
 $("search").oninput = e => { q = e.target.value; render(); };
+$("addGroup").addEventListener("change", e => { if (!group(+filter)) addGroupPicked = e.target.value; });
 $("openAll").onclick = () => openMany(visible());
 
 // edit link
@@ -634,7 +652,7 @@ let newPic = null;
 function setPic(file) {
   newPic = file; const im = $("lPicPrev");
   if (file) { im.src = URL.createObjectURL(file); im.hidden = false; }
-  else if (editing && editing.thumb && editing.thumb_kind === "image") { im.src = "/thumbs/" + editing.thumb; im.hidden = false; }
+  else if (editing && editing.thumb && editing.thumb_kind === "image") { im.src = "thumbs/" + editing.thumb; im.hidden = false; }
   else im.hidden = true;
 }
 $("lPic").onchange = e => setPic(e.target.files[0] || null);
@@ -643,13 +661,13 @@ $("linkDlg").addEventListener("paste", e => {
   if (f) { e.preventDefault(); $("lPic").value = ""; setPic(f); toast("Picture pasted. Press Save to use it."); }
 });
 $("lPicReset").onclick = async () => {
-  try { await api("DELETE", "/api/links/" + editing.id + "/thumb"); $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
+  try { await api("DELETE", "api/links/" + editing.id + "/thumb"); $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
 };
 function openLink(l) { editing = l; $("lPic").value = ""; setPic(null); $("lPicReset").hidden = !l.custom_thumb; $("lUrl").value = l.url; $("lTitle").value = l.title; $("lNote").value = l.note || ""; $("lPin").checked = !!l.pinned;
   fillSelect($("lGroup"), l.group_id, "No group"); $("linkDlg").showModal(); }
 $("lSave").onclick = async () => {
-  try { await api("PATCH", "/api/links/" + editing.id, { url: $("lUrl").value, title: $("lTitle").value, group_id: +$("lGroup").value || null, note: $("lNote").value, pinned: $("lPin").checked });
-        if (newPic) { const fd = new FormData(); fd.append("file", newPic, newPic.name || "picture.png"); await api("POST", "/api/links/" + editing.id + "/thumb", fd); }
+  try { await api("PATCH", "api/links/" + editing.id, { url: $("lUrl").value, title: $("lTitle").value, group_id: +$("lGroup").value || null, note: $("lNote").value, pinned: $("lPin").checked });
+        if (newPic) { const fd = new FormData(); fd.append("file", newPic, newPic.name || "picture.png"); await api("POST", "api/links/" + editing.id + "/thumb", fd); }
         $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
 };
 $("lDelete").onclick = async () => { $("linkDlg").close(); removeLink(editing); };
@@ -679,8 +697,8 @@ $("gSave").onclick = async () => {
   const name = $("gName").value.trim(); if (!name) return toast("Give the group a name.");
   try {
     let gid = editingGroup && editingGroup.id;
-    if (gid) await api("PATCH", "/api/groups/" + gid, { name, color: pickedColor });
-    else gid = (await api("POST", "/api/groups", { name, color: pickedColor })).id;
+    if (gid) await api("PATCH", "api/groups/" + gid, { name, color: pickedColor });
+    else gid = (await api("POST", "api/groups", { name, color: pickedColor })).id;
     if ($("gPos").value !== $("gPos").dataset.was) await moveGroup(gid, +$("gPos").value);
     if (!editingGroup) { filter = String(gid); localStorage.setItem("lb.filter", filter); expanded.add(filter); saveExpanded(); }
     $("groupDlg").close(); load();
@@ -689,29 +707,34 @@ $("gSave").onclick = async () => {
 $("gName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("gSave").click(); } };
 $("gDelete").onclick = async () => {
   if (!confirm('Delete the group "' + editingGroup.name + '"?\nIts links are kept and become ungrouped.')) return;
-  try { await api("DELETE", "/api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
+  try { await api("DELETE", "api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
 };
 
 // link check and refreshing
 function showCheck() {
   const c = S.check || {}, n = S.links.filter(l => l.broken).length;
   $("ckOn").checked = !!c.enabled; $("ckNow").disabled = !!c.running;
-  if (S.admin) $("fpOn").checked = !!S.admin.fetch_private;
+  if (S.admin) {
+    $("fpOn").checked = !!S.admin.fetch_private; $("dbOn").checked = !!S.admin.daily_backup;
+    $("dbState").textContent = (S.admin.backup_last ? "Last daily backup: " + new Date(S.admin.backup_last * 1000).toLocaleString() + " (" + S.admin.backups + " kept). " : "No daily backup yet. ")
+      + "Each holds every account; to restore one, stop LinkBoard and unzip it into the data folder." + (S.admin.addon ? " Home Assistant's own backups already include LinkBoard." : "");
+  }
   $("ckState").textContent = c.running && !c.total ? "A check is running."
     : c.running ? "Checking… " + c.done + " of " + c.total + " links done."
     : (c.last ? "Last check: " + new Date(c.last * 1000).toLocaleString() + ". " : "No check has run yet. ") + (c.last ? (n ? n + (n === 1 ? " broken link." : " broken links.") : "No broken links.") : "");
 }
-$("ckOn").onchange = async e => { try { await api("POST", "/api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
+$("ckOn").onchange = async e => { try { await api("POST", "api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
+$("dbOn").onchange = async e => { try { await api("POST", "api/settings", { daily_backup: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("fpOn").onchange = async e => {
   if (e.target.checked && !confirm("Allow LinkBoard to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make LinkBoard reach devices on your network.")) { e.target.checked = false; return; }
-  try { await api("POST", "/api/settings", { fetch_private: e.target.checked }); toast(e.target.checked ? "Local addresses will be fetched. Use ↻ to refresh existing local links." : "Local addresses will no longer be fetched."); load(); }
+  try { await api("POST", "api/settings", { fetch_private: e.target.checked }); toast(e.target.checked ? "Local addresses will be fetched. Use ↻ to refresh existing local links." : "Local addresses will no longer be fetched."); load(); }
   catch (err) { toast(err.message); }
 };
-$("ckNow").onclick = async () => { try { await api("POST", "/api/linkcheck"); toast("Check started. You can close this window; it continues in the background."); load(); } catch (e) { toast(e.message); } };
+$("ckNow").onclick = async () => { try { await api("POST", "api/linkcheck"); toast("Check started. You can close this window; it continues in the background."); load(); } catch (e) { toast(e.message); } };
 async function refreshMany(list, what) {
   if (!list.length) return;
   if (list.length > 20 && !confirm("Fetch titles and pictures again for " + list.length + " links? This can take a few minutes.")) return;
-  try { await api("POST", "/api/links/bulk", { ids: list.map(l => l.id), refresh: true }); toast("Refreshing " + list.length + (list.length === 1 ? " link" : " links") + what + "."); load(); }
+  try { await api("POST", "api/links/bulk", { ids: list.map(l => l.id), refresh: true }); toast("Refreshing " + list.length + (list.length === 1 ? " link" : " links") + what + "."); load(); }
   catch (e) { toast(e.message); }
 }
 $("rfAll").onclick = () => refreshMany(S.links, "");
@@ -724,12 +747,12 @@ $("selDone").onclick = () => { selecting = false; selected.clear(); render(); };
 $("selAll").onclick = () => { const v = visible(); const all = v.every(l => selected.has(l.id)); for (const l of v) all ? selected.delete(l.id) : selected.add(l.id); render(); };
 $("selMove").onchange = async e => {
   const v = e.target.value; if (!v || !selected.size) return;
-  try { const r = await api("POST", "/api/links/bulk", { ids: [...selected], group_id: v === "none" ? null : +v });
+  try { const r = await api("POST", "api/links/bulk", { ids: [...selected], group_id: v === "none" ? null : +v });
         toast("Moved " + r.count + (r.count === 1 ? " link." : " links.")); selected.clear(); load(); } catch (err) { toast(err.message); }
 };
 $("selDelete").onclick = async () => {
   if (!selected.size || !confirm("Delete " + selected.size + (selected.size === 1 ? " link?" : " links?"))) return;
-  try { await api("POST", "/api/links/bulk", { ids: [...selected], delete: true }); selected.clear(); load(); } catch (err) { toast(err.message); }
+  try { await api("POST", "api/links/bulk", { ids: [...selected], delete: true }); selected.clear(); load(); } catch (err) { toast(err.message); }
 };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && selecting && !document.querySelector("dialog[open]")) $("selDone").click(); });
 
@@ -738,39 +761,51 @@ $("newGroupBtn").onclick = () => openGroup(null);
 $("settingsBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); };
+  $("setThumb").value = cfg.thumb; $("setThumb").onchange = e => { cfg.thumb = e.target.value; applySettings(); savePrefs(); };
+  $("setOpen").value = cfg.open; $("setOpen").onchange = e => { cfg.open = e.target.value; savePrefs(); render(); };
+  fillSelect($("setDefGroup"), group(+cfg.defgroup) ? cfg.defgroup : "", "No group");
+  $("setDefGroup").onchange = e => { cfg.defgroup = e.target.value; addGroupPicked = null; savePrefs(); render(); };
   $("settingsDlg").showModal();
   showCheck();
   refreshAuth();
 };
 async function refreshAuth() {
-  let a; try { a = await api("GET", "/api/auth"); } catch (e) { return; }
-  $("authState").textContent = "Signed in as " + a.username + (a.is_admin ? " (admin)." : ".");
+  let a; try { a = await api("GET", "api/auth"); } catch (e) { return; }
+  $("authState").textContent = a.ha
+    ? "Signed in through Home Assistant as " + a.username + (a.is_admin ? " (admin)" : "") + ". Set a password here only if you also want to sign in on LinkBoard's own port."
+    : "Signed in as " + a.username + (a.is_admin ? " (admin)." : ".");
+  $("auCurWrap").hidden = $("auOut").hidden = !!a.ha;
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
   $("adminBox").hidden = !a.is_admin;
   if (a.is_admin) refreshUsers();
   $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? "Replace API key" : "Create API key"; $("keyShow").hidden = true;
-  const base = location.origin;
+  const base = new URL(".", location.href).href.replace(/\/$/, "");  // works at / and under a path prefix
   $("bmLink").href = "javascript:(function(){window.open('" + base + "/save?u='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'linkboard-save','width=480,height=600')})()";
   $("pwaHint").replaceChildren(el("b", { textContent: "Phone: " }), window.isSecureContext && location.protocol === "https:"
     ? "open " + base + " in the phone's browser and choose \"Install app\" or \"Add to Home screen\". On Android, LinkBoard then appears in the Share menu of other apps."
     : "installing LinkBoard as an app and sharing to it needs the HTTPS address. Open LinkBoard through HTTPS to see the steps.");
+  // Inside the Home Assistant sidebar the address changes every session, so the button
+  // and the phone app need LinkBoard's own port (add-on → Configuration → Network).
+  $("bmLink").hidden = !!a.ha;
+  if (a.ha) $("pwaHint").replaceChildren(el("b", { textContent: "Inside Home Assistant: " }),
+    "the browser button and the phone app need LinkBoard's own address. Turn on the port under the add-on's Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well.");
 }
 $("bmLink").onclick = e => { e.preventDefault(); toast("Drag this button to your favorites bar; don't click it here."); };
 $("keyNew").onclick = async () => {
   if (!$("keyDel").hidden && !confirm("Replace the API key? The current key stops working.")) return;
-  try { const r = await api("POST", "/api/apikey"); await refreshAuth(); $("keyVal").value = r.key; $("keyShow").hidden = false; $("keyVal").select(); } catch (e) { toast(e.message); }
+  try { const r = await api("POST", "api/apikey"); await refreshAuth(); $("keyVal").value = r.key; $("keyShow").hidden = false; $("keyVal").select(); } catch (e) { toast(e.message); }
 };
-$("keyDel").onclick = async () => { if (!confirm("Remove the API key?")) return; try { await api("DELETE", "/api/apikey"); refreshAuth(); toast("API key removed."); } catch (e) { toast(e.message); } };
+$("keyDel").onclick = async () => { if (!confirm("Remove the API key?")) return; try { await api("DELETE", "api/apikey"); refreshAuth(); toast("API key removed."); } catch (e) { toast(e.message); } };
 $("auSave").onclick = async () => {
-  if (!$("auCur").value) return toast("Enter your current password to save changes.");
+  if (!$("auCur").value && !$("auCurWrap").hidden) return toast("Enter your current password to save changes.");
   const newPw = !!$("auPass").value;
-  try { await api("POST", "/api/account", { username: $("auUser").value, password: $("auPass").value, current_password: $("auCur").value });
+  try { await api("POST", "api/account", { username: $("auUser").value, password: $("auPass").value, current_password: $("auCur").value });
         toast(newPw ? "Account saved. Your other devices have been signed out." : "Account saved."); refreshAuth(); } catch (e) { toast(e.message); }
 };
 
 // people (admin)
 async function refreshUsers() {
-  let r; try { r = await api("GET", "/api/users"); } catch (e) { toast(e.message); return; }
+  let r; try { r = await api("GET", "api/users"); } catch (e) { toast(e.message); return; }
   $("userList").replaceChildren(...r.users.map(u => {
     const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
     const info = el("div", { style: "flex:1;min-width:0" }, el("b", { textContent: u.username }),
@@ -779,28 +814,28 @@ async function refreshUsers() {
       btn("New password", async () => {
         const pw = prompt("New password for " + u.username + " (at least 8 characters).\nThey are signed out on all their devices.");
         if (!pw) return;
-        try { await api("PATCH", "/api/users/" + u.id, { password: pw }); toast("Password changed for " + u.username + "."); } catch (e) { toast(e.message); }
+        try { await api("PATCH", "api/users/" + u.id, { password: pw }); toast("Password changed for " + u.username + "."); } catch (e) { toast(e.message); }
       }),
       btn(u.is_admin ? "Remove admin" : "Make admin", async () => {
-        try { await api("PATCH", "/api/users/" + u.id, { is_admin: !u.is_admin }); refreshUsers(); if (u.me) refreshAuth(); } catch (e) { toast(e.message); }
+        try { await api("PATCH", "api/users/" + u.id, { is_admin: !u.is_admin }); refreshUsers(); if (u.me) refreshAuth(); } catch (e) { toast(e.message); }
       }));
     if (!u.me) row.append(btn("Remove", async () => {
       if (!confirm("Remove " + u.username + "?\nTheir " + u.links + (u.links === 1 ? " link" : " links") + ", groups and pictures are deleted too. This cannot be undone.")) return;
-      try { await api("DELETE", "/api/users/" + u.id); toast(u.username + " removed."); refreshUsers(); } catch (e) { toast(e.message); }
+      try { await api("DELETE", "api/users/" + u.id); toast(u.username + " removed."); refreshUsers(); } catch (e) { toast(e.message); }
     }, "btn danger"));
     return row;
   }));
 }
 $("nuGo").onclick = async () => {
-  try { await api("POST", "/api/users", { username: $("nuUser").value, password: $("nuPass").value, is_admin: $("nuAdmin").checked });
+  try { await api("POST", "api/users", { username: $("nuUser").value, password: $("nuPass").value, is_admin: $("nuAdmin").checked });
         toast($("nuUser").value + " can now sign in."); $("nuUser").value = ""; $("nuPass").value = ""; $("nuAdmin").checked = false; refreshUsers(); }
   catch (e) { toast(e.message); }
 };
 $("bkGo").onclick = async () => {
   $("bkGo").disabled = true;
   try {
-    const r = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("bkPass").value }) });
-    if (r.status === 401) { location.href = "/login"; return; }
+    const r = await fetch("api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("bkPass").value }) });
+    if (r.status === 401) { location.href = "login"; return; }
     if (!r.ok) throw new Error("The backup could not be made (" + r.status + ").");
     const a = el("a", { href: URL.createObjectURL(await r.blob()), download: r.headers.get("X-Filename") || "linkboard-backup" });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
@@ -813,13 +848,13 @@ $("rsGo").onclick = async () => {
   if (!confirm("Replace ALL your current links and groups with the contents of this backup?")) return;
   const fd = new FormData(); fd.append("file", f); fd.append("password", $("rsPass").value);
   $("rsGo").disabled = true;
-  try { const r = await api("POST", "/api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
+  try { const r = await api("POST", "api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
         $("settingsDlg").close(); toast("Restored " + r.links + " links in " + r.groups + " groups."); load(); }
   catch (e) { toast(e.message); } finally { $("rsGo").disabled = false; }
 };
-$("auOut").onclick = async () => { try { await api("POST", "/api/logout"); } catch (e) {} location.href = "/login"; };
+$("auOut").onclick = async () => { try { await api("POST", "api/logout"); } catch (e) {} location.href = "login"; };
 applySettings();
-if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 // import
 $("importBtn").onclick = () => { $("iText").value = ""; $("iFile").value = ""; fillSelect($("iGroup"), "", "Keep folders as groups / no group"); $("importDlg").showModal(); };
@@ -828,7 +863,7 @@ $("iGo").onclick = async () => {
   if ($("iFile").files[0]) fd.append("file", $("iFile").files[0]);
   if (!$("iText").value.trim() && !$("iFile").files[0]) return toast("Paste some links or choose a file.");
   $("iGo").disabled = true;
-  try { const r = await api("POST", "/api/import", fd); $("importDlg").close();
+  try { const r = await api("POST", "api/import", fd); $("importDlg").close();
         toast("Imported " + r.added + (r.added === 1 ? " link" : " links") + (r.skipped ? ", skipped " + r.skipped + " (duplicates or not web links)" : "") + "."); load(); }
   catch (e) { toast(e.message); } finally { $("iGo").disabled = false; }
 };

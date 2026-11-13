@@ -37,11 +37,16 @@ One container, one data folder, no external services.
 - **Export** to a standard bookmarks file that any browser can import.
 - **Backup and restore** from Settings, optionally encrypted with a password.
 - **Accounts for everyone in the house:** each person has their own links, groups, settings, API key and backups. The first account is the admin and adds the others.
-- **Never open by accident:** a new installation asks for the first account before it shows anything.
+- **Never open by accident:** a new installation asks for the first account, protected by a one-time setup code from the container log.
+- **Home Assistant add-on:** LinkBoard in the HA sidebar, signed in with your Home Assistant account.
+- **Card options per account:** picture size, open links in a new or the same tab, and the default group for new links.
+- **Daily backup** of the whole installation in the data folder, the last 7 kept.
 - **Search** across titles, addresses and groups.
 - Light and dark appearance.
 
 ## Install
+
+LinkBoard runs in Docker (below) or as a [Home Assistant add-on](#home-assistant-add-on).
 
 You need Docker with Compose. In [Dockge](https://github.com/louislam/dockge), create a new stack and paste the compose; with plain Docker, save it as `compose.yaml` in an empty folder and run `docker compose up -d`.
 
@@ -63,7 +68,7 @@ Everything LinkBoard stores (the database and the thumbnails) is in the `data` f
 
 ### First steps
 
-1. Create the first account on the welcome screen. It is the admin.
+1. Create the first account on the welcome screen. It is the admin. The screen asks for a **setup code**, printed in the container log: in Dockge open the stack's log, with plain Docker run `docker logs linkboard`. (`docker exec linkboard python app.py setup-code` shows it again.) The code only exists until the first account is made; it stops anyone else on your network from claiming a fresh installation before you do.
 2. Paste a link into the field at the top and press Enter, or use **Import** to bring in your browser bookmarks.
 3. Create groups with **+ New group** and drag cards onto them.
 4. To give someone else their own LinkBoard, add them in **⚙ Settings → People**.
@@ -81,6 +86,21 @@ Your data is kept.
 Image tags: `latest` is the newest **release** and is what the compose above uses. `1.1.0` (or `1.1`) stays on one release. `edge` follows every change on `main` before it is released; use it only to try out what is coming.
 
 **Upgrading from 1.0:** the database is upgraded automatically on the first start (make a backup first, to be safe). If you had a login, it becomes the admin account with all your links and your API key, and every device has to sign in once more. If you had no login, LinkBoard asks you to create an account and gives it all existing links.
+
+## Home Assistant add-on
+
+LinkBoard also runs as a Home Assistant add-on, with its own panel in the sidebar. It needs Home Assistant OS or a Supervised installation (with HA Container or Core, use Docker as above).
+
+[![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Flinkboard)
+
+Or by hand: **Settings → Add-ons → Add-on store → ⋮ → Repositories**, add `https://github.com/sevagjb/linkboard`, then install **LinkBoard** and turn on **Show in sidebar**.
+
+- **No second login:** Home Assistant tells LinkBoard who is signed in. Every HA user gets their own LinkBoard account on first visit; the first one and all HA admins are LinkBoard admins.
+- **Backups:** everything is in the add-on's data folder, so Home Assistant backups include LinkBoard.
+- **Browser button, phone app, API key:** these need a fixed address. Enter a port under the add-on's **Configuration → Network**, set a password in LinkBoard's **⚙ Settings → Your account**, and use `http://<your-home-assistant>:<port>`. Leave the port empty to reach LinkBoard only through Home Assistant.
+- **Moving from Docker:** make a backup in your Docker LinkBoard and restore it in the add-on (each person their own).
+
+The add-on uses the same image as the Docker install. Details: [homeassistant-addon/DOCS.md](homeassistant-addon/DOCS.md).
 
 ### Build from source instead
 
@@ -145,7 +165,7 @@ docker exec linkboard python app.py reset-login bob
 
 **⚙ Settings → Restore** replaces all your links and groups with the contents of a backup file; other people's links are not touched. Backups from LinkBoard 1.0 work too. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 
-For the whole installation (all accounts), copy the `data` folder while the container is stopped.
+For the whole installation (all accounts), LinkBoard keeps a **daily backup** in `data/backups/`, the last 7 days (the admin can switch it off under **⚙ Settings → Installation**). It holds the database with every account and the pictures people uploaded themselves; fetched thumbnails are left out to keep it small and come back with ↻. To restore one: stop LinkBoard, unzip it into the `data` folder (replacing `linkboard.db`), start it again. Copying the whole `data` folder while the container is stopped works too.
 
 ## Broken links
 
@@ -174,7 +194,7 @@ Environment variables for the container:
 | `FETCH_WORKERS` | `4` | How many pages are fetched at the same time |
 | `DATA_DIR` | `/data` | Where the database and thumbnails are stored |
 
-Layout, appearance and sort order are chosen in **⚙ Settings** and saved with your account.
+Layout, appearance, sort order and the card options (picture size, open in a new or the same tab, default group for new links) are chosen in **⚙ Settings** and saved with your account.
 
 ## Good to know
 
@@ -192,7 +212,7 @@ Planned work is listed in [ROADMAP.md](ROADMAP.md). Ideas and bug reports are we
 ```bash
 pip install -r requirements.txt
 DATA_DIR=./data python app.py
-pip install pytest && pytest -q    # tests: upgrade from 1.0, accounts kept apart, address checks
+pip install pytest pyyaml && pytest -q    # tests: upgrade, accounts kept apart, address checks, add-on sign-in
 ```
 
 The app is a single Flask file (`app.py`) with a few static pages in `pages/`, and SQLite for storage. Changes per version are in [CHANGELOG.md](CHANGELOG.md).

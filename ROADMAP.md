@@ -63,9 +63,16 @@ Keeping the collection healthy
 - [x] Image tags: `edge` for every change on `main`, `latest` only for releases.
 - [x] Automated tests, run before every image build.
 
+## 1.2.0
+
+- [x] Home Assistant add-on with sidebar panel and Home Assistant sign-in.
+- [x] One-time setup code for a new installation.
+- [x] Daily backup of the whole installation.
+- [x] Card options: picture size, open in the same or a new tab, default group.
+
 ## Ideas for wider reach
 
-- [ ] Home Assistant add-on (most home-lab users run Home Assistant; LinkBoard is a light fit).
+- [x] Home Assistant add-on, signed in through Home Assistant (1.2.0).
 - [ ] App-catalogue entries: Unraid, CasaOS, Umbrel, Proxmox helper script.
 - [ ] Desktop installer for Windows, macOS and Linux (no Docker needed).
 - [ ] Browser extension with a real toolbar icon.
@@ -78,5 +85,5 @@ Keeping the collection healthy
 - [ ] **12.** Keep a readable copy of the page.
 - [x] **13.** Several users, each with their own links (1.1.0).
 - [ ] **14.** Interface in other languages.
-- [ ] Nightly automatic backup kept in the data folder.
+- [x] Daily automatic backup kept in the data folder, last 7 (1.2.0).
 - [x] Require creating an account on first start (1.1.0; no open mode any more).

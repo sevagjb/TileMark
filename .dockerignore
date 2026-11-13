@@ -5,3 +5,5 @@ __pycache__
 .github
 docs
 tests
+homeassistant-addon
+repository.yaml

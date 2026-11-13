@@ -193,6 +193,14 @@ dialog h2 { margin: 0 0 14px; font-size: 18px; }
 dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
 dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog input[type=number], dialog select, dialog textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
+.pw { position: relative; display: block; }
+dialog input.bad { border-color: var(--danger) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
+.hint.err { color: var(--danger); margin-top: 6px; }
+.pw input { padding-inline-end: 42px !important; }
+.pw .peek { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; cursor: pointer;
+            color: var(--muted); padding: 4px 6px; border-radius: 6px; line-height: 0; }
+.pw .peek:hover { color: var(--text); background: var(--line); }
+.pw .peek svg { width: 18px; height: 18px; }
 dialog textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
@@ -206,8 +214,9 @@ dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 .swatches .custom input::-webkit-color-swatch-wrapper { padding: 0; } .swatches .custom input::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .swatches .custom input::-moz-color-swatch { border: 0; border-radius: 50%; }
 .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
-#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1b1f27; color: #fff;
+#toast { position: fixed; inset: auto auto 24px 50%; margin: 0; border: 0; overflow: visible; transform: translateX(-50%); background: #1b1f27; color: #fff;
          padding: 10px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; max-width: 90vw; }
+[dir=rtl] #toast { inset: auto 50% 24px auto; transform: translateX(50%); }
 #toast.show { opacity: 1; }
 dialog.wide { width: min(760px, calc(100vw - 32px)); }
 .dupset { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
@@ -409,6 +418,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <p class="hint">Replaces all your current links and groups with the ones from a backup file (older backups work too). Your account and other people's links stay as they are.</p>
     <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
     <label for="rsPass">Password: your login password (from the day of the backup, or today's), or the backup's own password</label><input id="rsPass" type="password" autocomplete="off">
+    <p class="hint err" id="rsPassErr" role="alert" hidden></p>
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
   </div></details>
   <div id="adminBox" hidden>
@@ -471,7 +481,12 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   <div class="row"><button class="btn primary" value="close">Done</button></div>
 </form></dialog>
 
-<div id="toast" role="status"></div>
+<dialog id="secretDlg"><form method="dialog">
+  <p id="secretMsg" style="white-space:pre-line;margin-top:0"></p>
+  <input id="secretVal" type="password" autocomplete="current-password" aria-labelledby="secretMsg">
+  <div class="row"><button class="btn" type="button" id="secretCancel">Cancel</button><button class="btn primary" id="secretOk" value="ok">OK</button></div>
+</form></dialog>
+<div id="toast" role="status" popover="manual"></div>
 
 <script src="i18n.js"></script>
 <script>
@@ -507,7 +522,14 @@ async function api(method, path, body) {
   if (!r.ok) throw new Error(d.error ? t(d.error) : t("Something went wrong ({code}).", { code: r.status }));
   return d;
 }
-function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 3200); }
+// Messages: shown in the browser's top layer (a popover), so they appear above an open
+// window such as Settings instead of behind it
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg;
+  if (t.showPopover) { try { t.hidePopover(); } catch {} try { t.showPopover(); } catch {} }  // re-shown: on top of the newest window
+  t.classList.add("show"); clearTimeout(t._h);
+  t._h = setTimeout(() => { t.classList.remove("show"); setTimeout(() => { if (!t.classList.contains("show") && t.hidePopover) try { t.hidePopover(); } catch {} }, 250); }, 3200);
+}
 const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
 const group = id => S.groups.find(g => g.id === id);
 
@@ -1020,7 +1042,7 @@ async function refreshUsers() {
       el("span", { className: "hint", textContent: "  " + [u.is_admin ? t("admin") : "", u.totp ? "2FA" : "", (u.links === 1 ? t("{n} link", {n: u.links}) : t("{n} links", {n: u.links})), u.me ? t("you") : ""].filter(Boolean).join(" · ") }));
     const row = el("div", { className: "row", style: "justify-content:flex-start;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap" }, info,
       btn(t("New password"), async () => {
-        const pw = prompt(t("New password for {name} (at least 8 characters).\nThey are signed out on all their devices.", { name: u.username }));
+        const pw = await askSecret(t("New password for {name} (at least 8 characters).\nThey are signed out on all their devices.", { name: u.username }), "new-password");
         if (!pw) return;
         try { await api("PATCH", "api/users/" + u.id, { password: pw }); toast(t("Password changed for {name}.", { name: u.username })); } catch (e) { toast(e.message); }
       }),
@@ -1058,7 +1080,7 @@ async function downloadBackup(extra = {}) {
   if (r.status === 401) { location.href = "login"; return; }
   if (r.status === 428) {  // no personal key yet
     const d = await r.json().catch(() => ({}));
-    if (d.need_password) { const pw = prompt(t("Enter your password once to set up encrypted backups.")); if (pw) return downloadBackup({ login_password: pw }); return; }
+    if (d.need_password) { const pw = await askSecret(t("Enter your password once to set up encrypted backups.")); if (pw) return downloadBackup({ login_password: pw }); return; }
     if (!confirm(t("Your account has no TileMark password, so the file can't be locked with one. Download it without encryption?"))) return;
     return downloadBackup({ plain: true });
   }
@@ -1074,19 +1096,54 @@ async function downloadBackup(extra = {}) {
 $("bkGo").onclick = async () => { $("bkGo").disabled = true; try { await downloadBackup(); } catch (e) { toast(e.message); } finally { $("bkGo").disabled = false; } };
 $("bkPlain").onchange = () => { if ($("bkPlain").checked) $("bkPass").value = ""; };
 $("bkPass").oninput = () => { if ($("bkPass").value) $("bkPlain").checked = false; };
+const missingPassword = msg => {  // said next to the field itself, so it can't be missed
+  const p = $("rsPass"); p.classList.add("bad"); p.focus(); $("rsPassErr").textContent = msg; $("rsPassErr").hidden = false;
+};
+$("rsPass").oninput = () => { $("rsPass").classList.remove("bad"); $("rsPassErr").hidden = true; };
+$("rsFile").onchange = () => { $("rsPass").classList.remove("bad"); $("rsPassErr").hidden = true; };
 $("rsGo").onclick = async () => {
   const f = $("rsFile").files[0]; if (!f) return toast(t("Choose a backup file first."));
+  const head = new TextDecoder().decode(await f.slice(0, 24).arrayBuffer());
+  if (/^(TILEMARK|LINK)/.test(head) && head.includes("BACKUP-") && !$("rsPass").value) return missingPassword(t("This backup is protected. Enter its password."));
   if (!confirm(t("Replace ALL your current links and groups with the contents of this backup?"))) return;
   const fd = new FormData(); fd.append("file", f); fd.append("password", $("rsPass").value);
   $("rsGo").disabled = true;
   try { const r = await api("POST", "api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
         $("settingsDlg").close(); toast(t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups })); load(); }
-  catch (e) { toast(e.message); } finally { $("rsGo").disabled = false; }
+  catch (e) { if (/password/i.test(e.message)) missingPassword(e.message); toast(e.message); } finally { $("rsGo").disabled = false; }
 };
 $("auOut").onclick = async () => { try { await api("POST", "api/logout"); } catch (e) {} location.href = "login"; };
 applySettings();
 if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});
 
+
+// ---------------------------------------------------------------- passwords
+// Every password field is hidden by default, with a button to show what was typed.
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+function addPeek(inp) {
+  if (inp.parentNode.classList.contains("pw")) return;
+  const wrap = el("span", { className: "pw" }), b = el("button", { type: "button", className: "peek" });
+  const show = on => { inp.type = on ? "text" : "password"; b.innerHTML = on ? EYE_OFF : EYE; b.title = on ? t("Hide password") : t("Show password"); b.setAttribute("aria-label", b.title); };
+  b.onclick = () => { show(inp.type === "password"); inp.focus(); };
+  inp.replaceWith(wrap); wrap.append(inp, b); show(false);
+  inp._hide = () => show(false);
+}
+document.querySelectorAll('input[type="password"]').forEach(addPeek);
+// TileMark's own window for asking a password (the browser's prompt() can't hide what is typed).
+// Resolves to the text, or null when cancelled.
+function askSecret(message, autocomplete = "current-password") {
+  return new Promise(resolve => {
+    const d = $("secretDlg"), v = $("secretVal");
+    let done = false;
+    const finish = val => { if (done) return; done = true; d.onclose = null; resolve(val); };
+    $("secretMsg").textContent = message; v.value = ""; v.autocomplete = autocomplete; v._hide && v._hide();
+    $("secretOk").onclick = e => { e.preventDefault(); const val = v.value; d.close(); finish(val); };
+    $("secretCancel").onclick = () => { d.close(); finish(null); };
+    d.onclose = () => finish(null);
+    d.showModal(); v.focus();
+  });
+}
 
 // ---------------------------------------------------------------- files to download
 function download(name, text, type) {
@@ -1260,7 +1317,7 @@ function showTf(a) {
   $("tfOn").hidden = !!a.totp; $("tfOff").hidden = $("tfNewCodes").hidden = !a.totp;
   setSum("tfa", a.totp ? t("On") : t("Off"));
 }
-const tfPassword = what => tfAuth.ha ? "" : prompt(t("Enter your current password to confirm: {what}", { what }));
+const tfPassword = async what => tfAuth.ha ? "" : askSecret(t("Enter your current password to confirm: {what}", { what }));
 function showCodes(codes) {
   $("tfCodeList").replaceChildren(...codes.map(c => el("span", { textContent: c })));
   $("tfCodesDl").onclick = () => download("tilemark-recovery-codes.txt", t("TileMark recovery codes for {name}", { name: $("auUser").value }) + "\n" + t("Each code works once.") + "\n\n" + codes.join("\n") + "\n", "text/plain");
@@ -1277,11 +1334,11 @@ $("tfConfirm").onclick = async () => {
 $("tfCode").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("tfConfirm").click(); } };
 $("tfCodesDone").onclick = () => { $("tfCodes").hidden = true; $("tfButtons").hidden = $("tfState").hidden = false; refreshAuth(); };
 $("tfNewCodes").onclick = async () => {
-  const pw = tfPassword(t("make new recovery codes")); if (pw === null) return;
+  const pw = await tfPassword(t("make new recovery codes")); if (pw === null) return;
   try { showCodes((await api("POST", "api/totp/recovery", { current_password: pw })).recovery); } catch (e) { toast(e.message); }
 };
 $("tfOff").onclick = async () => {
-  const pw = tfPassword(t("turn off two-factor sign-in")); if (pw === null) return;
+  const pw = await tfPassword(t("turn off two-factor sign-in")); if (pw === null) return;
   try { await api("DELETE", "api/totp", { current_password: pw }); toast(t("Two-factor sign-in is off.")); refreshAuth(); } catch (e) { toast(e.message); }
 };
 
@@ -1314,7 +1371,7 @@ async function refreshBackups() {
         const typed = prompt(t("This puts EVERY account back to {date}. Links saved since then are gone (a safety copy of now is made first).\n\nType the date {date} to confirm:", { date: b.date }));
         if (typed === null) return;
         let secret = "";
-        if (b.encrypted) { secret = prompt(t("This backup is encrypted. Enter your password, or the recovery key:")); if (secret === null) return; }
+        if (b.encrypted) { secret = await askSecret(t("This backup is encrypted. Enter your password, or the recovery key:")); if (secret === null) return; }
         try { const res = await api("POST", "api/backups/restore", { name: b.name, confirm: typed, secret });
               alert(t("Restored: {links} links in {users} accounts. Everyone signs in again now.", { links: res.links, users: res.users })); location.href = "login"; }
         catch (e) { toast(e.message); }
@@ -1336,7 +1393,7 @@ function showRecoveryKey(key) {
   $("ekKeyDl").onclick = () => download("tilemark-recovery-key.txt", t("TileMark recovery key") + "\n" + t("It opens every encrypted backup of this TileMark when no admin password works.") + "\n\n" + key + "\n", "text/plain");
 }
 $("ekKeyDone").onclick = () => { $("ekKey").hidden = true; $("ekButtons").hidden = false; refreshBackups(); };
-const ekPassword = () => tfAuth.ha ? "" : prompt(t("Enter your current password to confirm."));
+const ekPassword = async () => tfAuth.ha ? "" : askSecret(t("Enter your current password to confirm."));
 $("ekOn").onclick = async () => {
   const old = ekBackups.filter(b => !b.encrypted), dates = old.map(b => b.date).sort();
   const msg = (old.length
@@ -1346,7 +1403,7 @@ $("ekOn").onclick = async () => {
       : "")
     + t("Next, TileMark shows a recovery key once. Save it: it opens the backups when no admin password works.") + "\n\n" + t("Turn on encryption?");
   if (!confirm(msg)) return;
-  const pw = ekPassword(); if (pw === null) return;
+  const pw = await ekPassword(); if (pw === null) return;
   try { const r = await api("POST", "api/backups/encryption", { action: "on", password: pw });
         showEncryption(r.encryption, r.backups); refreshBackups(); showRecoveryKey(r.recovery);
         if (r.removed) toast(r.removed === 1 ? t("Encryption is on. 1 old backup was deleted.") : t("Encryption is on. {n} old backups were deleted.", { n: r.removed })); }
@@ -1354,13 +1411,13 @@ $("ekOn").onclick = async () => {
 };
 $("ekOff").onclick = async () => {
   if (!confirm(t("Turn off encryption? New backups are no longer encrypted. The encrypted ones stay, and still open with a password or the recovery key."))) return;
-  const pw = ekPassword(); if (pw === null) return;
+  const pw = await ekPassword(); if (pw === null) return;
   try { const r = await api("POST", "api/backups/encryption", { action: "off", password: pw }); showEncryption(r.encryption, ekBackups); toast(t("Encryption is off.")); }
   catch (e) { toast(e.message); }
 };
 $("ekNewKey").onclick = async () => {
   if (!confirm(t("Make a new recovery key? The old one stops working for new backups; backups made before keep opening with the old one."))) return;
-  const secret = prompt(t("Enter your password, or the current recovery key:")); if (secret === null) return;
+  const secret = await askSecret(t("Enter your password, or the current recovery key:")); if (secret === null) return;
   try { const r = await api("POST", "api/backups/encryption", { action: "recovery", password: secret }); showRecoveryKey(r.recovery); }
   catch (e) { toast(e.message); }
 };

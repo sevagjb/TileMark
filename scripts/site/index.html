@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TileMark · Your web links as picture tiles, on your own server</title>
+<meta name="description" content="TileMark is a self-hosted home for your web links. Paste a link and it becomes a card with a picture, in coloured groups, private for everyone in your home. Docker or Home Assistant add-on.">
+<meta property="og:title" content="TileMark">
+<meta property="og:description" content="Your web links as picture tiles, on your own server. Docker or Home Assistant add-on.">
+<meta property="og:image" content="https://sevagjb.github.io/TileMark/images/side-panel.webp">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img src="logo.svg" alt="" width="30" height="30">TileMark</a>
+  <nav class="links" style="display:flex"><a href="guide.html">Guide</a><a href="faq.html">FAQ</a><a href="https://github.com/sevagjb/TileMark">GitHub</a></nav>
+</header>
+
+<section class="hero">
+  <img class="logo" src="logo.svg" alt="">
+  <h1>Your links, as <span>picture tiles</span>.<br>On your own server.</h1>
+  <p>Paste a link and it becomes a card with a picture. Sort your cards into coloured groups, open them from any device, and keep them private, for everyone in your home.</p>
+  <div class="cta">
+    <a class="btn primary" href="getting-started.html">Get started</a>
+    <a class="btn" href="home-assistant-add-on.html">Home Assistant add-on</a>
+    <a class="btn" href="https://github.com/sevagjb/TileMark">View on GitHub</a>
+  </div>
+</section>
+
+<div class="shot"><img src="images/side-panel.webp" alt="TileMark with groups on the left and the links of one group beside them" width="1600" height="1000"></div>
+
+<section class="sect">
+  <h2>Everything your bookmarks bar never was</h2>
+  <p class="sub">One small app, one container, one data folder. No cloud service, no tracking, no account anywhere.</p>
+  <div class="grid">
+    <div class="feat" style="--c:#2f6fe4"><div class="ic">🖼️</div><h3>Links you can see</h3><p>Every link gets the picture and title its site publishes. Find things at a glance instead of reading a list of names.</p></div>
+    <div class="feat" style="--c:#1f9e8a"><div class="ic">🗂️</div><h3>Organised your way</h3><p>Coloured groups in your own order, favourites on top, notes on cards, and two layouts to choose from.</p></div>
+    <div class="feat" style="--c:#e8793a"><div class="ic">📲</div><h3>Save from anywhere</h3><p>A browser button, your phone's Share menu, or an API key for scripts and Shortcuts.</p></div>
+    <div class="feat" style="--c:#8e6ad8"><div class="ic">🔒</div><h3>Private for each person</h3><p>Everyone in your home gets their own links. Two-factor sign-in, device list, and nothing reachable without signing in.</p></div>
+    <div class="feat" style="--c:#e0a31b"><div class="ic">🧹</div><h3>Tidy by itself</h3><p>Duplicates are recognised, tracking junk is stripped from addresses, and a weekly check finds links that stopped working.</p></div>
+    <div class="feat" style="--c:#18bcf2"><div class="ic">🏠</div><h3>At home in Home Assistant</h3><p>Install it as an add-on with its own sidebar page, and get sensors and notifications through MQTT.</p></div>
+  </div>
+</section>
+
+<section class="sect">
+  <div class="duo">
+    <img src="images/import-review.webp" alt="Reviewing duplicates after an import" loading="lazy">
+    <div><h3>Bring your bookmarks along</h3>
+      <p>Import from Edge, Chrome, Firefox, Brave or Safari in one go: folders become groups. Links you already have are listed for you to review, never dropped silently.</p>
+      <p><a href="import-export.html">Import and export →</a></p></div>
+  </div>
+  <div class="duo flip">
+    <img src="images/sections-dark.webp" alt="All groups as sections, in dark mode" loading="lazy">
+    <div><h3>Two layouts, light and dark</h3>
+      <p>Groups in a side column with a compact list, or every group on one page with large picture cards. Light and dark follow your device.</p>
+      <p><a href="links-and-groups.html">Links and groups →</a></p></div>
+  </div>
+  <div class="duo">
+    <img src="images/settings-mqtt.webp" alt="Home Assistant sensors in Settings" loading="lazy">
+    <div><h3>Sensors and notifications</h3>
+      <p>TileMark shows up in Home Assistant as a device with sensors for your links and broken links, plus an event when the weekly check finishes. No YAML needed.</p>
+      <p><a href="home-assistant-sensors.html">Home Assistant sensors →</a></p></div>
+  </div>
+  <div class="duo flip">
+    <img src="images/arabic.webp" alt="TileMark in Arabic" loading="lazy">
+    <div><h3>Speaks your language</h3>
+      <p>English, Dutch and Arabic, with a full right-to-left layout. TileMark follows your browser, or each person picks their own.</p>
+      <p><a href="settings.html#appearance">Appearance settings →</a></p></div>
+  </div>
+</section>
+
+<section class="sect">
+  <h2>Up and running in five minutes</h2>
+  <p class="sub">Pick the way you run your home server.</p>
+  <div class="install">
+    <div class="feat"><h3>Docker</h3><p>Dockge, Portainer or plain Docker Compose:</p>
+<pre><code>services:
+  tilemark:
+    image: ghcr.io/sevagjb/tilemark:latest
+    container_name: tilemark
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data</code></pre>
+      <p style="margin-top:12px"><a href="getting-started.html">Full walkthrough →</a></p></div>
+    <div class="feat"><h3>Home Assistant add-on</h3><p>Add the repository, install TileMark and turn on <b>Show in sidebar</b>. You're signed in with your Home Assistant account.</p>
+      <p style="margin-top:14px"><a href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Ftilemark"><img src="https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg" alt="Add repository to my Home Assistant" style="border:0;box-shadow:none"></a></p>
+      <p style="margin-top:12px"><a href="home-assistant-add-on.html">Add-on guide →</a></p></div>
+  </div>
+</section>
+
+<section class="final">
+  <h2>Free and open source</h2>
+  <div class="cta">
+    <a class="btn primary" href="getting-started.html">Read the guide</a>
+    <a class="btn" href="https://github.com/sevagjb/TileMark">Star it on GitHub</a>
+  </div>
+</section>
+<footer>TileMark is open source under the MIT licence · <a href="https://github.com/sevagjb/TileMark">GitHub</a> · <a href="https://github.com/sevagjb/TileMark/issues">Questions and issues</a></footer>
+</body>
+</html>

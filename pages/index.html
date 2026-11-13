@@ -129,6 +129,13 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
   .gitem { flex: none; } .gitem.ghost { margin-top: 0; }
   .list .thumb { flex-basis: 104px; }
 }
+/* phones: the card buttons are always shown there, so put them in a row under the text
+   instead of beside it, and give the title the full width */
+@media (hover: none) and (max-width: 760px) {
+  .list .body { padding-inline-end: 12px; padding-bottom: 46px; }
+  .list .actions { top: auto; bottom: 8px; inset-inline-end: 8px; transform: none; }
+  .actions button { width: 34px; height: 34px; }
+}
 .lay-sections .layout { grid-template-columns: minmax(0, 1fr); }
 .lay-sections .side, .lay-sections #ptitle, .lay-sections #openAll, .lay-sections #sortSel { display: none; }
 .lay-panel .only-sections { display: none; }
@@ -882,8 +889,8 @@ $("selDelete").onclick = async () => {
 };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && selecting && !document.querySelector("dialog[open]")) $("selDone").click(); });
 
-// settings: each section is a card; the open ones are remembered, and a closed card
-// shows a short status in its title
+// settings: each section is a card, one open at a time (the last one is remembered),
+// and a closed card shows a short status in its title
 const setSum = (k, text) => { const n = $("sum-" + k); if (n) n.textContent = text || ""; };
 const optText = id => { const o = $(id).selectedOptions[0]; return o ? o.textContent : ""; };
 function sumPrefs() {
@@ -895,8 +902,9 @@ function sumPrefs() {
   let open = [];
   try { open = JSON.parse(localStorage.getItem("tm.openSec") || "[]"); } catch {}
   for (const d of document.querySelectorAll("details.sec")) {
-    d.open = open.includes(d.dataset.k);
+    d.open = d.dataset.k === open[0];
     d.addEventListener("toggle", () => {
+      if (d.open) for (const o of document.querySelectorAll("details.sec[open]")) if (o !== d) o.open = false;
       const now = [...document.querySelectorAll("details.sec[open]")].map(x => x.dataset.k);
       try { localStorage.setItem("tm.openSec", JSON.stringify(now)); } catch {}
     });
@@ -981,7 +989,7 @@ async function refreshUsers() {
       try { await api("PATCH", "api/users/" + u.id, { totp: false }); toast(t("Two-factor sign-in is off for {name}.", { name: u.username })); refreshUsers(); } catch (e) { toast(e.message); }
     }));
     if (!u.me) row.append(btn(t("Remove"), async () => {
-      if (!confirm(t("Remove {name}?\nTheir {n} links, groups and pictures are deleted too. This cannot be undone.", { name: u.username, n: u.links }))) return;
+      if (!confirm((u.links === 1 ? t("Remove {name}?\nTheir 1 link, groups and pictures are deleted too. This cannot be undone.", { name: u.username }) : t("Remove {name}?\nTheir {n} links, groups and pictures are deleted too. This cannot be undone.", { name: u.username, n: u.links })))) return;
       try { await api("DELETE", "api/users/" + u.id); toast(t("{name} removed.", { name: u.username })); refreshUsers(); } catch (e) { toast(e.message); }
     }, "btn danger"));
     return row;
@@ -1055,7 +1063,7 @@ let review = [];
 function openReview(dups) {
   review = dups;
   const same = dups.filter(d => d.same_address).length;
-  $("revIntro").textContent = t("{n} links were not added because you already have them.", { n: dups.length })
+  $("revIntro").textContent = (dups.length === 1 ? t("1 link was not added because you already have it.") : t("{n} links were not added because you already have them.", { n: dups.length }))
     + (same ? " " + t("{n} of them have exactly the same address.", { n: same }) : "") + " " + t("Download them to keep a copy, keep some as separate links, or discard them.");
   $("revList").replaceChildren(...dups.map((d, i) => {
     const box = el("input", { type: "checkbox", disabled: d.same_address, title: d.same_address ? t("Identical address: already saved") : t("Keep as a separate link") });
@@ -1287,7 +1295,7 @@ $("iGo").onclick = async () => {
   if (!$("iText").value.trim() && !$("iFile").files[0]) return toast(t("Paste some links or choose a file."));
   $("iGo").disabled = true;
   try { const r = await api("POST", "api/import", fd); $("importDlg").close();
-        toast(t("Imported {n} links.", { n: r.added }) + (r.skipped ? " " + t("Skipped {n} that are not web links.", { n: r.skipped }) : "")
+        toast((r.added === 1 ? t("Imported {n} link.", { n: 1 }) : t("Imported {n} links.", { n: r.added })) + (r.skipped ? " " + t("Skipped {n} that are not web links.", { n: r.skipped }) : "")
           + (r.duplicates.length ? " " + t("{n} already saved, see the list.", { n: r.duplicates.length }) : ""));
         await load(); if (r.duplicates.length) openReview(r.duplicates); }
   catch (e) { toast(e.message); } finally { $("iGo").disabled = false; }

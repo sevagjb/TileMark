@@ -23,6 +23,9 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.3.3
+- [x] A complete Documentation tab in the Home Assistant add-on, with screenshots.
+
 ### 2.3.2
 - [x] A complete guide with screenshots, and a website for it.
 - [x] Settings: one card open at a time. Phone cards: buttons under the text.

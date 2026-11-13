@@ -1231,3 +1231,20 @@ def test_website_builds_without_broken_links(tmp_path):
     import subprocess
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "build_site.py")], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_addon_pictures_are_pinned_and_exist():
+    """The add-on's Info and Documentation tabs are read from Home Assistant's own copy of the
+    repository, which can be older than main. Pictures must point to a release tag (not main),
+    and to a picture that still exists, so an older copy never shows a broken image."""
+    import re as _re
+    for name in ("README.md", "DOCS.md"):
+        text = open(os.path.join(ROOT, "homeassistant-addon", name), encoding="utf-8").read()
+        urls = _re.findall(r"!\[[^\]]*\]\((\S+?)\)|<img[^>]*src=\"([^\"]+)\"", text)
+        urls = [a or b for a, b in urls]
+        assert urls, f"{name} has no pictures"
+        for url in urls:
+            m = _re.fullmatch(r"https://raw\.githubusercontent\.com/sevagjb/tilemark/v\d+\.\d+\.\d+/(docs/images/[\w.-]+)", url)
+            assert m, f"{name}: picture not pinned to a release tag: {url}"
+            assert os.path.exists(os.path.join(ROOT, m.group(1))), f"{name}: missing picture {m.group(1)}"
+        assert not _re.search(r"\]\((?!https?://)[^)]+\)", text), f"{name}: relative links don't work in Home Assistant"

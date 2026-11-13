@@ -1,6 +1,21 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 1.2.0 (unreleased)
+
+### New
+- **Home Assistant add-on.** Add `https://github.com/sevagjb/linkboard` as an add-on repository and LinkBoard gets its own panel in the HA sidebar. Home Assistant signs people in: every HA user gets their own LinkBoard account on first visit (the first one and HA admins are admins). The direct port is off unless you set one. Data lives in the add-on folder, so HA backups include it.
+- **Setup code.** A new installation prints a one-time code in the container log, and the welcome screen asks for it, so nobody else on the network can claim a fresh install. `docker exec linkboard python app.py setup-code` shows it again.
+- **Daily backup** of the whole installation in `data/backups/`, last 7 kept (admin setting; off in the add-on, where HA backups cover it).
+- **Card options** per account: picture size (small, medium, large), open links in a new tab or this tab, default group for new links.
+
+### Changed
+- All page addresses are relative, so LinkBoard works under a path prefix (needed for the HA sidebar). The browser button now uses the address LinkBoard is opened at.
+
+### Fixed
+- A wrong setup code no longer empties the password fields on the welcome screen.
+- "Keep me signed in" no longer shows on the welcome screen, where it does nothing.
+
+## 1.1.0
 
 ### New
 - **Several accounts.** The first account is the admin and adds the others in **Settings → People**. Every account has its own links, groups, API key, backups and settings; nobody, the admin included, can see someone else's links.

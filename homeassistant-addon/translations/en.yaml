@@ -1,0 +1,2 @@
+network:
+  8080/tcp: LinkBoard's own address (browser button, phone app, API key). Leave empty to use only the sidebar.

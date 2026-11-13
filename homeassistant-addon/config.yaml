@@ -1,0 +1,29 @@
+# Home Assistant add-on for LinkBoard. It runs the same image as the Docker install
+# (ghcr.io/sevagjb/linkboard:<version>), so "version" must be a released LinkBoard version.
+name: LinkBoard
+version: "1.2.0"
+slug: linkboard
+description: Your saved links, with thumbnails and groups, in the Home Assistant sidebar.
+url: https://github.com/sevagjb/linkboard
+arch:
+  - aarch64
+  - amd64
+image: ghcr.io/sevagjb/linkboard
+stage: experimental
+# Open from the sidebar; Home Assistant signs people in. Every HA user gets their
+# own LinkBoard account, so the panel is not limited to admins.
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:bookmark-multiple
+panel_title: LinkBoard
+panel_admin: false
+# LinkBoard's own address, for the browser button, the phone app and the API key.
+# Off until a port is filled in under Configuration → Network.
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: LinkBoard's own address (browser button, phone app, API key). Leave empty to use only the sidebar.
+environment:
+  LINKBOARD_HA_ADDON: "1"
+# Stopped for a moment while Home Assistant makes a backup, so the database copy is consistent.
+backup: cold

@@ -88,10 +88,12 @@ def init_db():
         c.execute("PRAGMA journal_mode = WAL")
         c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         schema = c.execute("SELECT value FROM settings WHERE key='schema'").fetchone()
-    if schema and int(schema["value"]) >= SCHEMA:
-        return
-    _upgrade_v1()
-    _migrate_v2()
+    if not (schema and int(schema["value"]) >= SCHEMA):
+        _upgrade_v1()
+        _migrate_v2()
+    with db() as c:  # columns added after 1.1.0
+        if "ha_user" not in [r["name"] for r in c.execute("PRAGMA table_info(users)")]:
+            c.execute("ALTER TABLE users ADD COLUMN ha_user TEXT NOT NULL DEFAULT ''")
 
 
 def _upgrade_v1():
@@ -656,6 +658,11 @@ def _check_scheduler():
                 run_link_check()
         except Exception:
             app.logger.exception("link check scheduler")
+        try:
+            if daily_backup_on() and time.time() - int(get_setting("backup_last", "0")) > BACKUP_EVERY:
+                daily_backup()
+        except Exception:
+            app.logger.exception("daily backup failed")
         time.sleep(1800)
 
 
@@ -747,9 +754,101 @@ def setup_needed():
         return c.execute("SELECT 1 FROM users LIMIT 1").fetchone() is None
 
 
+# The welcome screen of a new installation asks for this one-time code, which is
+# only printed in the container log. Without it, whoever reaches a fresh install
+# first (someone else on the network, or anyone if it is exposed) could create the
+# admin account. It is removed as soon as the first account exists.
+SETUP_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I
+
+
+def setup_code():
+    code = get_setting("setup_code")
+    if not code:
+        code = "-".join("".join(secrets.choice(SETUP_ALPHABET) for _ in range(4)) for _ in range(3))
+        set_setting("setup_code", code)
+    return code
+
+
+def _same_code(sent, code):
+    norm = lambda s: re.sub(r"[^A-Z0-9]", "", str(s).upper())
+    return secrets.compare_digest(norm(sent).encode(), norm(code).encode())
+
+
+def print_setup_code():
+    line = "=" * 64
+    print(f"\n{line}\n  LinkBoard has no account yet.\n  Open it in your browser and enter this setup code:\n\n"
+          f"      {setup_code()}\n\n  (Show it again: docker exec linkboard python app.py setup-code)\n{line}\n", flush=True)
+
+
+# ------------------------------------------------- Home Assistant add-on
+# As an add-on (LINKBOARD_HA_ADDON=1, set by the add-on's config.yaml) LinkBoard
+# also opens in the Home Assistant sidebar through "ingress". There, Home Assistant
+# has already signed the person in and tells the add-on who it is in X-Remote-User-*
+# headers; the Supervisor removes any copies a browser tries to send. Those headers
+# are believed only in add-on mode and only from the Supervisor's own address, so a
+# request on the direct port can never use them. Every HA user gets their own
+# LinkBoard account on first visit: the first one, and HA admins, become admins.
+HA_ADDON = os.environ.get("LINKBOARD_HA_ADDON") == "1"
+HA_PROXY = "172.30.32.2"
+HA_ADMIN_GROUP = "system-admin"
+
+
+def via_ingress():
+    return HA_ADDON and request.remote_addr == HA_PROXY and bool(request.headers.get("X-Remote-User-Id", "").strip())
+
+
+def base_path():
+    """The path prefix the browser sees: /api/hassio_ingress/<token> through ingress, else ''."""
+    if HA_ADDON and request.remote_addr == HA_PROXY:
+        p = request.headers.get("X-Ingress-Path", "")
+        if re.fullmatch(r"/api/hassio_ingress/[\w-]+", p):
+            return p
+    return ""
+
+
+def ingress_user():
+    hid = request.headers.get("X-Remote-User-Id", "").strip()[:64]
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE ha_user=?", (hid,)).fetchone()
+    if row:
+        return row
+    name = (request.headers.get("X-Remote-User-Name") or request.headers.get("X-Remote-User-Display-Name") or "user")
+    name = re.sub(r"\s+", " ", name).strip()[:50] or "user"
+    ha_admin = HA_ADMIN_GROUP in request.headers.get("X-Remote-User-Groups", "").split(",")
+    con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
+    con.row_factory = sqlite3.Row
+    try:
+        con.execute("BEGIN IMMEDIATE")
+        row = con.execute("SELECT * FROM users WHERE ha_user=?", (hid,)).fetchone()
+        if not row:
+            first = con.execute("SELECT 1 FROM users LIMIT 1").fetchone() is None
+            username, n = name, 1
+            while con.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
+                n += 1
+                username = f"{name}-{n}"
+            uid = con.execute(
+                "INSERT INTO users (username, pw_hash, is_admin, ver, created_at, ha_user) VALUES (?,?,?,?,?,?)",
+                (username, _hash(secrets.token_urlsafe(24)), 1 if (first or ha_admin) else 0, secrets.token_hex(16),
+                 int(time.time()), hid)).lastrowid
+            if first:  # same as the welcome screen: existing links become this account's
+                con.execute("UPDATE groups SET user_id=? WHERE user_id IS NULL", (uid,))
+                con.execute("UPDATE links SET user_id=? WHERE user_id IS NULL", (uid,))
+                con.execute("DELETE FROM settings WHERE key='setup_code'")
+            row = con.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        con.execute("COMMIT")
+    finally:
+        if con.in_transaction:
+            con.execute("ROLLBACK")
+        con.close()
+    return row
+
+
 def current_user():
-    """The signed-in user's row, if this browser holds a session made with the
-    user's current password (changing it signs every other device out)."""
+    """The signed-in user's row: through Home Assistant ingress, or because this
+    browser holds a session made with the user's current password (changing it
+    signs every other device out)."""
+    if via_ingress():
+        return ingress_user()
     uid = session.get("uid")
     if not uid:
         return None
@@ -850,7 +949,7 @@ def require_login():
     if g.user is None:
         if request.path.startswith("/api/"):
             return jsonify(error="Please sign in.", setup=setup_needed()), 401
-        return redirect("/login")
+        return redirect(base_path() + "/login")
     if request.endpoint in ADMIN_ENDPOINTS and not g.user["is_admin"]:
         return jsonify(error="Only an admin can do this."), 403
     return None
@@ -860,7 +959,7 @@ def require_login():
 def login_page():
     if current_user():
         nxt = request.args.get("next", "")
-        return redirect(nxt if nxt.startswith("/save") else "/")
+        return redirect(base_path() + (nxt if nxt.startswith("/save") else "/"))
     return send_from_directory(PAGES, "login.html", max_age=0)
 
 
@@ -893,7 +992,7 @@ def auth_status():
     u = g.user
     return jsonify(signed_in=bool(u), setup=not u and setup_needed(),
                    username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
-                   has_key=bool(u and u["api_key_hash"]))
+                   has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON)
 
 
 @app.post("/api/setup")
@@ -905,6 +1004,17 @@ def api_setup():
     problem = _check_new_credentials(user, pw)
     if problem:
         return jsonify(error=problem), 400
+    if not setup_needed():
+        return jsonify(error="LinkBoard is already set up. Sign in instead."), 409
+    ip = _client()
+    wait = _wait_seconds(ip)
+    if wait:
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    ok = _same_code(d.get("code", ""), setup_code())
+    _note_login(ip, ok)
+    if not ok:
+        return jsonify(error="That setup code is not right. It is shown in the container log "
+                             "(docker logs linkboard, or the log in Dockge).", code=True), 403
     con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
     con.row_factory = sqlite3.Row
     try:
@@ -916,6 +1026,7 @@ def api_setup():
                           (user, _hash(pw), secrets.token_hex(16), int(time.time()))).lastrowid
         con.execute("UPDATE groups SET user_id=? WHERE user_id IS NULL", (uid,))
         con.execute("UPDATE links SET user_id=? WHERE user_id IS NULL", (uid,))
+        con.execute("DELETE FROM settings WHERE key='setup_code'")
         row = con.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         con.execute("COMMIT")
     finally:
@@ -953,9 +1064,11 @@ def api_logout():
 
 @app.post("/api/account")
 def update_account():
-    """Change your own username and/or password. Needs the current password."""
+    """Change your own username and/or password. Needs the current password, except
+    inside Home Assistant (already signed in there; an account made by HA has none
+    until one is set here, for the direct port)."""
     d = request.get_json(force=True, silent=True) or {}
-    if not check_password_hash(g.user["pw_hash"], str(d.get("current_password", ""))):
+    if not via_ingress() and not check_password_hash(g.user["pw_hash"], str(d.get("current_password", ""))):
         return jsonify(error="The current password is not correct."), 403
     user, pw = str(d.get("username", "")).strip(), str(d.get("password", ""))
     problem = _check_new_credentials(user, pw, need_password=bool(pw))
@@ -969,8 +1082,9 @@ def update_account():
         if pw:  # new value signs every other device out
             c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), me()))
         row = c.execute("SELECT * FROM users WHERE id=?", (me(),)).fetchone()
-    _sign_in(row)
-    session.permanent = True
+    if not via_ingress():
+        _sign_in(row)
+        session.permanent = True
     return jsonify(ok=True)
 
 
@@ -1088,7 +1202,8 @@ def thumbs(name):
     return resp
 
 
-PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark")}
+PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark"),
+             "thumb": ("s", "m", "l"), "open": ("new", "same")}
 SORT_MODES = ("manual", "newest", "oldest", "name", "site")
 
 
@@ -1115,7 +1230,9 @@ def state():
     out = dict(groups=groups, links=links, check=check, prefs=_prefs(uid),
                me={"username": g.user["username"], "is_admin": bool(g.user["is_admin"])})
     if g.user["is_admin"]:
-        out["admin"] = {"fetch_private": fetch_private()}
+        out["admin"] = {"fetch_private": fetch_private(), "daily_backup": daily_backup_on(),
+                        "backup_last": int(get_setting("backup_last", "0")), "backups": len(list_backups()),
+                        "addon": HA_ADDON}
     return jsonify(out)
 
 
@@ -1128,6 +1245,10 @@ def save_prefs():
     for key, allowed in PREF_KEYS.items():
         if d.get(key) in allowed:
             prefs[key] = d[key]
+    if "defgroup" in d:  # default group of the "add" box: one of your groups, or none
+        with db() as c:
+            gid = own_group(c, me(), d["defgroup"]) if d["defgroup"] else None
+        prefs["defgroup"] = str(gid) if gid else ""
     if isinstance(d.get("sorts"), dict):
         prefs["sorts"] = {str(k)[:40]: v for k, v in list(d["sorts"].items())[:500] if v in SORT_MODES}
     set_user_setting(me(), "ui", json.dumps(prefs))
@@ -1142,6 +1263,8 @@ def save_settings():
         set_setting("linkcheck", "on" if d["linkcheck"] else "off")
     if "fetch_private" in d:
         set_setting("fetch_private", "on" if d["fetch_private"] else "off")
+    if "daily_backup" in d:
+        set_setting("daily_backup", "on" if d["daily_backup"] else "off")
     return jsonify(ok=True)
 
 
@@ -1580,6 +1703,56 @@ def restore_backup(uid, data, password=""):
     return restored, len(gmap)
 
 
+# Daily copy of the whole installation (all accounts) in data/backups, the last
+# KEEP_BACKUPS kept. It holds the database and the pictures people uploaded
+# themselves; fetched thumbnails are left out (they come back with ↻) so seven
+# copies stay small. Restoring: stop LinkBoard, unzip one into the data folder,
+# start it again. In the Home Assistant add-on it is off by default, because HA's
+# own backups already contain the add-on's data.
+BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+BACKUP_EVERY = 24 * 3600 - 600
+KEEP_BACKUPS = 7
+
+
+def daily_backup_on():
+    return get_setting("daily_backup", "off" if HA_ADDON else "on") == "on"
+
+
+def list_backups():
+    try:
+        return sorted(n for n in os.listdir(BACKUP_DIR) if re.fullmatch(r"linkboard-\d{4}-\d{2}-\d{2}\.zip", n))
+    except OSError:
+        return []
+
+
+def daily_backup():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    final = os.path.join(BACKUP_DIR, time.strftime("linkboard-%Y-%m-%d.zip"))
+    part = final + ".part"
+    with tempfile.TemporaryDirectory() as tmp:
+        snap = os.path.join(tmp, "linkboard.db")
+        src, dst = sqlite3.connect(DB_PATH, timeout=30), sqlite3.connect(snap)
+        with dst:
+            src.backup(dst)  # consistent copy, even while the app is in use
+        src.close()
+        own = [r[0] for r in dst.execute("SELECT thumb FROM links WHERE custom_thumb=1 AND thumb != ''")]
+        dst.close()
+        with zipfile.ZipFile(part, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(snap, "linkboard.db")
+            for name in sorted(set(own)):
+                path = os.path.join(THUMB_DIR, os.path.basename(name))
+                if os.path.isfile(path):
+                    z.write(path, "thumbs/" + os.path.basename(name), zipfile.ZIP_STORED)
+    os.replace(part, final)
+    for old in list_backups()[:-KEEP_BACKUPS]:
+        try:
+            os.remove(os.path.join(BACKUP_DIR, old))
+        except OSError:
+            pass
+    set_setting("backup_last", str(int(time.time())))
+    return final
+
+
 @app.post("/api/backup")
 def api_backup():
     d = request.get_json(force=True, silent=True) or {}
@@ -1624,14 +1797,22 @@ if not get_setting("secret_key"):
 app.secret_key = get_setting("secret_key")
 app.config.update(SESSION_COOKIE_NAME="linkboard", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   PERMANENT_SESSION_LIFETIME=timedelta(days=30))
-_CLI = sys.argv[1:2] == ["reset-login"]
+_CLI = sys.argv[1:2] in (["reset-login"], ["setup-code"])
 if not _CLI and not os.environ.get("LINKBOARD_NO_WORKERS"):
+    if setup_needed():  # (as an add-on, opening it from the HA sidebar also creates the first account)
+        print_setup_code()
     threading.Thread(target=_check_scheduler, daemon=True).start()
     with db() as _c:  # pick up anything interrupted by a restart
         for _r in _c.execute("SELECT id FROM links WHERE status='pending'").fetchall():
             queue(_r["id"])
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["setup-code"]:
+        if not setup_needed():
+            print("LinkBoard already has an account; no setup code is needed. Forgot a password? Use reset-login.")
+            sys.exit(1)
+        print(f"Setup code: {setup_code()}")
+        sys.exit(0)
     if _CLI:
         who, new_pw = reset_login(sys.argv[2] if len(sys.argv) > 2 else None)
         if not who:

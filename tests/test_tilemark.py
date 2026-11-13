@@ -988,7 +988,7 @@ def test_addon_setup_message_points_to_sidebar(tmp_path, capsys):
 def broker():
     import asyncio
     import socket as _s
-    from amqtt.broker import Broker
+    Broker = pytest.importorskip("amqtt.broker").Broker  # test-only broker; CI installs it
     sock = _s.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
     loop = asyncio.new_event_loop()
     cfg = {"listeners": {"default": {"type": "tcp", "bind": f"127.0.0.1:{port}"}},

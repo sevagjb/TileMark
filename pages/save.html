@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Save to LinkBoard</title>
+<title>Save to TileMark</title>
 <link rel="icon" href="icon-192.png">
 <style>
 :root { --bg: #f3f4f7; --panel: #ffffff; --line: #dfe2e8; --text: #1b1f27; --muted: #667085; --accent: #2f6fe4; --danger: #d6453d; color-scheme: light dark; }
@@ -34,8 +34,8 @@ a.go { display: block; text-align: center; margin-top: 18px; font-weight: 600; c
 </head>
 <body>
 <form id="f">
-  <h1 style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>Save to LinkBoard</h1>
-  <div id="need" hidden><p style="margin-top:14px">Sign in to LinkBoard to save this link.</p><a class="go" id="signin" href="login">Sign in</a></div>
+  <h1 style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 120 120" width="30" height="30" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>Save to TileMark</h1>
+  <div id="need" hidden><p style="margin-top:14px">Sign in to TileMark to save this link.</p><a class="go" id="signin" href="login">Sign in</a></div>
   <div id="form" hidden>
     <label for="t">Title</label><input id="t" type="text" maxlength="300">
     <p class="url" id="u"></p>
@@ -44,21 +44,21 @@ a.go { display: block; text-align: center; margin-top: 18px; font-weight: 600; c
     <div id="msg" role="status"></div>
     <button id="go" type="submit">Save</button>
   </div>
-  <div id="none" hidden><p style="margin-top:14px">No web address was passed to this window.</p><a class="go" href="./">Open LinkBoard</a></div>
+  <div id="none" hidden><p style="margin-top:14px">No web address was passed to this window.</p><a class="go" href="./">Open TileMark</a></div>
 </form>
 <script>
-try { const th = JSON.parse(localStorage.getItem("lb.settings") || "{}").theme; if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch {}
+try { const th = JSON.parse(localStorage.getItem("tm.settings") || "{}").theme; if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch {}
 const $ = id => document.getElementById(id), P = new URLSearchParams(location.search);
 const text = P.get("text") || "", found = (text.match(/https?:\/\/[^\s<>"']+/) || [])[0];
 const url = P.get("u") || P.get("url") || found || "";
 const title = P.get("t") || P.get("title") || (found && text.replace(found, "").trim()) || "";
-const popup = !!window.opener || window.name === "linkboard-save";
+const popup = !!window.opener || window.name === "tilemark-save";
 const done = () => { if (popup) window.close(); location.href = "./"; };
 async function start() {
   if (!url) { $("none").hidden = false; return; }
   const r = await fetch("api/groups");
   if (r.status === 401) { $("signin").href = "login?next=" + encodeURIComponent("/save" + location.search); $("need").hidden = false; return; }
-  const d = await r.json(); let last = ""; try { last = localStorage.getItem("lb.saveGroup") || ""; } catch {}
+  const d = await r.json(); let last = ""; try { last = localStorage.getItem("tm.saveGroup") || ""; } catch {}
   const opt = (v, label) => { const o = document.createElement("option"); o.value = v; o.textContent = label; return o; };
   $("g").append(opt("", "No group"), ...d.groups.map(g => opt(g.id, g.name)));
   if ([...$("g").options].some(o => o.value === last)) $("g").value = last;
@@ -70,11 +70,11 @@ $("f").onsubmit = async e => {
     const r = await fetch("api/links", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, title: $("t").value, group_id: +$("g").value || null, note: $("n").value }) });
     const d = await r.json().catch(() => ({}));
-    try { localStorage.setItem("lb.saveGroup", $("g").value); } catch {}
+    try { localStorage.setItem("tm.saveGroup", $("g").value); } catch {}
     if (r.ok) { $("msg").className = "good"; $("msg").textContent = "Saved."; setTimeout(done, 900); return; }
     $("msg").className = "bad"; $("msg").textContent = d.error || "Could not save.";
     if (r.status === 409) setTimeout(done, 1600);
-  } catch { $("msg").className = "bad"; $("msg").textContent = "Could not reach LinkBoard."; }
+  } catch { $("msg").className = "bad"; $("msg").textContent = "Could not reach TileMark."; }
   $("go").disabled = false;
 };
 start().catch(() => { $("none").hidden = false; });

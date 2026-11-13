@@ -1,4 +1,4 @@
-"""LinkBoard - a tiny self-hosted page for your links, with thumbnails and groups."""
+"""TileMark - a tiny self-hosted page for your links, with thumbnails and groups."""
 import html
 import ipaddress
 import hashlib
@@ -34,7 +34,7 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
-DB_PATH = os.path.join(DATA_DIR, "linkboard.db")
+DB_PATH = os.path.join(DATA_DIR, "tilemark.db")
 os.makedirs(THUMB_DIR, exist_ok=True)
 Image.MAX_IMAGE_PIXELS = 50_000_000  # refuse "decompression bomb" pictures early
 
@@ -58,7 +58,7 @@ OEMBED = [
     (re.compile(r"^https?://(www\.|vm\.)?tiktok\.com/", re.I), "https://www.tiktok.com/oembed"),
 ]
 COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2aa7b8", "#e8793a", "#7d8590"]
-SCHEMA = 2  # 1 = LinkBoard 1.0 (one owner), 2 = several users
+SCHEMA = 2  # 1 = TileMark 1.0 (one owner), 2 = several users
 
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
@@ -294,7 +294,7 @@ def add_link(c, uid, url, group_id=None, title="", top=True):
 # ------------------------------------------------------- safe outgoing fetch
 # Every request the server makes on behalf of a link (page, picture, link check)
 # goes through safe_get. Links and their og:image addresses come from pages anyone
-# can write, so without this a page could point LinkBoard at http://homeassistant
+# can write, so without this a page could point TileMark at http://homeassistant
 # .local:8123/... or a cloud metadata address and have the answer stored as a
 # thumbnail. Rules:
 #  - loopback, link-local (incl. 169.254.169.254), multicast and reserved
@@ -304,7 +304,7 @@ def add_link(c, uid, url, group_id=None, title="", top=True):
 #  - the address actually connected to is checked as well, so a name that
 #    resolves differently a second time (DNS rebinding) is caught too.
 class Blocked(Exception):
-    """The address is not one LinkBoard is allowed to fetch."""
+    """The address is not one TileMark is allowed to fetch."""
 
 
 _guard = threading.local()
@@ -602,7 +602,7 @@ def _safe_fetch(link_id):
 # -------------------------------------------------------------- link check
 # Marks links that no longer work. "Broken" means: the address could not be reached
 # on two tries, or the site answered "not found" (404) or "gone" (410). Login walls,
-# bot blocks, server errors and addresses LinkBoard may not fetch are NOT counted,
+# bot blocks, server errors and addresses TileMark may not fetch are NOT counted,
 # to avoid false alarms.
 _check = {"running": False, "done": 0, "total": 0, "uid": None}
 _check_lock = threading.Lock()
@@ -795,19 +795,19 @@ def _same_code(sent, code):
 
 def print_setup_code():
     line = "=" * 64
-    print(f"\n{line}\n  LinkBoard has no account yet.\n  Open it in your browser and enter this setup code:\n\n"
-          f"      {setup_code()}\n\n  (Show it again: docker exec linkboard python app.py setup-code)\n{line}\n", flush=True)
+    print(f"\n{line}\n  TileMark has no account yet.\n  Open it in your browser and enter this setup code:\n\n"
+          f"      {setup_code()}\n\n  (Show it again: docker exec tilemark python app.py setup-code)\n{line}\n", flush=True)
 
 
 # ------------------------------------------------- Home Assistant add-on
-# As an add-on (LINKBOARD_HA_ADDON=1, set by the add-on's config.yaml) LinkBoard
+# As an add-on (TILEMARK_HA_ADDON=1, set by the add-on's config.yaml) TileMark
 # also opens in the Home Assistant sidebar through "ingress". There, Home Assistant
 # has already signed the person in and tells the add-on who it is in X-Remote-User-*
 # headers; the Supervisor removes any copies a browser tries to send. Those headers
 # are believed only in add-on mode and only from the Supervisor's own address, so a
 # request on the direct port can never use them. Every HA user gets their own
-# LinkBoard account on first visit: the first one, and HA admins, become admins.
-HA_ADDON = os.environ.get("LINKBOARD_HA_ADDON") == "1"
+# TileMark account on first visit: the first one, and HA admins, become admins.
+HA_ADDON = os.environ.get("TILEMARK_HA_ADDON") == "1"
 HA_PROXY = "172.30.32.2"
 HA_ADMIN_GROUP = "system-admin"
 
@@ -996,7 +996,7 @@ def login_page():
 
 @app.get("/save")
 def save_page():
-    """The small "Save to LinkBoard" window (browser button, phone share). The page
+    """The small "Save to TileMark" window (browser button, phone share). The page
     itself holds nothing private; saving still needs a sign-in."""
     return send_from_directory(PAGES, "save.html", max_age=0)
 
@@ -1036,7 +1036,7 @@ def api_setup():
     if problem:
         return jsonify(error=problem), 400
     if not setup_needed():
-        return jsonify(error="LinkBoard is already set up. Sign in instead."), 409
+        return jsonify(error="TileMark is already set up. Sign in instead."), 409
     ip = _client()
     wait = _wait_seconds(ip)
     if wait:
@@ -1045,14 +1045,14 @@ def api_setup():
     _note_login(ip, ok)
     if not ok:
         return jsonify(error="That setup code is not right. It is shown in the container log "
-                             "(docker logs linkboard, or the log in Dockge).", code=True), 403
+                             "(docker logs tilemark, or the log in Dockge).", code=True), 403
     con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
     con.row_factory = sqlite3.Row
     try:
         con.execute("BEGIN IMMEDIATE")  # two browsers racing: only one wins
         if con.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             con.execute("ROLLBACK")
-            return jsonify(error="LinkBoard is already set up. Sign in instead."), 409
+            return jsonify(error="TileMark is already set up. Sign in instead."), 409
         uid = con.execute("INSERT INTO users (username, pw_hash, is_admin, ver, created_at) VALUES (?,?,1,?,?)",
                           (user, _hash(pw), secrets.token_hex(16), int(time.time()))).lastrowid
         con.execute("UPDATE groups SET user_id=? WHERE user_id IS NULL", (uid,))
@@ -1122,7 +1122,7 @@ def update_account():
 @app.post("/api/apikey")
 def make_api_key():
     """Create (or replace) your API key. It is shown once; only its hash is stored."""
-    key = "lb_" + secrets.token_urlsafe(32)
+    key = "tm_" + secrets.token_urlsafe(32)
     with db() as c:
         c.execute("UPDATE users SET api_key_hash=? WHERE id=?", (hashlib.sha256(key.encode()).hexdigest(), me()))
     return jsonify(key=key)
@@ -1182,7 +1182,7 @@ def update_user(uid):
         if not row:
             return jsonify(error="Not found"), 404
         if make == 0 and row["is_admin"] and _admins(c) <= 1:
-            return jsonify(error="LinkBoard needs at least one admin."), 400
+            return jsonify(error="TileMark needs at least one admin."), 400
         if user is not None and c.execute("SELECT 1 FROM users WHERE username=? AND id != ?", (user, uid)).fetchone():
             return jsonify(error="That username is already taken."), 409
         if user is not None:
@@ -1364,7 +1364,7 @@ def create_link():
 
 @app.get("/api/groups")
 def list_groups():
-    """Group names only - what the "Save to LinkBoard" window and API-key clients need."""
+    """Group names only - what the "Save to TileMark" window and API-key clients need."""
     with db() as c:
         return jsonify(groups=[dict(r) for r in c.execute(
             "SELECT id, name, color FROM groups WHERE user_id=? ORDER BY position, id", (me(),))])
@@ -1601,16 +1601,20 @@ def export_links():
         out += [f'    <DT><H3>{e(grp["name"])}</H3>', "    <DL><p>", *rows(grp["id"], "        "), "    </DL><p>"]
     out += rows(None, "    ") + ["</DL><p>", ""]
     return Response("\n".join(out), mimetype="text/html",
-                    headers={"Content-Disposition": "attachment; filename=linkboard-bookmarks.html"})
+                    headers={"Content-Disposition": "attachment; filename=tilemark-bookmarks.html"})
 
 
 # ------------------------------------------------------- backup and restore
 # A backup holds one user's links, groups and thumbnails: a zip with a small
-# database (tables "groups" and "links", the same layout as LinkBoard 1.0, so 1.0
-# backups restore here and the other way round) and the thumbnails. With a password
-# it is wrapped as: MAGIC + 16-byte salt + 12-byte nonce + AES-256-GCM(zip), key =
+# database (tables "groups" and "links") and the thumbnails. With a password it is
+# wrapped as: MAGIC + 16-byte salt + 12-byte nonce + AES-256-GCM(zip), key =
 # scrypt(password). Accounts, passwords and API keys are never in a backup.
-MAGIC = b"LINKBOARD-BACKUP-1\n"
+# Backups made under the app's previous name use LEGACY_MAGIC and a database named
+# LEGACY_DB in the zip; they restore exactly like new ones.
+MAGIC = b"TILEMARK-BACKUP-1\n"
+BACKUP_DB = "tilemark.db"
+LEGACY_MAGIC = b"LINK" + b"BOARD-BACKUP-1\n"
+LEGACY_DB = "link" + "board.db"
 MAX_BACKUP_DB = 512 * 1024 * 1024
 
 
@@ -1620,7 +1624,7 @@ def _key(password, salt):
 
 def make_backup(uid, password=""):
     with tempfile.TemporaryDirectory() as tmp:
-        snap = os.path.join(tmp, "linkboard.db")
+        snap = os.path.join(tmp, "tilemark.db")
         cols = ",".join(LINK_COLS)
         con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
         con.row_factory = sqlite3.Row
@@ -1637,7 +1641,7 @@ def make_backup(uid, password=""):
             con.close()
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-            z.write(snap, "linkboard.db")
+            z.write(snap, BACKUP_DB)
             for name in sorted(set(thumbs)):
                 path = os.path.join(THUMB_DIR, os.path.basename(name))
                 if os.path.isfile(path):
@@ -1656,24 +1660,29 @@ class RestoreError(Exception):
 def restore_backup(uid, data, password=""):
     """Replace this user's links and groups with the ones in the backup. Ids are
     given anew (other users' ids may be taken), so groups and pictures are mapped."""
-    if data.startswith(MAGIC):
+    magic = next((m for m in (MAGIC, LEGACY_MAGIC) if data.startswith(m)), None)
+    if magic:
         if not password:
             raise RestoreError("This backup is protected. Enter its password.")
-        salt, nonce, body = data[len(MAGIC):len(MAGIC) + 16], data[len(MAGIC) + 16:len(MAGIC) + 28], data[len(MAGIC) + 28:]
+        salt, nonce, body = data[len(magic):len(magic) + 16], data[len(magic) + 16:len(magic) + 28], data[len(magic) + 28:]
         try:
-            data = AESGCM(_key(password, salt)).decrypt(nonce, body, MAGIC)
+            data = AESGCM(_key(password, salt)).decrypt(nonce, body, magic)
         except InvalidTag:
             raise RestoreError("Wrong password, or the backup file is damaged.")
     try:
         z = zipfile.ZipFile(io.BytesIO(data))
-        if z.getinfo("linkboard.db").file_size > MAX_BACKUP_DB:
+        names = z.namelist()
+        db_name = next((n for n in (BACKUP_DB, LEGACY_DB) if n in names), None)
+        if db_name is None:
+            raise KeyError(BACKUP_DB)
+        if z.getinfo(db_name).file_size > MAX_BACKUP_DB:
             raise RestoreError("The backup's database is too large.")
     except (zipfile.BadZipFile, KeyError):
-        raise RestoreError("This is not a LinkBoard backup file.")
+        raise RestoreError("This is not a TileMark backup file.")
     with tempfile.TemporaryDirectory() as tmp:
         snap = os.path.join(tmp, "restore.db")
         with open(snap, "wb") as f:
-            f.write(z.read("linkboard.db"))
+            f.write(z.read(db_name))
         try:
             old = sqlite3.connect(snap)
             old.row_factory = sqlite3.Row
@@ -1737,7 +1746,7 @@ def restore_backup(uid, data, password=""):
 # Daily copy of the whole installation (all accounts) in data/backups, the last
 # KEEP_BACKUPS kept. It holds the database and the pictures people uploaded
 # themselves; fetched thumbnails are left out (they come back with ↻) so seven
-# copies stay small. Restoring: stop LinkBoard, unzip one into the data folder,
+# copies stay small. Restoring: stop TileMark, unzip one into the data folder,
 # start it again. In the Home Assistant add-on it is off by default, because HA's
 # own backups already contain the add-on's data.
 BACKUP_DIR = os.path.join(DATA_DIR, "backups")
@@ -1751,17 +1760,17 @@ def daily_backup_on():
 
 def list_backups():
     try:
-        return sorted(n for n in os.listdir(BACKUP_DIR) if re.fullmatch(r"linkboard-\d{4}-\d{2}-\d{2}\.zip", n))
+        return sorted(n for n in os.listdir(BACKUP_DIR) if re.fullmatch(r"tilemark-\d{4}-\d{2}-\d{2}\.zip", n))
     except OSError:
         return []
 
 
 def daily_backup():
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    final = os.path.join(BACKUP_DIR, time.strftime("linkboard-%Y-%m-%d.zip"))
+    final = os.path.join(BACKUP_DIR, time.strftime("tilemark-%Y-%m-%d.zip"))
     part = final + ".part"
     with tempfile.TemporaryDirectory() as tmp:
-        snap = os.path.join(tmp, "linkboard.db")
+        snap = os.path.join(tmp, "tilemark.db")
         src, dst = sqlite3.connect(DB_PATH, timeout=30), sqlite3.connect(snap)
         with dst:
             src.backup(dst)  # consistent copy, even while the app is in use
@@ -1769,7 +1778,7 @@ def daily_backup():
         own = [r[0] for r in dst.execute("SELECT thumb FROM links WHERE custom_thumb=1 AND thumb != ''")]
         dst.close()
         with zipfile.ZipFile(part, "w", zipfile.ZIP_DEFLATED) as z:
-            z.write(snap, "linkboard.db")
+            z.write(snap, BACKUP_DB)
             for name in sorted(set(own)):
                 path = os.path.join(THUMB_DIR, os.path.basename(name))
                 if os.path.isfile(path):
@@ -1789,7 +1798,7 @@ def api_backup():
     d = request.get_json(force=True, silent=True) or {}
     password = str(d.get("password", ""))
     data = make_backup(me(), password)
-    name = "linkboard-backup-" + time.strftime("%Y-%m-%d") + (".lbk" if password else ".zip")
+    name = "tilemark-backup-" + time.strftime("%Y-%m-%d") + (".tmk" if password else ".zip")
     return Response(data, mimetype="application/octet-stream",
                     headers={"Content-Disposition": f"attachment; filename={name}", "X-Filename": name})
 
@@ -1808,7 +1817,7 @@ def api_restore():
 
 # -------------------------------------------------------------------- start
 def reset_login(username=None):
-    """docker exec linkboard python app.py reset-login [username]
+    """docker exec tilemark python app.py reset-login [username]
     Gives that user (default: the first admin) a new random password and prints it."""
     with db() as c:
         if username:
@@ -1826,10 +1835,10 @@ init_db()
 if not get_setting("secret_key"):
     set_setting("secret_key", secrets.token_hex(32))
 app.secret_key = get_setting("secret_key")
-app.config.update(SESSION_COOKIE_NAME="linkboard", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+app.config.update(SESSION_COOKIE_NAME="tilemark", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   PERMANENT_SESSION_LIFETIME=timedelta(days=30))
 _CLI = sys.argv[1:2] in (["reset-login"], ["setup-code"])
-if not _CLI and not os.environ.get("LINKBOARD_NO_WORKERS"):
+if not _CLI and not os.environ.get("TILEMARK_NO_WORKERS"):
     if setup_needed():  # (as an add-on, opening it from the HA sidebar also creates the first account)
         print_setup_code()
     threading.Thread(target=_check_scheduler, daemon=True).start()
@@ -1846,14 +1855,14 @@ if not _CLI and not os.environ.get("LINKBOARD_NO_WORKERS"):
 if __name__ == "__main__":
     if sys.argv[1:2] == ["setup-code"]:
         if not setup_needed():
-            print("LinkBoard already has an account; no setup code is needed. Forgot a password? Use reset-login.")
+            print("TileMark already has an account; no setup code is needed. Forgot a password? Use reset-login.")
             sys.exit(1)
         print(f"Setup code: {setup_code()}")
         sys.exit(0)
     if _CLI:
         who, new_pw = reset_login(sys.argv[2] if len(sys.argv) > 2 else None)
         if not who:
-            print("No such account. With no accounts at all, open LinkBoard to create the first one.")
+            print("No such account. With no accounts at all, open TileMark to create the first one.")
             sys.exit(1)
         print(f"New password for {who}: {new_pw}\nSign in with it, then change it in Settings. "
               "Every device of this account has been signed out.")

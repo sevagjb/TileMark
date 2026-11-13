@@ -2,7 +2,7 @@
 
 What is planned next, and what each release brought. Changes per version in detail: [CHANGELOG.md](CHANGELOG.md).
 
-## Next: 1.3.0
+## Next: 2.1.0
 
 Small items plus two-factor sign-in, in one round.
 
@@ -14,16 +14,6 @@ Small items plus two-factor sign-in, in one round.
 - [ ] **Keyboard shortcuts:** `/` for search, `n` for a new link, Esc to clear.
 - [ ] **Sign out other devices:** a list of active sessions in "Your account".
 - [ ] **Two-factor sign-in (TOTP)** with an authenticator app, for accounts reached from outside the home network.
-
-## Home Assistant add-on: tests on a real installation
-
-Before the add-on goes from "experimental" to stable:
-
-- [ ] A second Home Assistant user who is not an admin gets their own empty board, without the People and Installation sections.
-- [ ] Direct port: set a port and a password, sign in at `http://<home-assistant>:<port>`, and the browser button and API key work there.
-- [ ] A Home Assistant backup with LinkBoard in it restores cleanly.
-- [ ] Optional: the watchdog starts LinkBoard again after it stops.
-- [ ] **Promote the add-on to stable** (`stage` in `homeassistant-addon/config.yaml`).
 
 ## After that (medium)
 
@@ -44,6 +34,10 @@ Before the add-on goes from "experimental" to stable:
 - Desktop installer without Docker; Android app.
 
 ## Done
+
+### 2.0.0
+- [x] LinkBoard renamed to TileMark everywhere (clean break: fresh install, then restore the old backup).
+- [x] Home Assistant add-on tested on a real installation (separate accounts, non-admin user, direct port, HA backup and restore, updates) and marked stable.
 
 ### 1.2.1
 - [x] Titles of bot-check and consent screens are no longer saved.
@@ -66,6 +60,6 @@ Before the add-on goes from "experimental" to stable:
 ### 1.0.0
 - [x] Backup and restore, optionally encrypted (1).
 - [x] Ready-made Docker image for PC and ARM servers, on GitHub's registry (2).
-- [x] "Save to LinkBoard" browser button and API key (3); install as a phone app with Share menu (4).
+- [x] "Save to TileMark" browser button and API key (3); install as a phone app with Share menu (4).
 - [x] Favourites (5), notes (6), sort options per group (7), recently added and opened (8).
 - [x] Broken-link check (9), own picture for a card (10), refresh for a selection, a group or everything (11).

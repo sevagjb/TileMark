@@ -1,11 +1,11 @@
 services:
-  linkboard:
-    image: ghcr.io/sevagjb/linkboard:latest
+  tilemark:
+    image: ghcr.io/sevagjb/tilemark:latest
     # To build from source instead of pulling the image, replace the line
     # above with these two:
-    # build: https://github.com/sevagjb/linkboard.git#main
+    # build: https://github.com/sevagjb/tilemark.git#main
     # pull_policy: build
-    container_name: linkboard
+    container_name: tilemark
     restart: unless-stopped
     ports:
       - "8080:8080"

@@ -1,17 +1,17 @@
-<img src="docs/logo.png" width="72" alt="LinkBoard logo">
+<img src="docs/logo.png" width="72" alt="TileMark logo">
 
-# LinkBoard
+# TileMark
 
 A small self-hosted home for your web links. Paste a link and it becomes a card with a thumbnail. Everything lives on one page, organised in coloured groups, a bit like browser tab groups that you can open from any device.
 
 One container, one data folder, no external services.
 
-![LinkBoard with groups on the left and the links of one group listed beside them](docs/side-panel.png)
+![TileMark with groups on the left and the links of one group listed beside them](docs/side-panel.png)
 
 <details>
 <summary>The other layout: all groups as collapsible sections</summary>
 
-![LinkBoard showing all groups as collapsible sections with large cards](docs/sections.png)
+![TileMark showing all groups as collapsible sections with large cards](docs/sections.png)
 
 </details>
 
@@ -28,7 +28,7 @@ One container, one data folder, no external services.
 - **Sort** a group by your own order, newest, oldest, name or site.
 - **Recently added** and **Recently opened** lists.
 - **Save from anywhere:** a browser button, the phone's Share menu (when installed as an app over HTTPS), or an API key for scripts.
-- **Broken-link check:** once a week (or on demand) LinkBoard checks every link and lists the ones that no longer work.
+- **Broken-link check:** once a week (or on demand) TileMark checks every link and lists the ones that no longer work.
 - **Your own picture** for a card: upload or paste an image when a site offers none.
 - **Refresh** titles and pictures for one link, a selection, a whole group or everything.
 - **Share** a link from its card: the phone's share sheet where there is one, otherwise the address is copied.
@@ -38,7 +38,7 @@ One container, one data folder, no external services.
 - **Backup and restore** from Settings, optionally encrypted with a password.
 - **Accounts for everyone in the house:** each person has their own links, groups, settings, API key and backups. The first account is the admin and adds the others.
 - **Never open by accident:** a new installation asks for the first account, protected by a one-time setup code from the container log.
-- **Home Assistant add-on:** LinkBoard in the HA sidebar, signed in with your Home Assistant account.
+- **Home Assistant add-on:** TileMark in the HA sidebar, signed in with your Home Assistant account.
 - **Card options per account:** picture size, open links in a new or the same tab, and the default group for new links.
 - **Daily backup** of the whole installation in the data folder, the last 7 kept.
 - **Search** across titles, addresses and groups.
@@ -46,15 +46,15 @@ One container, one data folder, no external services.
 
 ## Install
 
-LinkBoard runs in Docker (below) or as a [Home Assistant add-on](#home-assistant-add-on).
+TileMark runs in Docker (below) or as a [Home Assistant add-on](#home-assistant-add-on).
 
 You need Docker with Compose. In [Dockge](https://github.com/louislam/dockge), create a new stack and paste the compose; with plain Docker, save it as `compose.yaml` in an empty folder and run `docker compose up -d`.
 
 ```yaml
 services:
-  linkboard:
-    image: ghcr.io/sevagjb/linkboard:latest
-    container_name: linkboard
+  tilemark:
+    image: ghcr.io/sevagjb/tilemark:latest
+    container_name: tilemark
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -64,14 +64,14 @@ services:
 
 Then open `http://<your-server>:8080`.
 
-Everything LinkBoard stores (the database and the thumbnails) is in the `data` folder next to the compose file.
+Everything TileMark stores (the database and the thumbnails) is in the `data` folder next to the compose file.
 
 ### First steps
 
-1. Create the first account on the welcome screen. It is the admin. The screen asks for a **setup code**, printed in the container log: in Dockge open the stack's log, with plain Docker run `docker logs linkboard`. (`docker exec linkboard python app.py setup-code` shows it again.) The code only exists until the first account is made; it stops anyone else on your network from claiming a fresh installation before you do.
+1. Create the first account on the welcome screen. It is the admin. The screen asks for a **setup code**, printed in the container log: in Dockge open the stack's log, with plain Docker run `docker logs tilemark`. (`docker exec tilemark python app.py setup-code` shows it again.) The code only exists until the first account is made; it stops anyone else on your network from claiming a fresh installation before you do.
 2. Paste a link into the field at the top and press Enter, or use **Import** to bring in your browser bookmarks.
 3. Create groups with **+ New group** and drag cards onto them.
-4. To give someone else their own LinkBoard, add them in **⚙ Settings → People**.
+4. To give someone else their own TileMark, add them in **⚙ Settings → People**.
 
 ### Update
 
@@ -83,22 +83,22 @@ docker compose pull && docker compose up -d
 
 Your data is kept.
 
-Image tags: `latest` is the newest **release** and is what the compose above uses. `1.1.0` (or `1.1`) stays on one release. `edge` follows every change on `main` before it is released; use it only to try out what is coming.
+Image tags: `latest` is the newest **release** and is what the compose above uses. `2.0.0` (or `2.0`) stays on one release. `edge` follows every change on `main` before it is released; use it only to try out what is coming.
 
-**Upgrading from 1.0:** the database is upgraded automatically on the first start (make a backup first, to be safe). If you had a login, it becomes the admin account with all your links and your API key, and every device has to sign in once more. If you had no login, LinkBoard asks you to create an account and gives it all existing links.
+**Coming from LinkBoard:** TileMark is the new name of LinkBoard, starting with 2.0.0. There is no in-place upgrade: install TileMark fresh (new image, new data folder) and restore your LinkBoard backup in **⚙ Settings → Restore**; old backup files, encrypted or not, are accepted.
 
 ## Home Assistant add-on
 
-LinkBoard also runs as a Home Assistant add-on, with its own panel in the sidebar. It needs Home Assistant OS or a Supervised installation (with HA Container or Core, use Docker as above).
+TileMark also runs as a Home Assistant add-on, with its own panel in the sidebar. It needs Home Assistant OS or a Supervised installation (with HA Container or Core, use Docker as above).
 
-[![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Flinkboard)
+[![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Ftilemark)
 
-Or by hand: **Settings → Add-ons → Add-on store → ⋮ → Repositories**, add `https://github.com/sevagjb/linkboard`, then install **LinkBoard** and turn on **Show in sidebar**.
+Or by hand: **Settings → Add-ons → Add-on store → ⋮ → Repositories**, add `https://github.com/sevagjb/tilemark`, then install **TileMark** and turn on **Show in sidebar**.
 
-- **No second login:** Home Assistant tells LinkBoard who is signed in. Every HA user gets their own LinkBoard account on first visit; the first one and all HA admins are LinkBoard admins.
-- **Backups:** everything is in the add-on's data folder, so Home Assistant backups include LinkBoard.
-- **Browser button, phone app, API key:** these need a fixed address. Enter a port under the add-on's **Configuration → Network**, set a password in LinkBoard's **⚙ Settings → Your account**, and use `http://<your-home-assistant>:<port>`. Leave the port empty to reach LinkBoard only through Home Assistant.
-- **Moving from Docker:** make a backup in your Docker LinkBoard and restore it in the add-on (each person their own).
+- **No second login:** Home Assistant tells TileMark who is signed in. Every HA user gets their own TileMark account on first visit; the first one and all HA admins are TileMark admins.
+- **Backups:** everything is in the add-on's data folder, so Home Assistant backups include TileMark.
+- **Browser button, phone app, API key:** these need a fixed address. Enter a port under the add-on's **Configuration → Network**, set a password in TileMark's **⚙ Settings → Your account**, and use `http://<your-home-assistant>:<port>`. Leave the port empty to reach TileMark only through Home Assistant.
+- **Moving from Docker:** make a backup in your Docker TileMark and restore it in the add-on (each person their own).
 
 The add-on uses the same image as the Docker install. Details: [homeassistant-addon/DOCS.md](homeassistant-addon/DOCS.md).
 
@@ -107,14 +107,14 @@ The add-on uses the same image as the Docker install. Details: [homeassistant-ad
 Replace the `image:` line with these two, and Docker builds the latest code from this repository on every deploy:
 
 ```yaml
-    build: https://github.com/sevagjb/linkboard.git#main
+    build: https://github.com/sevagjb/tilemark.git#main
     pull_policy: build
 ```
 
 ## Importing browser bookmarks
 
 1. Export from the browser. In Edge: Favorites → `…` → **Export favorites**. In Chrome: Bookmark manager → `⋮` → **Export bookmarks**. Both save an `.html` file.
-2. In LinkBoard: **Import** → choose that file → **Import**.
+2. In TileMark: **Import** → choose that file → **Import**.
 
 Each folder becomes a group. Thumbnails are fetched in the background, a few at a time, so a big import fills in over a minute or two.
 
@@ -122,15 +122,15 @@ You can also paste a plain list of links (one per line) into the import box, or 
 
 ## Save from anywhere
 
-**Browser button.** In **⚙ Settings → Save from anywhere**, drag **🔖 Save to LinkBoard** to your favorites bar. Clicking it on any page opens a small window where you pick the group, add an optional note and save. You need to be signed in to LinkBoard in that browser.
+**Browser button.** In **⚙ Settings → Save from anywhere**, drag **🔖 Save to TileMark** to your favorites bar. Clicking it on any page opens a small window where you pick the group, add an optional note and save. You need to be signed in to TileMark in that browser.
 
-**Phone.** When LinkBoard runs on HTTPS, open it in the phone's browser and choose "Install app" or "Add to Home screen". On Android it then appears in the Share menu of other apps, so you can send a page or video straight to a group. iOS installs the app but does not offer web apps in its Share menu; use the API key with a Shortcut there.
+**Phone.** When TileMark runs on HTTPS, open it in the phone's browser and choose "Install app" or "Add to Home screen". On Android it then appears in the Share menu of other apps, so you can send a page or video straight to a group. iOS installs the app but does not offer web apps in its Share menu; use the API key with a Shortcut there.
 
 **API key.** Create one in the same Settings section. Every account has its own key; links sent with it go to that account. It is shown once, and it can only add links and read group names:
 
 ```bash
-curl -X POST https://linkboard.example.com/api/links \
-  -H "Authorization: Bearer lb_your_key" -H "Content-Type: application/json" \
+curl -X POST https://tilemark.example.com/api/links \
+  -H "Authorization: Bearer tm_your_key" -H "Content-Type: application/json" \
   -d '{"url": "https://example.com/article", "group_id": 3, "note": "read later"}'
 ```
 
@@ -151,39 +151,39 @@ Every page, link, thumbnail, import, export and backup requires signing in. Ther
 Forgot a password? This gives the first admin (or the account you name) a new random password and prints it:
 
 ```bash
-docker exec linkboard python app.py reset-login
-docker exec linkboard python app.py reset-login bob
+docker exec tilemark python app.py reset-login
+docker exec tilemark python app.py reset-login bob
 ```
 
 ## Backup and restore
 
 **⚙ Settings → Backup** downloads a single file with all *your* links, groups, colours, order and thumbnails. Each person makes their own backup.
 
-- With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.lbk`. A forgotten backup password cannot be recovered.
+- With a password the file is encrypted (AES-256-GCM, key derived from the password with scrypt) and saved as `.tmk`. A forgotten backup password cannot be recovered.
 - Without a password it is a plain `.zip`.
 - Accounts, passwords and API keys are never part of a backup.
 
-**⚙ Settings → Restore** replaces all your links and groups with the contents of a backup file; other people's links are not touched. Backups from LinkBoard 1.0 work too. It is all-or-nothing: a wrong password or a damaged file changes nothing.
+**⚙ Settings → Restore** replaces all your links and groups with the contents of a backup file; other people's links are not touched. Backups made with LinkBoard (TileMark's earlier name) work too. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 
-For the whole installation (all accounts), LinkBoard keeps a **daily backup** in `data/backups/`, the last 7 days (the admin can switch it off under **⚙ Settings → Installation**). It holds the database with every account and the pictures people uploaded themselves; fetched thumbnails are left out to keep it small and come back with ↻. To restore one: stop LinkBoard, unzip it into the `data` folder (replacing `linkboard.db`), start it again. Copying the whole `data` folder while the container is stopped works too.
+For the whole installation (all accounts), TileMark keeps a **daily backup** in `data/backups/`, the last 7 days (the admin can switch it off under **⚙ Settings → Installation**). It holds the database with every account and the pictures people uploaded themselves; fetched thumbnails are left out to keep it small and come back with ↻. To restore one: stop TileMark, unzip it into the `data` folder (replacing `tilemark.db`), start it again. Copying the whole `data` folder while the container is stopped works too.
 
 ## Broken links
 
-LinkBoard checks all links once a week and lists the ones that no longer work under **Broken links** in the left column; each also gets a "Broken" label on its card. **⚙ Settings → Link check** has a **Check now** button for your own links; the admin can switch the weekly check off under **Installation**.
+TileMark checks all links once a week and lists the ones that no longer work under **Broken links** in the left column; each also gets a "Broken" label on its card. **⚙ Settings → Link check** has a **Check now** button for your own links; the admin can switch the weekly check off under **Installation**.
 
 A link counts as broken when its address cannot be reached on two tries, or the site answers that the page does not exist (404 or 410). Sign-in walls, bot blocks and temporary server errors are not counted, so a link is not flagged just because a site is picky. The label disappears when a later check or a refresh succeeds.
 
 ## Local addresses and safety
 
-LinkBoard fetches pages to get titles and pictures, and the address of a picture comes from the page itself. To stop a page (or another account) from making LinkBoard look inside your network, it never fetches loopback, link-local or cloud-metadata addresses, and by default no private network addresses either (`192.168.x.x`, `10.x.x.x`, `nas.local` …). Redirects are checked hop by hop, and so is the address actually connected to.
+TileMark fetches pages to get titles and pictures, and the address of a picture comes from the page itself. To stop a page (or another account) from making TileMark look inside your network, it never fetches loopback, link-local or cloud-metadata addresses, and by default no private network addresses either (`192.168.x.x`, `10.x.x.x`, `nas.local` …). Redirects are checked hop by hop, and so is the address actually connected to.
 
 You can still save local links; they show their address and a letter tile. If you want titles and pictures for them, and you trust everyone who has an account, the admin can turn on **⚙ Settings → Installation → Fetch titles and pictures for local network addresses**. The link check skips local addresses while this is off, so they are never reported as broken.
 
 ## HTTPS and reverse proxies
 
-LinkBoard itself speaks plain HTTP. On a home network the login keeps other people out of the page, but the password is not encrypted in transit. For that, or for access from outside your network, put a reverse proxy with HTTPS in front (Nginx Proxy Manager, Traefik, Caddy …) and forward your hostname to `http://<your-server>:8080`.
+TileMark itself speaks plain HTTP. On a home network the login keeps other people out of the page, but the password is not encrypted in transit. For that, or for access from outside your network, put a reverse proxy with HTTPS in front (Nginx Proxy Manager, Traefik, Caddy …) and forward your hostname to `http://<your-server>:8080`.
 
-Nothing needs to be configured in LinkBoard for this. The same compose file works for the local address, the HTTPS address, or both at once: LinkBoard reads the standard forwarded headers a proxy sends, gives HTTPS visitors an HTTPS-only login cookie, and limits wrong-password attempts per visitor either way.
+Nothing needs to be configured in TileMark for this. The same compose file works for the local address, the HTTPS address, or both at once: TileMark reads the standard forwarded headers a proxy sends, gives HTTPS visitors an HTTPS-only login cookie, and limits wrong-password attempts per visitor either way.
 
 ## Options
 
@@ -205,7 +205,7 @@ Layout, appearance, sort order and the card options (picture size, open in a new
 
 ## Roadmap
 
-Planned work is listed in [ROADMAP.md](ROADMAP.md). Ideas and bug reports are welcome in the [issues](https://github.com/sevagjb/linkboard/issues).
+Planned work is listed in [ROADMAP.md](ROADMAP.md). Ideas and bug reports are welcome in the [issues](https://github.com/sevagjb/tilemark/issues).
 
 ## Development
 

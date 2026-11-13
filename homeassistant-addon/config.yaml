@@ -1,34 +1,34 @@
-# Home Assistant add-on for LinkBoard. It runs the same image as the Docker install
-# (ghcr.io/sevagjb/linkboard:<version>), so "version" must be a released LinkBoard version.
+# Home Assistant add-on for TileMark. It runs the same image as the Docker install
+# (ghcr.io/sevagjb/tilemark:<version>), so "version" must be a released TileMark version.
 # Do not change "version" by hand: when a v* tag has been built and pushed, the release
 # workflow sets it (and copies CHANGELOG.md here), so Home Assistant never offers an
 # update whose image does not exist yet.
-name: LinkBoard
-version: "1.2.1"
-slug: linkboard
+name: TileMark
+version: "2.0.0"
+slug: tilemark
 description: Your saved links, with thumbnails and groups, in the Home Assistant sidebar.
-url: https://github.com/sevagjb/linkboard
+url: https://github.com/sevagjb/tilemark
 arch:
   - aarch64
   - amd64
-image: ghcr.io/sevagjb/linkboard
-stage: experimental
+image: ghcr.io/sevagjb/tilemark
+stage: stable
 # Open from the sidebar; Home Assistant signs people in. Every HA user gets their
-# own LinkBoard account, so the panel is not limited to admins.
+# own TileMark account, so the panel is not limited to admins.
 ingress: true
 ingress_port: 8080
 panel_icon: mdi:bookmark-multiple
-panel_title: LinkBoard
+panel_title: TileMark
 panel_admin: false
-# LinkBoard's own address, for the browser button, the phone app and the API key.
+# TileMark's own address, for the browser button, the phone app and the API key.
 # Off until a port is filled in under Configuration → Network.
 ports:
   8080/tcp: null
 ports_description:
-  8080/tcp: LinkBoard's own address (browser button, phone app, API key). Leave empty to use only the sidebar.
+  8080/tcp: TileMark's own address (browser button, phone app, API key). Leave empty to use only the sidebar.
 environment:
-  LINKBOARD_HA_ADDON: "1"
-# Home Assistant restarts LinkBoard when this stops answering (checked on the add-on's own
+  TILEMARK_HA_ADDON: "1"
+# Home Assistant restarts TileMark when this stops answering (checked on the add-on's own
 # address, so it works whether or not the direct port is turned on).
 watchdog: http://[HOST]:[PORT:8080]/healthz
 # Stopped for a moment while Home Assistant makes a backup, so the database copy is consistent.

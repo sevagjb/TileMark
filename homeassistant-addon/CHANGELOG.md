@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.2 (unreleased)
+## 2.3.2
 
 ### New
 - **A new guide and website:** every feature and every option explained step by step, with screenshots, at <https://sevagjb.github.io/TileMark/> and in the `docs` folder. The README is now a short introduction with a quick start.

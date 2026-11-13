@@ -1374,7 +1374,7 @@ def _check_new_credentials(username, password, need_password=True):
 
 
 OPEN_ENDPOINTS = {"login_page", "api_login", "api_login_totp", "auth_status", "api_setup", "icon", "save_page", "manifest",
-                  "service_worker", "healthz"}
+                  "service_worker", "healthz", "i18n_script"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
 ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings", "list_full_backups",
                    "make_full_backup_now", "download_full_backup", "restore_full_backup_api", "mqtt_settings"}
@@ -1431,6 +1431,11 @@ def manifest():
 @app.get("/sw.js")
 def service_worker():
     return send_from_directory(PAGES, "sw.js", mimetype="text/javascript", max_age=0)
+
+
+@app.get("/i18n.js")
+def i18n_script():
+    return send_from_directory(PAGES, "i18n.js", mimetype="text/javascript", max_age=0)
 
 
 @app.get("/icon-<name>.png")
@@ -1782,7 +1787,8 @@ def thumbs(name):
 
 
 PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark"),
-             "thumb": ("s", "m", "l"), "open": ("new", "same")}
+             "thumb": ("s", "m", "l"), "open": ("new", "same"),
+             "lang": ("", "en", "nl", "ar")}  # "" = follow the browser
 SORT_MODES = ("manual", "newest", "oldest", "name", "site")
 
 

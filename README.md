@@ -46,6 +46,7 @@ One container, one data folder, no external services.
 - **Card options per account:** picture size, open links in a new or the same tab, and the default group for new links.
 - **Daily backup** of the whole installation in the data folder, the last 7 kept.
 - **Search** across titles, addresses and groups.
+- **English, Dutch and Arabic:** follows the browser's language, or choose one per account in Settings. Arabic is shown right to left.
 - Light and dark appearance.
 
 ## Install

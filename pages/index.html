@@ -28,12 +28,12 @@ option, optgroup { background-color: var(--panel); color: var(--text); }
 header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent);
          backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
-.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-right: 6px; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-inline-end: 6px; }
 .add { flex: 2 1 280px; max-width: 520px; display: flex; background: var(--panel); border: 1px solid var(--line);
        border-radius: 10px; overflow: hidden; }
 .add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .add input { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 12px; outline: none; }
-.add select { border: 0; border-left: 1px solid var(--line); background-color: var(--panel); padding: 0 8px; max-width: 170px; outline: none; cursor: pointer; }
+.add select { border: 0; border-inline-start: 1px solid var(--line); background-color: var(--panel); padding: 0 8px; max-width: 170px; outline: none; cursor: pointer; }
 .add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
 .search { flex: 3 1 240px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
 .search:focus { border-color: var(--accent); }
@@ -73,9 +73,9 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .title { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .meta { margin-top: 5px; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; min-width: 0; }
 .meta .host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.meta .tag { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; max-width: 50%; overflow: hidden; text-overflow: ellipsis; }
+.meta .tag { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; max-width: 50%; overflow: hidden; text-overflow: ellipsis; }
 .meta .tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
-.actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+.actions { position: absolute; top: 8px; inset-inline-end: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
 .card:hover .actions, .card:focus-within .actions { opacity: 1; }
 @media (hover: none) { .actions { opacity: 1; } }
 .actions button { width: 30px; height: 30px; border-radius: 8px; border: 0; cursor: pointer; background: rgba(15,18,25,.72); color: #fff; font-size: 14px; }
@@ -90,14 +90,14 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .sec-head .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); }
 .sec-head .sec-name { font-weight: 650; font-size: 16px; }
 .sec-head .n { color: var(--muted); font-size: 13px; }
-.sec-head .open { margin-left: auto; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 6px; }
+.sec-head .open { margin-inline-start: auto; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 6px; }
 .sec-head .open:hover { color: var(--text); background: color-mix(in srgb, var(--c) 16%, transparent); }
 .section.collapsed .chev { transform: rotate(-90deg); }
 .section.collapsed .grid { display: none; }
 .section.collapsed { margin-bottom: 8px; }
 .section.collapsed .sec-head { margin-bottom: 0; }
 .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
-.side { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 2px 4px 2px 2px; }
+.side { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-block: 2px; padding-inline: 2px 4px; }
 .gitem { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 9px; cursor: pointer; user-select: none; border: 1px solid transparent; }
 .gitem:hover { background: color-mix(in srgb, var(--c, var(--accent)) 10%, transparent); }
 .gitem:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -115,12 +115,12 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .list { display: flex; flex-direction: column; gap: 10px; }
 .list .card { flex-direction: row; align-items: stretch; }
 .list .card:hover { transform: none; }
-.list .thumb { flex: 0 0 150px; border-bottom: 0; border-right: 1px solid var(--line); }
+.list .thumb { flex: 0 0 150px; border-bottom: 0; border-inline-end: 1px solid var(--line); }
 .list .thumb .letter { font-size: 30px; }
 .list .thumb img.icon { width: 40px; height: 40px; }
-.list .body { flex: 1; padding: 9px 186px 9px 14px; display: flex; flex-direction: column; justify-content: center; }
+.list .body { flex: 1; padding-block: 9px; padding-inline: 14px 186px; display: flex; flex-direction: column; justify-content: center; }
 .list .title { -webkit-line-clamp: 1; }
-.list .actions { top: 50%; right: 10px; transform: translateY(-50%); }
+.list .actions { top: 50%; inset-inline-end: 10px; transform: translateY(-50%); }
 .desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) {
   .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -141,19 +141,20 @@ dialog h2 + h3.sect { margin-top: 0; padding-top: 0; border-top: 0; }
 .choice input { margin-top: 3px; }
 .choice b { display: block; } .choice span { color: var(--muted); font-size: 13px; }
 .card.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
-.tick { position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #fff; background: rgba(15,18,25,.55);
+.tick { position: absolute; top: 8px; inset-inline-start: 8px; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #fff; background: rgba(15,18,25,.55);
         display: none; place-items: center; color: #fff; font-size: 14px; line-height: 1; z-index: 2; }
 .selecting .tick { display: grid; } .selecting .actions { display: none; } .selecting .card { cursor: pointer; }
 .card.sel .tick { background: var(--accent); border-color: var(--accent); }
 .list .card.ins-before { box-shadow: 0 -4px 0 -1px var(--accent); } .list .card.ins-after { box-shadow: 0 4px 0 -1px var(--accent); }
 .grid .card.ins-before { box-shadow: -5px 0 0 -1px var(--accent); } .grid .card.ins-after { box-shadow: 5px 0 0 -1px var(--accent); }
+[dir=rtl] .grid .card.ins-before { box-shadow: 5px 0 0 -1px var(--accent); } [dir=rtl] .grid .card.ins-after { box-shadow: -5px 0 0 -1px var(--accent); }
 .bulk { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
 .selecting .bulk { display: flex; } .selecting .not-selecting { display: none !important; }
 .bulk select { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; max-width: 190px; }
 .bulk b { color: var(--text); }
-.note { color: var(--text); font-size: 12.5px; margin-top: 3px; padding-left: 8px; border-left: 2px solid #f5b83d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note { color: var(--text); font-size: 12.5px; margin-top: 3px; padding-inline-start: 8px; border-inline-start: 2px solid #f5b83d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .grid .note { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.pin { color: #f5b83d; margin-right: 5px; }
+.pin { color: #f5b83d; margin-inline-end: 5px; }
 .actions button.on { color: #f5b83d; }
 .tools select { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 dialog .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin-top: 14px; }
@@ -174,11 +175,11 @@ dialog input[type=text], dialog input[type=password], dialog input[type=url], di
 dialog textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 dialog :is(input, select, textarea):focus { border-color: var(--accent); }
 .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
-.row .left { margin-right: auto; }
+.row .left { margin-inline-end: auto; }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatches button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; background: var(--c); cursor: pointer; }
 .swatches button.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--panel) inset; }
-.swatches .custom { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 3px 12px 3px 4px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--text); font-size: 13px; }
+.swatches .custom { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding-block: 3px; padding-inline: 4px 12px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--text); font-size: 13px; }
 .swatches .custom.on { border-color: var(--text); }
 .swatches .custom input { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
 .swatches .custom input::-webkit-color-swatch-wrapper { padding: 0; } .swatches .custom input::-webkit-color-swatch { border: 0; border-radius: 50%; }
@@ -192,7 +193,7 @@ dialog.wide { width: min(760px, calc(100vw - 32px)); }
 .dupset .pick, .revrow { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 14px; }
 .dupset .pick + .pick, .revrow + .revrow { border-top: 1px solid var(--line); }
 .pick small, .revrow small { display: block; color: var(--muted); word-break: break-all; }
-.pill { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+.pill { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); margin-inline-start: 6px; vertical-align: 1px; }
 .qr { background: #fff; display: inline-block; padding: 6px; border-radius: 8px; margin-top: 10px; }
 .codes { font-family: ui-monospace, Consolas, monospace; display: grid; grid-template-columns: repeat(2, max-content); gap: 4px 24px; margin: 10px 0; }
 .sess { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 14px; }
@@ -206,11 +207,11 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   <div class="bar">
     <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>TileMark</div>
     <form class="add" id="addForm">
-      <input id="addUrl" type="text" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
+      <input id="addUrl" type="text" dir="auto" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
       <select id="addGroup" aria-label="Group"></select>
       <button type="submit">Add</button>
     </form>
-    <input class="search" id="search" type="search" placeholder="Search" aria-label="Search links">
+    <input class="search" id="search" type="search" dir="auto" placeholder="Search" aria-label="Search links">
     <button class="btn" id="importBtn">Import</button>
     <button class="btn" id="exportBtn">Export</button>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
@@ -246,7 +247,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 
 <dialog id="linkDlg"><form method="dialog">
   <h2>Edit link</h2>
-  <label for="lUrl">Address</label><input id="lUrl" type="text">
+  <label for="lUrl">Address</label><input id="lUrl" type="text" dir="auto">
   <label for="lTitle">Title <span style="font-weight:400">(leave empty to use the page title)</span></label><input id="lTitle" type="text">
   <label for="lGroup">Group</label><select id="lGroup"></select>
   <label for="lNote">Note</label><textarea id="lNote" maxlength="2000" style="min-height:70px;font-family:inherit;font-size:inherit"></textarea>
@@ -298,7 +299,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 <dialog id="importDlg"><form method="dialog">
   <h2>Import links</h2>
   <label for="iText">Paste links, one per line</label>
-  <textarea id="iText" placeholder="https://example.com&#10;https://another.example/page"></textarea>
+  <textarea id="iText" dir="auto" placeholder="https://example.com&#10;https://another.example/page"></textarea>
   <label for="iFile">Or choose a file</label>
   <input id="iFile" type="file" accept=".json,.html,.htm,.txt,.csv">
   <p class="hint">A TileMark file brings everything back (groups, colours, notes, favourites, own pictures). A bookmarks/favorites export from Edge, Chrome or Firefox works too: folders become groups. So does a plain text file with links. Links you already have are listed for you to review; nothing is dropped without being shown.</p>
@@ -313,6 +314,8 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
   <h3 class="sect">Appearance</h3>
   <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+  <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option><option value="en" lang="en">English</option><option value="nl" lang="nl">Nederlands</option><option value="ar" lang="ar" dir="rtl">العربية</option></select>
+  <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
   <h3 class="sect">Cards</h3>
   <label for="setThumb">Picture size</label><select id="setThumb"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select>
   <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
@@ -407,7 +410,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
   <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
   <h3 class="sect">Restore</h3>
-  <p class="hint" style="margin-top:0">Replaces all your current links and groups with the ones from a backup file (a backup from TileMark 1.0 works too). Your account and other people's links stay as they are.</p>
+  <p class="hint" style="margin-top:0">Replaces all your current links and groups with the ones from a backup file (older backups work too). Your account and other people's links stay as they are.</p>
   <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
   <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
   <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
@@ -417,6 +420,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 
 <div id="toast" role="status"></div>
 
+<script src="i18n.js"></script>
 <script>
 const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8793a","#e5534b","#d6589f","#b455c9","#8e6ad8","#5b63d6","#a0714f","#7d8590","#4a5568","#c9a227"];
 const $ = id => document.getElementById(id);
@@ -446,8 +450,8 @@ async function api(method, path, body) {
   if (body instanceof FormData) opt.body = body;
   else if (body) { opt.headers = { "Content-Type": "application/json" }; opt.body = JSON.stringify(body); }
   const r = await fetch(path, opt), d = await r.json().catch(() => ({}));
-  if (r.status === 401 && !path.startsWith("api/login")) { location.href = "login"; throw new Error("Please sign in."); }
-  if (!r.ok) throw new Error(d.error || "Something went wrong (" + r.status + ")");
+  if (r.status === 401 && !path.startsWith("api/login")) { location.href = "login"; throw new Error(t("Please sign in.")); }
+  if (!r.ok) throw new Error(d.error ? t(d.error) : t("Something went wrong ({code}).", { code: r.status }));
   return d;
 }
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 3200); }
@@ -470,6 +474,9 @@ function takePrefs(p) {
   for (const k of ["thumb", "open", "defgroup"]) if (k in p) cfg[k] = p[k];
   if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} }
   applySettings();
+  // The account's language wins over this browser's; reload once to show it (only if the
+  // choice could be stored, so a browser that blocks storage does not reload forever).
+  if ("lang" in p && p.lang !== storedLang()) { setLang(p.lang); if (storedLang() === p.lang) location.reload(); }
 }
 
 async function load() {
@@ -506,7 +513,7 @@ function sideItem(label, key, color, n, g) {
   const c = el("div", { className: "gitem" + (filter === String(key) && !q.trim() ? " on" : ""), tabIndex: 0, role: "button" });
   if (color) c.style.setProperty("--c", color);
   c.append(el("span", { className: "dot" }), el("span", { className: "gname", textContent: label }), el("span", { className: "n", textContent: n }));
-  if (g) { const b = el("button", { className: "edit", title: "Edit group", textContent: "✎" });
+  if (g) { const b = el("button", { className: "edit", title: t("Edit group"), textContent: "✎" });
            b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); dragGroup(c, g); }
   const pick = () => { if (q) { q = ""; $("search").value = ""; } setFilter(key); };
   c.onclick = pick;
@@ -535,9 +542,9 @@ async function moveGroup(gid, index) {
 }
 const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => { e.dataTransfer.setData("text/tilemark-group", g.id); e.dataTransfer.effectAllowed = "move"; }; };
 function openMany(list) {
-  if (list.length > 8 && !confirm("Open " + list.length + " tabs?")) return;
+  if (list.length > 8 && !confirm(t("Open {n} tabs?", { n: list.length }))) return;
   let blocked = 0; for (const l of list) if (!window.open(l.url, "_blank", "noopener")) blocked++;
-  if (blocked) toast("Your browser blocked " + blocked + " tabs. Allow pop-ups for this page to open them all.");
+  if (blocked) toast(t("Your browser blocked {n} tabs. Allow pop-ups for this page to open them all.", { n: blocked }));
 }
 
 // The "add" box: the open group if there is one, else what was last picked there,
@@ -554,9 +561,12 @@ function fillSelect(sel, value, noneLabel) {
 }
 
 const clearIns = () => document.querySelectorAll(".ins-before,.ins-after").forEach(n => n.classList.remove("ins-before", "ins-after"));
-// list layout: upper/lower half of the card; grid layout: left/right half
+// list layout: upper/lower half of the card; grid layout: the half that comes later in
+// reading order (the right half, or the left half in a right-to-left language)
 const dropAfter = (node, e) => { const r = node.getBoundingClientRect();
-  return node.closest(".list") ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2; };
+  if (node.closest(".list")) return e.clientY > r.top + r.height / 2;
+  const right = e.clientX > r.left + r.width / 2;
+  return document.documentElement.dir === "rtl" ? !right : right; };
 // reordering works inside one group (not in "All links" or search results), with cards of that same group
 function canReorder(target) {
   if (!dragIds.length || q.trim() || dragIds.includes(target.id)) return false;
@@ -566,11 +576,11 @@ function canReorder(target) {
 // share sheet on phones and other devices that have one; otherwise copy the address
 async function shareLink(l) {
   const title = l.title || host(l.url);
-  if (navigator.share) { try { await navigator.share({ title, url: l.url }); } catch (e) { if (e.name !== "AbortError") toast("Could not share."); } return; }
+  if (navigator.share) { try { await navigator.share({ title, url: l.url }); } catch (e) { if (e.name !== "AbortError") toast(t("Could not share.")); } return; }
   try { await navigator.clipboard.writeText(l.url); }
   catch { const t = el("textarea", { value: l.url }); t.style.position = "fixed"; t.style.opacity = "0"; document.body.append(t); t.select();
           try { document.execCommand("copy"); } catch {} t.remove(); }
-  toast("Link copied. Paste it wherever you want to share it.");
+  toast(t("Link copied. Paste it wherever you want to share it."));
 }
 function card(l) {
   const g = group(l.group_id);
@@ -610,18 +620,18 @@ function card(l) {
                  img.onerror = () => img.replaceWith(letter()); th.append(img); }
   else th.append(l.status === "pending" ? el("span", { className: "spin" }) : letter());
   const meta = el("div", { className: "meta" }, el("span", { className: "host", textContent: host(l.url) }));
-  if (l.broken) meta.append(el("span", { className: "bad", textContent: "Broken", title: "This address could not be reached at the last check, or the page no longer exists." }));
+  if (l.broken) meta.append(el("span", { className: "bad", textContent: t("Broken"), title: t("This address could not be reached at the last check, or the page no longer exists.") }));
   const act = el("div", { className: "actions" });
   const btn = (txt, tip, fn) => { const b = el("button", { type: "button", textContent: txt, title: tip }); b.setAttribute("aria-label", tip);
     b.onclick = e => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
-  const star = btn(l.pinned ? "★" : "☆", l.pinned ? "Remove from favourites" : "Add to favourites",
+  const star = btn(l.pinned ? "★" : "☆", l.pinned ? t("Remove from favourites") : t("Add to favourites"),
     async () => { try { await api("PATCH", "api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
   if (l.pinned) star.classList.add("on");
-  act.append(star, btn("↗", "Share", () => shareLink(l)), btn("✎", "Edit", () => openLink(l)),
-             btn("↻", "Refresh thumbnail", async () => { await api("POST", "api/links/" + l.id + "/refresh"); load(); }),
-             btn("✕", "Delete", () => removeLink(l)));
+  act.append(star, btn("↗", t("Share"), () => shareLink(l)), btn("✎", t("Edit"), () => openLink(l)),
+             btn("↻", t("Refresh thumbnail"), async () => { await api("POST", "api/links/" + l.id + "/refresh"); load(); }),
+             btn("✕", t("Delete"), () => removeLink(l)));
   if (g && cfg.layout === "panel" && (!isGroupView() || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
-  const ttl = el("div", { className: "title" }); if (l.pinned) ttl.append(el("span", { className: "pin", textContent: "★", title: "Favourite" }));
+  const ttl = el("div", { className: "title" }); if (l.pinned) ttl.append(el("span", { className: "pin", textContent: "★", title: t("Favourite") }));
   ttl.append(l.title || host(l.url));
   const body = el("div", { className: "body" }, ttl);
   if (l.note) body.append(el("div", { className: "note", textContent: l.note, title: l.note }));
@@ -634,12 +644,12 @@ function card(l) {
 function section(key, name, color, links, g) {
   const k = String(key), isC = !expanded.has(k) && !q.trim();
   const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color);
-  const head = el("div", { className: "sec-head", tabIndex: 0, role: "button", title: isC ? "Expand" : "Collapse" },
+  const head = el("div", { className: "sec-head", tabIndex: 0, role: "button", title: isC ? t("Expand") : t("Collapse") },
     el("span", { className: "chev", textContent: "▾" }), el("span", { className: "dot" }),
     el("span", { className: "sec-name", textContent: name }), el("span", { className: "n", textContent: links.length }));
-  if (g) { const b = el("button", { className: "edit", type: "button", title: "Edit group", textContent: "✎" });
+  if (g) { const b = el("button", { className: "edit", type: "button", title: t("Edit group"), textContent: "✎" });
            b.onclick = e => { e.stopPropagation(); openGroup(g); }; head.append(b); dragGroup(head, g); }
-  const open = el("button", { className: "open", type: "button", textContent: "Open all", title: "Open all links of this group in tabs" });
+  const open = el("button", { className: "open", type: "button", textContent: t("Open all"), title: t("Open all links of this group in tabs") });
   open.onclick = e => { e.stopPropagation(); openMany(links); };
   if (links.length) head.append(open);
   head.setAttribute("aria-expanded", String(!isC));
@@ -656,71 +666,71 @@ function renderSections(list) {
   for (const g of S.groups) { const ls = list.filter(l => l.group_id === g.id);
     if (ls.length || !searching) { secs.push(section(g.id, g.name, g.color, ls, g)); keys.push(String(g.id)); } }
   const un = list.filter(l => l.group_id === null);
-  if (un.length) { if (S.groups.length) { secs.push(section("none", "Ungrouped", "#9aa3b2", un)); keys.push("none"); }
+  if (un.length) { if (S.groups.length) { secs.push(section("none", t("Ungrouped"), "#9aa3b2", un)); keys.push("none"); }
                    else secs.push(el("div", { className: "grid" }, ...un.map(card))); }
   $("board").replaceChildren(...secs);
   $("foldAll").disabled = $("unfoldAll").disabled = searching || !keys.length;
   $("foldAll").onclick = () => { expanded.clear(); saveExpanded(); render(); };
   $("unfoldAll").onclick = () => { for (const k of keys) expanded.add(k); saveExpanded(); render(); };
-  $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
+  $("count").textContent = (list.length === 1 ? t("{n} link", {n: list.length}) : t("{n} links", {n: list.length}));
   const empty = $("empty"); empty.hidden = list.length > 0 || S.groups.length > 0;
-  if (!empty.hidden) empty.replaceChildren(el("b", { textContent: "No links yet" }), "Paste a link above, or use Import to bring in your bookmarks all at once.");
+  if (!empty.hidden) empty.replaceChildren(el("b", { textContent: t("No links yet") }), t("Paste a link above, or use Import to bring in your bookmarks all at once."));
 }
 function renderSelection() {
   const known = new Set(S.links.map(l => l.id)); for (const id of [...selected]) if (!known.has(id)) selected.delete(id);
   document.body.classList.toggle("selecting", selecting);
-  $("selCount").textContent = selected.size + " selected";
+  $("selCount").textContent = t("{n} selected", { n: selected.size });
   const sel = $("selMove");
-  sel.replaceChildren(el("option", { value: "", textContent: "Move to…" }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })),
-    el("option", { value: "none", textContent: "No group" }));
+  sel.replaceChildren(el("option", { value: "", textContent: t("Move to…") }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })),
+    el("option", { value: "none", textContent: t("No group") }));
   sel.disabled = $("selDelete").disabled = $("selRefresh").disabled = !selected.size;
 }
 function render() {
   renderSelection();
   showDupCount();
   if (cfg.layout === "sections") {
-    fillSelect($("addGroup"), addGroupValue(null), "No group");
+    fillSelect($("addGroup"), addGroupValue(null), t("No group"));
     return renderSections(visible());
   }
   const side = $("side"), ungrouped = S.links.filter(l => l.group_id === null).length, searching = !!q.trim();
   side.replaceChildren();
   for (const g of S.groups) side.append(sideItem(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
-  if (ungrouped && S.groups.length) side.append(sideItem("Ungrouped", "none", "#9aa3b2", ungrouped));
+  if (ungrouped && S.groups.length) side.append(sideItem(t("Ungrouped"), "none", "#9aa3b2", ungrouped));
   if (S.groups.length) side.append(el("hr"));
   const favs = S.links.filter(l => l.pinned).length, opened = S.links.filter(l => l.opened_at).length;
   const broken = S.links.filter(l => l.broken).length;
-  if (broken) side.append(sideItem(SPECIAL.broken, "broken", "#e5534b", broken));
+  if (broken) side.append(sideItem(t(SPECIAL.broken), "broken", "#e5534b", broken));
   const dups = dupSets().length;
-  if (dups) { const d = sideItem("Duplicates", "dups", "#e0a31b", dups); d.onclick = () => $("dupBtn").click(); d.onkeydown = e => { if (e.key === "Enter") $("dupBtn").click(); }; side.append(d); }
-  if (favs) side.append(sideItem(SPECIAL.fav, "fav", "#f5b83d", favs));
-  side.append(sideItem(SPECIAL.all, "all", null, S.links.length));
-  if (S.links.length) side.append(sideItem(SPECIAL.recent, "recent", null, Math.min(30, S.links.length)));
-  side.append(sideItem(SPECIAL.opened, "opened", null, Math.min(30, opened)));
-  const add = el("div", { className: "gitem ghost", textContent: "+ New group", tabIndex: 0, role: "button" });
+  if (dups) { const d = sideItem(t("Duplicates"), "dups", "#e0a31b", dups); d.onclick = () => $("dupBtn").click(); d.onkeydown = e => { if (e.key === "Enter") $("dupBtn").click(); }; side.append(d); }
+  if (favs) side.append(sideItem(t(SPECIAL.fav), "fav", "#f5b83d", favs));
+  side.append(sideItem(t(SPECIAL.all), "all", null, S.links.length));
+  if (S.links.length) side.append(sideItem(t(SPECIAL.recent), "recent", null, Math.min(30, S.links.length)));
+  side.append(sideItem(t(SPECIAL.opened), "opened", null, Math.min(30, opened)));
+  const add = el("div", { className: "gitem ghost", textContent: t("+ New group"), tabIndex: 0, role: "button" });
   add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
   side.append(add);
 
-  fillSelect($("addGroup"), addGroupValue(group(+filter) ? filter : null), "No group");
+  fillSelect($("addGroup"), addGroupValue(group(+filter) ? filter : null), t("No group"));
 
   const list = visible(), g = group(+filter), pt = $("ptitle");
   pt.replaceChildren();
-  if (searching) pt.append("Search results");
+  if (searching) pt.append(t("Search results"));
   else if (g) { pt.style.setProperty("--c", g.color); pt.append(el("i"), g.name); }
-  else pt.append(SPECIAL[filter] || "All links");
+  else pt.append(t(SPECIAL[filter] || "All links"));
   const ss = $("sortSel"); ss.hidden = searching || filter === "recent" || filter === "opened"; ss.value = sortMode();
   ss.onchange = () => { sorts[filter] = ss.value; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} savePrefs(); render(); };
   $("board").replaceChildren(el("div", { className: "list" }, ...list.map(card)));
-  $("count").textContent = list.length + (list.length === 1 ? " link" : " links");
+  $("count").textContent = (list.length === 1 ? t("{n} link", {n: list.length}) : t("{n} links", {n: list.length}));
   $("openAll").hidden = list.length < 2;
   const empty = $("empty"); empty.hidden = list.length > 0;
-  if (!list.length) empty.replaceChildren(el("b", { textContent: S.links.length ? "Nothing here" : "No links yet" }),
-    searching ? "No link matches your search." : filter === "broken" ? "No broken links." : filter === "fav" ? "No favourites yet. Use the ☆ on a card."
-      : filter === "opened" ? "Links you open will be listed here." : S.links.length ? "This group is empty. Paste a link above, or drag a card onto the group."
-      : "Paste a link above, or use Import to bring in your bookmarks all at once.");
+  if (!list.length) empty.replaceChildren(el("b", { textContent: S.links.length ? t("Nothing here") : t("No links yet") }),
+    searching ? t("No link matches your search.") : filter === "broken" ? t("No broken links.") : filter === "fav" ? t("No favourites yet. Use the ☆ on a card.")
+      : filter === "opened" ? t("Links you open will be listed here.") : S.links.length ? t("This group is empty. Paste a link above, or drag a card onto the group.")
+      : t("Paste a link above, or use Import to bring in your bookmarks all at once."));
 }
 
 async function removeLink(l) {
-  if (!confirm("Delete this link?\n" + (l.title || l.url))) return;
+  if (!confirm(t("Delete this link?") + "\n" + (l.title || l.url))) return;
   try { await api("DELETE", "api/links/" + l.id); load(); } catch (e) { toast(e.message); }
 }
 
@@ -746,13 +756,13 @@ function setPic(file) {
 $("lPic").onchange = e => setPic(e.target.files[0] || null);
 $("linkDlg").addEventListener("paste", e => {
   const f = [...(e.clipboardData ? e.clipboardData.files : [])].find(x => x.type.startsWith("image/"));
-  if (f) { e.preventDefault(); $("lPic").value = ""; setPic(f); toast("Picture pasted. Press Save to use it."); }
+  if (f) { e.preventDefault(); $("lPic").value = ""; setPic(f); toast(t("Picture pasted. Press Save to use it.")); }
 });
 $("lPicReset").onclick = async () => {
   try { await api("DELETE", "api/links/" + editing.id + "/thumb"); $("linkDlg").close(); load(); } catch (e) { toast(e.message); }
 };
 function openLink(l) { editing = l; $("lPic").value = ""; setPic(null); $("lPicReset").hidden = !l.custom_thumb; $("lUrl").value = l.url; $("lTitle").value = l.title; $("lNote").value = l.note || ""; $("lPin").checked = !!l.pinned;
-  fillSelect($("lGroup"), l.group_id, "No group"); $("linkDlg").showModal(); }
+  fillSelect($("lGroup"), l.group_id, t("No group")); $("linkDlg").showModal(); }
 $("lSave").onclick = async () => {
   try { await api("PATCH", "api/links/" + editing.id, { url: $("lUrl").value, title: $("lTitle").value, group_id: +$("lGroup").value || null, note: $("lNote").value, pinned: $("lPin").checked });
         if (newPic) { const fd = new FormData(); fd.append("file", newPic, newPic.name || "picture.png"); await api("POST", "api/links/" + editing.id + "/thumb", fd); }
@@ -762,27 +772,27 @@ $("lDelete").onclick = async () => { $("linkDlg").close(); removeLink(editing); 
 
 // groups
 function openGroup(g) {
-  editingGroup = g; $("gHead").textContent = g ? "Edit group" : "New group"; $("gName").value = g ? g.name : "";
+  editingGroup = g; $("gHead").textContent = g ? t("Edit group") : t("New group"); $("gName").value = g ? g.name : "";
   pickedColor = g ? g.color : COLORS[S.groups.length % COLORS.length]; $("gDelete").hidden = !g;
-  // position is chosen by neighbour name: "First", or "After <group>"
+  // position is chosen by neighbour name: t("First"), or "After <group>"
   const others = S.groups.filter(x => !g || x.id !== g.id), at = g ? S.groups.findIndex(x => x.id === g.id) : others.length;
-  $("gPos").replaceChildren(el("option", { value: 0, textContent: "First in the list" }),
-    ...others.map((o, i) => el("option", { value: i + 1, textContent: "After " + o.name })));
+  $("gPos").replaceChildren(el("option", { value: 0, textContent: t("First in the list") }),
+    ...others.map((o, i) => el("option", { value: i + 1, textContent: t("After") + " " + o.name })));
   $("gPos").value = String(at); $("gPos").dataset.was = String(at);
   $("gPosWrap").hidden = !others.length;
   const draw = () => {
     const isCustom = !COLORS.includes(pickedColor);
     const pick = el("input", { type: "color", value: /^#[0-9a-f]{6}$/i.test(pickedColor) ? pickedColor : "#4c8bf5" });
-    pick.setAttribute("aria-label", "Choose any colour");
+    pick.setAttribute("aria-label", t("Choose any colour"));
     pick.oninput = () => { pickedColor = pick.value; wrap.classList.add("on"); for (const b of $("gColors").querySelectorAll("button")) b.classList.remove("on"); };
-    const wrap = el("label", { className: "custom" + (isCustom ? " on" : "") }, pick, "Other colour…");
+    const wrap = el("label", { className: "custom" + (isCustom ? " on" : "") }, pick, t("Other colour…"));
     $("gColors").replaceChildren(...COLORS.map(c => { const b = el("button", { type: "button", className: c === pickedColor ? "on" : "" });
-      b.style.setProperty("--c", c); b.setAttribute("aria-label", "Colour " + c); b.onclick = () => { pickedColor = c; draw(); }; return b; }), wrap);
+      b.style.setProperty("--c", c); b.setAttribute("aria-label", t("Colour {c}", { c })); b.onclick = () => { pickedColor = c; draw(); }; return b; }), wrap);
   };
   draw(); $("groupDlg").showModal(); $("gName").focus();
 }
 $("gSave").onclick = async () => {
-  const name = $("gName").value.trim(); if (!name) return toast("Give the group a name.");
+  const name = $("gName").value.trim(); if (!name) return toast(t("Give the group a name."));
   try {
     let gid = editingGroup && editingGroup.id;
     if (gid) await api("PATCH", "api/groups/" + gid, { name, color: pickedColor });
@@ -794,7 +804,7 @@ $("gSave").onclick = async () => {
 };
 $("gName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("gSave").click(); } };
 $("gDelete").onclick = async () => {
-  if (!confirm('Delete the group "' + editingGroup.name + '"?\nIts links are kept and become ungrouped.')) return;
+  if (!confirm(t("Delete the group “{name}”?\nIts links are kept and become ungrouped.", { name: editingGroup.name }))) return;
   try { await api("DELETE", "api/groups/" + editingGroup.id); $("groupDlg").close(); filter = ""; load(); } catch (e) { toast(e.message); }
 };
 
@@ -804,25 +814,25 @@ function showCheck() {
   $("ckOn").checked = !!c.enabled; $("ckNow").disabled = !!c.running;
   if (S.admin) {
     $("fpOn").checked = !!S.admin.fetch_private; $("dbOn").checked = !!S.admin.daily_backup;
-    $("dbState").textContent = (S.admin.backup_last ? "Last daily backup: " + new Date(S.admin.backup_last * 1000).toLocaleString() + " (" + S.admin.backups + " kept). " : "No daily backup yet. ")
-      + "Each holds every account; to restore one, stop TileMark and unzip it into the data folder." + (S.admin.addon ? " Home Assistant's own backups already include TileMark." : "");
+    $("dbState").textContent = (S.admin.backup_last ? t("Last daily backup: {when} ({n} kept).", { when: fmtDate(S.admin.backup_last, true), n: S.admin.backups }) + " " : t("No daily backup yet.") + " ")
+      + t("Each holds every account; to restore one, stop TileMark and unzip it into the data folder.") + (S.admin.addon ? " " + t("Home Assistant's own backups already include TileMark.") : "");
   }
-  $("ckState").textContent = c.running && !c.total ? "A check is running."
-    : c.running ? "Checking… " + c.done + " of " + c.total + " links done."
-    : (c.last ? "Last check: " + new Date(c.last * 1000).toLocaleString() + ". " : "No check has run yet. ") + (c.last ? (n ? n + (n === 1 ? " broken link." : " broken links.") : "No broken links.") : "");
+  $("ckState").textContent = c.running && !c.total ? t("A check is running.")
+    : c.running ? t("Checking… {done} of {total} links done.", { done: c.done, total: c.total })
+    : (c.last ? t("Last check: {when}.", { when: fmtDate(c.last, true) }) + " " + (n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })) : t("No broken links.")) : t("No check has run yet."));
 }
 $("ckOn").onchange = async e => { try { await api("POST", "api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("dbOn").onchange = async e => { try { await api("POST", "api/settings", { daily_backup: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("fpOn").onchange = async e => {
-  if (e.target.checked && !confirm("Allow TileMark to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make TileMark reach devices on your network.")) { e.target.checked = false; return; }
-  try { await api("POST", "api/settings", { fetch_private: e.target.checked }); toast(e.target.checked ? "Local addresses will be fetched. Use ↻ to refresh existing local links." : "Local addresses will no longer be fetched."); load(); }
+  if (e.target.checked && !confirm(t("Allow TileMark to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make TileMark reach devices on your network."))) { e.target.checked = false; return; }
+  try { await api("POST", "api/settings", { fetch_private: e.target.checked }); toast(e.target.checked ? t("Local addresses will be fetched. Use ↻ to refresh existing local links.") : t("Local addresses will no longer be fetched.")); load(); }
   catch (err) { toast(err.message); }
 };
-$("ckNow").onclick = async () => { try { await api("POST", "api/linkcheck"); toast("Check started. You can close this window; it continues in the background."); load(); } catch (e) { toast(e.message); } };
+$("ckNow").onclick = async () => { try { await api("POST", "api/linkcheck"); toast(t("Check started. You can close this window; it continues in the background.")); load(); } catch (e) { toast(e.message); } };
 async function refreshMany(list, what) {
   if (!list.length) return;
-  if (list.length > 20 && !confirm("Fetch titles and pictures again for " + list.length + " links? This can take a few minutes.")) return;
-  try { await api("POST", "api/links/bulk", { ids: list.map(l => l.id), refresh: true }); toast("Refreshing " + list.length + (list.length === 1 ? " link" : " links") + what + "."); load(); }
+  if (list.length > 20 && !confirm(t("Fetch titles and pictures again for {n} links? This can take a few minutes.", { n: list.length }))) return;
+  try { await api("POST", "api/links/bulk", { ids: list.map(l => l.id), refresh: true }); toast((what ? (list.length === 1 ? t("Refreshing {n} link shown here.", {n: list.length}) : t("Refreshing {n} links shown here.", {n: list.length})) : (list.length === 1 ? t("Refreshing {n} link.", {n: list.length}) : t("Refreshing {n} links.", {n: list.length})))); load(); }
   catch (e) { toast(e.message); }
 }
 $("rfAll").onclick = () => refreshMany(S.links, "");
@@ -836,10 +846,10 @@ $("selAll").onclick = () => { const v = visible(); const all = v.every(l => sele
 $("selMove").onchange = async e => {
   const v = e.target.value; if (!v || !selected.size) return;
   try { const r = await api("POST", "api/links/bulk", { ids: [...selected], group_id: v === "none" ? null : +v });
-        toast("Moved " + r.count + (r.count === 1 ? " link." : " links.")); selected.clear(); load(); } catch (err) { toast(err.message); }
+        toast((r.count === 1 ? t("Moved {n} link.", {n: r.count}) : t("Moved {n} links.", {n: r.count}))); selected.clear(); load(); } catch (err) { toast(err.message); }
 };
 $("selDelete").onclick = async () => {
-  if (!selected.size || !confirm("Delete " + selected.size + (selected.size === 1 ? " link?" : " links?"))) return;
+  if (!selected.size || !confirm((selected.size === 1 ? t("Delete {n} link?", {n: selected.size}) : t("Delete {n} links?", {n: selected.size})))) return;
   try { await api("POST", "api/links/bulk", { ids: [...selected], delete: true }); selected.clear(); load(); } catch (err) { toast(err.message); }
 };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && selecting && !document.querySelector("dialog[open]")) $("selDone").click(); });
@@ -850,8 +860,13 @@ $("settingsBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); };
   $("setThumb").value = cfg.thumb; $("setThumb").onchange = e => { cfg.thumb = e.target.value; applySettings(); savePrefs(); };
+  $("setLang").value = storedLang(); $("setLang").onchange = async e => {
+    const l = e.target.value;
+    try { await api("PUT", "api/prefs", { lang: l }); } catch (err) { toast(err.message); return; }
+    setLang(l); location.reload();
+  };
   $("setOpen").value = cfg.open; $("setOpen").onchange = e => { cfg.open = e.target.value; savePrefs(); render(); };
-  fillSelect($("setDefGroup"), group(+cfg.defgroup) ? cfg.defgroup : "", "No group");
+  fillSelect($("setDefGroup"), group(+cfg.defgroup) ? cfg.defgroup : "", t("No group"));
   $("setDefGroup").onchange = e => { cfg.defgroup = e.target.value; addGroupPicked = null; savePrefs(); render(); };
   $("settingsDlg").showModal();
   showCheck();
@@ -860,37 +875,37 @@ $("settingsBtn").onclick = () => {
 async function refreshAuth() {
   let a; try { a = await api("GET", "api/auth"); } catch (e) { return; }
   $("authState").textContent = a.ha
-    ? "Signed in through Home Assistant as " + a.username + (a.is_admin ? " (admin)" : "") + ". Set a password here only if you also want to sign in on TileMark's own port."
-    : "Signed in as " + a.username + (a.is_admin ? " (admin)." : ".");
+    ? t(a.is_admin ? "Signed in through Home Assistant as {name} (admin)." : "Signed in through Home Assistant as {name}.", { name: a.username }) + " " + t("Set a password here only if you also want to sign in on TileMark's own port.")
+    : t(a.is_admin ? "Signed in as {name} (admin)." : "Signed in as {name}.", { name: a.username });
   $("auCurWrap").hidden = $("auOut").hidden = !!a.ha;
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
   $("adminBox").hidden = !a.is_admin;
   showTf(a); refreshSessions();
   if (a.is_admin) { refreshUsers(); refreshBackups(); refreshMqtt(); }
   $("appVersion").textContent = "TileMark " + (a.version || "");
-  $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? "Replace API key" : "Create API key"; $("keyShow").hidden = true;
+  $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? t("Replace API key") : t("Create API key"); $("keyShow").hidden = true;
   const base = new URL(".", location.href).href.replace(/\/$/, "");  // works at / and under a path prefix
   $("bmLink").href = "javascript:(function(){window.open('" + base + "/save?u='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'tilemark-save','width=480,height=600')})()";
-  $("pwaHint").replaceChildren(el("b", { textContent: "Phone: " }), window.isSecureContext && location.protocol === "https:"
-    ? "open " + base + " in the phone's browser and choose \"Install app\" or \"Add to Home screen\". On Android, TileMark then appears in the Share menu of other apps."
-    : "installing TileMark as an app and sharing to it needs the HTTPS address. Open TileMark through HTTPS to see the steps.");
+  $("pwaHint").replaceChildren(el("b", { textContent: t("Phone:") + " " }), window.isSecureContext && location.protocol === "https:"
+    ? t("open {address} in the phone's browser and choose “Install app” or “Add to Home screen”. On Android, TileMark then appears in the Share menu of other apps.", { address: base })
+    : t("installing TileMark as an app and sharing to it needs the HTTPS address. Open TileMark through HTTPS to see the steps."));
   // Inside the Home Assistant sidebar the address changes every session, so the button
   // and the phone app need TileMark's own port (add-on → Configuration → Network).
   $("bmLink").hidden = !!a.ha;
-  if (a.ha) $("pwaHint").replaceChildren(el("b", { textContent: "Inside Home Assistant: " }),
-    "the browser button and the phone app need TileMark's own address. Turn on the port under the add-on's Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well.");
+  if (a.ha) $("pwaHint").replaceChildren(el("b", { textContent: t("Inside Home Assistant:") + " " }),
+    t("the browser button and the phone app need TileMark's own address. Turn on the port under the add-on's Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well."));
 }
-$("bmLink").onclick = e => { e.preventDefault(); toast("Drag this button to your favorites bar; don't click it here."); };
+$("bmLink").onclick = e => { e.preventDefault(); toast(t("Drag this button to your favorites bar; don't click it here.")); };
 $("keyNew").onclick = async () => {
-  if (!$("keyDel").hidden && !confirm("Replace the API key? The current key stops working.")) return;
+  if (!$("keyDel").hidden && !confirm(t("Replace the API key? The current key stops working."))) return;
   try { const r = await api("POST", "api/apikey"); await refreshAuth(); $("keyVal").value = r.key; $("keyShow").hidden = false; $("keyVal").select(); } catch (e) { toast(e.message); }
 };
-$("keyDel").onclick = async () => { if (!confirm("Remove the API key?")) return; try { await api("DELETE", "api/apikey"); refreshAuth(); toast("API key removed."); } catch (e) { toast(e.message); } };
+$("keyDel").onclick = async () => { if (!confirm(t("Remove the API key?"))) return; try { await api("DELETE", "api/apikey"); refreshAuth(); toast(t("API key removed.")); } catch (e) { toast(e.message); } };
 $("auSave").onclick = async () => {
-  if (!$("auCur").value && !$("auCurWrap").hidden) return toast("Enter your current password to save changes.");
+  if (!$("auCur").value && !$("auCurWrap").hidden) return toast(t("Enter your current password to save changes."));
   const newPw = !!$("auPass").value;
   try { await api("POST", "api/account", { username: $("auUser").value, password: $("auPass").value, current_password: $("auCur").value });
-        toast(newPw ? "Account saved. Your other devices have been signed out." : "Account saved."); refreshAuth(); } catch (e) { toast(e.message); }
+        toast(newPw ? t("Account saved. Your other devices have been signed out.") : t("Account saved.")); refreshAuth(); } catch (e) { toast(e.message); }
 };
 
 // people (admin)
@@ -899,30 +914,30 @@ async function refreshUsers() {
   $("userList").replaceChildren(...r.users.map(u => {
     const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
     const info = el("div", { style: "flex:1;min-width:0" }, el("b", { textContent: u.username }),
-      el("span", { className: "hint", textContent: "  " + (u.is_admin ? "admin · " : "") + (u.totp ? "2FA · " : "") + u.links + (u.links === 1 ? " link" : " links") + (u.me ? " · you" : "") }));
+      el("span", { className: "hint", textContent: "  " + [u.is_admin ? t("admin") : "", u.totp ? "2FA" : "", (u.links === 1 ? t("{n} link", {n: u.links}) : t("{n} links", {n: u.links})), u.me ? t("you") : ""].filter(Boolean).join(" · ") }));
     const row = el("div", { className: "row", style: "justify-content:flex-start;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap" }, info,
-      btn("New password", async () => {
-        const pw = prompt("New password for " + u.username + " (at least 8 characters).\nThey are signed out on all their devices.");
+      btn(t("New password"), async () => {
+        const pw = prompt(t("New password for {name} (at least 8 characters).\nThey are signed out on all their devices.", { name: u.username }));
         if (!pw) return;
-        try { await api("PATCH", "api/users/" + u.id, { password: pw }); toast("Password changed for " + u.username + "."); } catch (e) { toast(e.message); }
+        try { await api("PATCH", "api/users/" + u.id, { password: pw }); toast(t("Password changed for {name}.", { name: u.username })); } catch (e) { toast(e.message); }
       }),
-      btn(u.is_admin ? "Remove admin" : "Make admin", async () => {
+      btn(u.is_admin ? t("Remove admin") : t("Make admin"), async () => {
         try { await api("PATCH", "api/users/" + u.id, { is_admin: !u.is_admin }); refreshUsers(); if (u.me) refreshAuth(); } catch (e) { toast(e.message); }
       }));
-    if (u.totp && !u.me) row.append(btn("Turn off 2FA", async () => {
-      if (!confirm("Turn off two-factor sign-in for " + u.username + "? Use this when they lost their phone; they can turn it on again.")) return;
-      try { await api("PATCH", "api/users/" + u.id, { totp: false }); toast("Two-factor sign-in is off for " + u.username + "."); refreshUsers(); } catch (e) { toast(e.message); }
+    if (u.totp && !u.me) row.append(btn(t("Turn off 2FA"), async () => {
+      if (!confirm(t("Turn off two-factor sign-in for {name}? Use this when they lost their phone; they can turn it on again.", { name: u.username }))) return;
+      try { await api("PATCH", "api/users/" + u.id, { totp: false }); toast(t("Two-factor sign-in is off for {name}.", { name: u.username })); refreshUsers(); } catch (e) { toast(e.message); }
     }));
-    if (!u.me) row.append(btn("Remove", async () => {
-      if (!confirm("Remove " + u.username + "?\nTheir " + u.links + (u.links === 1 ? " link" : " links") + ", groups and pictures are deleted too. This cannot be undone.")) return;
-      try { await api("DELETE", "api/users/" + u.id); toast(u.username + " removed."); refreshUsers(); } catch (e) { toast(e.message); }
+    if (!u.me) row.append(btn(t("Remove"), async () => {
+      if (!confirm(t("Remove {name}?\nTheir {n} links, groups and pictures are deleted too. This cannot be undone.", { name: u.username, n: u.links }))) return;
+      try { await api("DELETE", "api/users/" + u.id); toast(t("{name} removed.", { name: u.username })); refreshUsers(); } catch (e) { toast(e.message); }
     }, "btn danger"));
     return row;
   }));
 }
 $("nuGo").onclick = async () => {
   try { await api("POST", "api/users", { username: $("nuUser").value, password: $("nuPass").value, is_admin: $("nuAdmin").checked });
-        toast($("nuUser").value + " can now sign in."); $("nuUser").value = ""; $("nuPass").value = ""; $("nuAdmin").checked = false; refreshUsers(); }
+        toast(t("{name} can now sign in.", { name: $("nuUser").value })); $("nuUser").value = ""; $("nuPass").value = ""; $("nuAdmin").checked = false; refreshUsers(); }
   catch (e) { toast(e.message); }
 };
 $("bkGo").onclick = async () => {
@@ -930,20 +945,20 @@ $("bkGo").onclick = async () => {
   try {
     const r = await fetch("api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("bkPass").value }) });
     if (r.status === 401) { location.href = "login"; return; }
-    if (!r.ok) throw new Error("The backup could not be made (" + r.status + ").");
+    if (!r.ok) throw new Error(t("The backup could not be made ({code}).", { code: r.status }));
     const a = el("a", { href: URL.createObjectURL(await r.blob()), download: r.headers.get("X-Filename") || "tilemark-backup" });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    toast($("bkPass").value ? "Encrypted backup downloaded. Keep the password: without it the file cannot be opened." : "Backup downloaded (not encrypted).");
+    toast($("bkPass").value ? t("Encrypted backup downloaded. Keep the password: without it the file cannot be opened.") : t("Backup downloaded (not encrypted)."));
     $("bkPass").value = "";
   } catch (e) { toast(e.message); } finally { $("bkGo").disabled = false; }
 };
 $("rsGo").onclick = async () => {
-  const f = $("rsFile").files[0]; if (!f) return toast("Choose a backup file first.");
-  if (!confirm("Replace ALL your current links and groups with the contents of this backup?")) return;
+  const f = $("rsFile").files[0]; if (!f) return toast(t("Choose a backup file first."));
+  if (!confirm(t("Replace ALL your current links and groups with the contents of this backup?"))) return;
   const fd = new FormData(); fd.append("file", f); fd.append("password", $("rsPass").value);
   $("rsGo").disabled = true;
   try { const r = await api("POST", "api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
-        $("settingsDlg").close(); toast("Restored " + r.links + " links in " + r.groups + " groups."); load(); }
+        $("settingsDlg").close(); toast(t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups })); load(); }
   catch (e) { toast(e.message); } finally { $("rsGo").disabled = false; }
 };
 $("auOut").onclick = async () => { try { await api("POST", "api/logout"); } catch (e) {} location.href = "login"; };
@@ -988,17 +1003,17 @@ let review = [];
 function openReview(dups) {
   review = dups;
   const same = dups.filter(d => d.same_address).length;
-  $("revIntro").textContent = dups.length + (dups.length === 1 ? " link was" : " links were") + " not added because you already have " + (dups.length === 1 ? "it" : "them")
-    + (same ? " (" + same + " with exactly the same address)" : "") + ". Download them to keep a copy, keep some as separate links, or discard them.";
+  $("revIntro").textContent = t("{n} links were not added because you already have them.", { n: dups.length })
+    + (same ? " " + t("{n} of them have exactly the same address.", { n: same }) : "") + " " + t("Download them to keep a copy, keep some as separate links, or discard them.");
   $("revList").replaceChildren(...dups.map((d, i) => {
-    const box = el("input", { type: "checkbox", disabled: d.same_address, title: d.same_address ? "Identical address: already saved" : "Keep as a separate link" });
+    const box = el("input", { type: "checkbox", disabled: d.same_address, title: d.same_address ? t("Identical address: already saved") : t("Keep as a separate link") });
     box.dataset.i = i;
     const ex = d.existing || {};
-    const match = ex.earlier ? "the same page appears earlier in this import" + (ex.group ? " (" + ex.group + ")" : "")
-      : "already saved as “" + (ex.title || ex.url) + "”" + (ex.group ? " in " + ex.group : "");
+    const match = ex.earlier ? t("the same page appears earlier in this import") + (ex.group ? " (" + ex.group + ")" : "")
+      : t(ex.group ? "already saved as “{title}” in {group}" : "already saved as “{title}”", { title: ex.title || ex.url, group: ex.group });
     return el("label", { className: "revrow" }, box, el("div", {},
       el("b", { textContent: d.title || host(d.url) }), d.folder ? el("span", { className: "pill", textContent: d.folder }) : "",
-      d.same_address ? el("span", { className: "pill", textContent: "identical address" }) : "",
+      d.same_address ? el("span", { className: "pill", textContent: t("identical address") }) : "",
       el("small", { textContent: d.url }), el("small", { textContent: "↳ " + match })));
   }));
   $("reviewDlg").showModal();
@@ -1014,7 +1029,7 @@ $("revKeep").onclick = async () => {
     try { await api("POST", "api/links", { url: d.url, title: d.title, note: d.note, group_id: gid, group: gid ? "" : d.folder, allow_duplicate: true }); kept++; }
     catch (e) { toast(e.message); }
   }
-  $("reviewDlg").close(); toast(kept ? "Kept " + kept + (kept === 1 ? " link" : " links") + " as separate links; the rest were discarded." : "Duplicates discarded.");
+  $("reviewDlg").close(); toast(kept ? t("Kept {n} as separate links; the rest were discarded.", { n: kept }) : t("Duplicates discarded."));
   load();
 };
 
@@ -1033,34 +1048,34 @@ function dupSets() {
 }
 function showDupCount() {
   const n = dupSets().length;
-  $("dupBtn").hidden = !n; $("dupBtn").textContent = "Duplicates (" + n + ")";
+  $("dupBtn").hidden = !n; $("dupBtn").textContent = t("Duplicates ({n})", { n });
   return n;
 }
 function renderDups() {
   const sets = dupSets();
-  if (!sets.length) { $("dupsList").replaceChildren(el("p", { className: "hint", textContent: "No duplicates left." })); return; }
+  if (!sets.length) { $("dupsList").replaceChildren(el("p", { className: "hint", textContent: t("No duplicates left.") })); return; }
   $("dupsList").replaceChildren(...sets.map((set, si) => {
     const name = "keep" + si, ordered = [...set].sort((a, b) => (b.custom_thumb + b.pinned + !!b.note) - (a.custom_thumb + a.pinned + !!a.note) || a.id - b.id);
     const rows = ordered.map((l, i) => el("label", { className: "pick" },
       el("input", { type: "radio", name, value: l.id, checked: i === 0 }),
       el("div", {}, el("b", { textContent: l.title || host(l.url) }),
         group(l.group_id) ? el("span", { className: "pill", textContent: group(l.group_id).name }) : "",
-        l.pinned ? el("span", { className: "pill", textContent: "★ favourite" }) : "",
-        l.custom_thumb ? el("span", { className: "pill", textContent: "own picture" }) : "",
-        el("small", { textContent: l.url }), l.note ? el("small", { textContent: "Note: " + l.note }) : "")));
+        l.pinned ? el("span", { className: "pill", textContent: t("★ favourite") }) : "",
+        l.custom_thumb ? el("span", { className: "pill", textContent: t("own picture") }) : "",
+        el("small", { textContent: l.url }), l.note ? el("small", { textContent: t("Note:") + " " + l.note }) : "")));
     const merge = el("input", { type: "checkbox", checked: true });
     const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
     return el("div", { className: "dupset" }, ...rows,
-      el("label", { className: "check" }, merge, "Take over notes, favourite, own title and picture from the others"),
+      el("label", { className: "check" }, merge, t("Take over notes, favourite, own title and picture from the others")),
       el("div", { className: "row", style: "justify-content:flex-start;margin-top:8px;flex-wrap:wrap" },
-        btn("Keep the selected one, remove the others", async () => {
+        btn(t("Keep the selected one, remove the others"), async () => {
           const keep = +rows.map(r => r.querySelector("input")).find(r => r.checked).value;
           try { const r = await api("POST", "api/duplicates/merge", { keep, remove: set.map(l => l.id).filter(id => id !== keep), merge: merge.checked });
-                toast("Removed " + r.removed + (r.removed === 1 ? " duplicate." : " duplicates.")); await load(); renderDups(); }
+                toast((r.removed === 1 ? t("Removed {n} duplicate.", {n: r.removed}) : t("Removed {n} duplicates.", {n: r.removed}))); await load(); renderDups(); }
           catch (e) { toast(e.message); }
         }, "btn primary"),
-        btn("Download this set", () => download("tilemark-duplicates-" + today() + ".json", tileMarkFile(set.map(asItem)), "application/json")),
-        btn("These are different", async () => {
+        btn(t("Download this set"), () => download("tilemark-duplicates-" + today() + ".json", tileMarkFile(set.map(asItem)), "application/json")),
+        btn(t("These are different"), async () => {
           dupok.push(set.map(l => l.id).sort((a, b) => a - b));
           try { await api("PUT", "api/prefs", { dupok }); } catch (e) { toast(e.message); }
           renderDups(); render();
@@ -1088,27 +1103,27 @@ document.addEventListener("keydown", e => {
 
 // ---------------------------------------------------------------- signed-in devices
 function device(ua) {
-  const b = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const b = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : t("Browser");
   const o = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
-  return b + (o ? " on " + o : "");
+  return o ? t("{browser} on {system}", { browser: b, system: o }) : b;
 }
-function ago(t) {
-  const s = Math.max(0, Date.now() / 1000 - t);
-  return s < 120 ? "just now" : s < 7200 ? Math.round(s / 60) + " minutes ago" : s < 172800 ? Math.round(s / 3600) + " hours ago" : new Date(t * 1000).toLocaleDateString();
+function ago(ts) {
+  const s = Math.max(0, Date.now() / 1000 - ts);
+  return s < 120 ? t("just now") : s < 7200 ? t("{n} minutes ago", { n: Math.round(s / 60) }) : s < 172800 ? t("{n} hours ago", { n: Math.round(s / 3600) }) : fmtDate(ts);
 }
 async function refreshSessions() {
   let r; try { r = await api("GET", "api/sessions"); } catch (e) { return; }
   $("sessOthers").hidden = r.sessions.filter(x => !x.current).length === 0;
   $("sessList").replaceChildren(...(r.sessions.length ? r.sessions.map(x => {
-    const out = el("button", { className: "btn", type: "button", textContent: "Sign out", hidden: x.current });
+    const out = el("button", { className: "btn", type: "button", textContent: t("Sign out"), hidden: x.current });
     out.onclick = async () => { try { await api("DELETE", "api/sessions/" + x.id); refreshSessions(); } catch (e) { toast(e.message); } };
-    return el("div", { className: "sess" }, el("div", {}, el("b", { textContent: device(x.ua) }), x.current ? el("span", { className: "pill", textContent: "this device" }) : "",
-      el("small", { textContent: "Active " + ago(x.last_seen) + (x.ip ? " · " + x.ip : "") + " · signed in " + new Date(x.created_at * 1000).toLocaleDateString() })), out);
-  }) : [el("p", { className: "hint", style: "margin-top:0", textContent: "No devices are signed in on TileMark's own address." })]));
+    return el("div", { className: "sess" }, el("div", {}, el("b", { textContent: device(x.ua) }), x.current ? el("span", { className: "pill", textContent: t("this device") }) : "",
+      el("small", { textContent: [t("Active {when}", { when: ago(x.last_seen) }), x.ip, t("signed in {date}", { date: fmtDate(x.created_at) })].filter(Boolean).join(" · ") })), out);
+  }) : [el("p", { className: "hint", style: "margin-top:0", textContent: t("No devices are signed in on TileMark's own address.") })]));
 }
 $("sessOthers").onclick = async () => {
-  if (!confirm("Sign out all other devices? They will need your password again.")) return;
-  try { await api("POST", "api/sessions/others"); toast("Other devices are signed out."); refreshSessions(); } catch (e) { toast(e.message); }
+  if (!confirm(t("Sign out all other devices? They will need your password again."))) return;
+  try { await api("POST", "api/sessions/others"); toast(t("Other devices are signed out.")); refreshSessions(); } catch (e) { toast(e.message); }
 };
 
 // ---------------------------------------------------------------- two-factor sign-in
@@ -1116,14 +1131,14 @@ let tfAuth = {};
 function showTf(a) {
   tfAuth = a;
   $("tfBox").hidden = !!a.ha;  // inside Home Assistant, HA's own sign-in (and its two-factor) applies
-  $("tfState").textContent = a.totp ? "On. After your password, TileMark asks for a code from your authenticator app. " + a.recovery_left + " recovery codes left."
-    : "Off. Turn it on to also ask for a code from an authenticator app on your phone after the password.";
+  $("tfState").textContent = a.totp ? t("On. After your password, TileMark asks for a code from your authenticator app. {n} recovery codes left.", { n: a.recovery_left })
+    : t("Off. Turn it on to also ask for a code from an authenticator app on your phone after the password.");
   $("tfOn").hidden = !!a.totp; $("tfOff").hidden = $("tfNewCodes").hidden = !a.totp;
 }
-const tfPassword = what => tfAuth.ha ? "" : prompt("Enter your current password to " + what + ".");
+const tfPassword = what => tfAuth.ha ? "" : prompt(t("Enter your current password to confirm: {what}", { what }));
 function showCodes(codes) {
   $("tfCodeList").replaceChildren(...codes.map(c => el("span", { textContent: c })));
-  $("tfCodesDl").onclick = () => download("tilemark-recovery-codes.txt", "TileMark recovery codes for " + $("auUser").value + "\nEach code works once.\n\n" + codes.join("\n") + "\n", "text/plain");
+  $("tfCodesDl").onclick = () => download("tilemark-recovery-codes.txt", t("TileMark recovery codes for {name}", { name: $("auUser").value }) + "\n" + t("Each code works once.") + "\n\n" + codes.join("\n") + "\n", "text/plain");
   $("tfCodes").hidden = false; $("tfSetup").hidden = true; $("tfButtons").hidden = $("tfState").hidden = true;
 }
 $("tfOn").onclick = async () => {
@@ -1137,12 +1152,12 @@ $("tfConfirm").onclick = async () => {
 $("tfCode").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("tfConfirm").click(); } };
 $("tfCodesDone").onclick = () => { $("tfCodes").hidden = true; $("tfButtons").hidden = $("tfState").hidden = false; refreshAuth(); };
 $("tfNewCodes").onclick = async () => {
-  const pw = tfPassword("make new recovery codes"); if (pw === null) return;
+  const pw = tfPassword(t("make new recovery codes")); if (pw === null) return;
   try { showCodes((await api("POST", "api/totp/recovery", { current_password: pw })).recovery); } catch (e) { toast(e.message); }
 };
 $("tfOff").onclick = async () => {
-  const pw = tfPassword("turn off two-factor sign-in"); if (pw === null) return;
-  try { await api("DELETE", "api/totp", { current_password: pw }); toast("Two-factor sign-in is off."); refreshAuth(); } catch (e) { toast(e.message); }
+  const pw = tfPassword(t("turn off two-factor sign-in")); if (pw === null) return;
+  try { await api("DELETE", "api/totp", { current_password: pw }); toast(t("Two-factor sign-in is off.")); refreshAuth(); } catch (e) { toast(e.message); }
 };
 
 // ---------------------------------------------------------------- dialogs: a click outside or Esc closes them
@@ -1164,20 +1179,20 @@ async function refreshBackups() {
   $("bkList").replaceChildren(...(r.backups.length ? r.backups.map(b => {
     const btn = (label, fn, cls = "btn") => { const x = el("button", { className: cls, type: "button", textContent: label }); x.onclick = fn; return x; };
     return el("div", { className: "sess" }, el("div", {},
-      el("b", { textContent: b.kind === "safety" ? "Before restore, " + new Date(b.made_at * 1000).toLocaleString() : b.date }),
-      b.kind === "safety" ? el("span", { className: "pill", textContent: "safety copy" }) : "",
-      el("small", { textContent: size(b.size) + " · made " + new Date(b.made_at * 1000).toLocaleString() })),
-      btn("Download", () => { location.href = "api/backups/" + encodeURIComponent(b.name); }),
-      btn("Restore", async () => {
-        const typed = prompt("This puts EVERY account back to " + b.date + ". Links saved since then are gone (a safety copy of now is made first).\n\nType the date " + b.date + " to confirm:");
+      el("b", { textContent: b.kind === "safety" ? t("Before restore, {when}", { when: fmtDate(b.made_at, true) }) : b.date }),
+      b.kind === "safety" ? el("span", { className: "pill", textContent: t("safety copy") }) : "",
+      el("small", { textContent: size(b.size) + " · " + t("made {when}", { when: fmtDate(b.made_at, true) }) })),
+      btn(t("Download"), () => { location.href = "api/backups/" + encodeURIComponent(b.name); }),
+      btn(t("Restore"), async () => {
+        const typed = prompt(t("This puts EVERY account back to {date}. Links saved since then are gone (a safety copy of now is made first).\n\nType the date {date} to confirm:", { date: b.date }));
         if (typed === null) return;
         try { const res = await api("POST", "api/backups/restore", { name: b.name, confirm: typed });
-              alert("Restored: " + res.links + " links in " + res.users + " accounts. Everyone signs in again now."); location.href = "login"; }
+              alert(t("Restored: {links} links in {users} accounts. Everyone signs in again now.", { links: res.links, users: res.users })); location.href = "login"; }
         catch (e) { toast(e.message); }
       }, "btn danger"));
-  }) : [el("p", { className: "hint", style: "margin-top:0", textContent: "No backups yet. " + (r.daily ? "The first daily backup is made within a day, or use the button below." : "Daily backups are off; use the button below to make one.") })]));
+  }) : [el("p", { className: "hint", style: "margin-top:0", textContent: t("No backups yet.") + " " + (r.daily ? t("The first daily backup is made within a day, or use the button below.") : t("Daily backups are off; use the button below to make one.")) })]));
 }
-$("bkNow").onclick = async () => { $("bkNow").disabled = true; try { await api("POST", "api/backups"); toast("Backup made."); refreshBackups(); } catch (e) { toast(e.message); } finally { $("bkNow").disabled = false; } };
+$("bkNow").onclick = async () => { $("bkNow").disabled = true; try { await api("POST", "api/backups"); toast(t("Backup made.")); refreshBackups(); } catch (e) { toast(e.message); } finally { $("bkNow").disabled = false; } };
 
 // ---------------------------------------------------------------- Home Assistant sensors over MQTT (admin)
 let mqTimer = null;
@@ -1185,10 +1200,10 @@ function showMqtt(m) {
   $("mqOn").checked = m.enabled; $("mqForm").hidden = !m.enabled; $("mqAddonHint").hidden = !m.addon;
   if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#mqForm")) { /* leave fields alone while typing */ }
   else { $("mqHost").value = m.host; $("mqPort").value = m.port; $("mqUser").value = m.user; $("mqTls").checked = m.tls; $("mqPrefix").value = m.prefix;
-         $("mqPass").value = ""; $("mqPass").placeholder = m.has_password ? "(unchanged)" : ""; }
-  const st = m.status || {}, via = st.source === "home-assistant" ? " (Home Assistant's broker)" : "";
-  $("mqState").textContent = !m.enabled ? "" : st.state === "connected" ? "Connected to " + st.broker + via + ". In Home Assistant: Settings → Devices → TileMark."
-    : st.state === "connecting" ? "Connecting to " + st.broker + via + "… " + (st.error || "") : st.state === "error" ? "Not connected: " + st.error : "Starting…";
+         $("mqPass").value = ""; $("mqPass").placeholder = m.has_password ? t("(unchanged)") : ""; }
+  const st = m.status || {}, via = st.source === "home-assistant" ? " " + t("(Home Assistant's broker)") : "";
+  $("mqState").textContent = !m.enabled ? "" : st.state === "connected" ? t("Connected to {broker}.", { broker: st.broker + via }) + " " + t("In Home Assistant: Settings → Devices → TileMark.")
+    : st.state === "connecting" ? t("Connecting to {broker}…", { broker: st.broker + via }) + " " + (st.error ? t(st.error) : "") : st.state === "error" ? t("Not connected: {error}", { error: t(st.error) }) : t("Starting…");
   clearTimeout(mqTimer);
   if (m.enabled && st.state !== "connected" && $("settingsDlg").open) mqTimer = setTimeout(refreshMqtt, 2500);
 }
@@ -1197,19 +1212,19 @@ $("mqOn").onchange = async e => { try { showMqtt(await api("POST", "api/mqtt", {
 $("mqSave").onclick = async () => {
   try { showMqtt(await api("POST", "api/mqtt", { enabled: true, host: $("mqHost").value, port: $("mqPort").value, user: $("mqUser").value,
                                                password: $("mqPass").value, tls: $("mqTls").checked, prefix: $("mqPrefix").value }));
-        toast("Saved. Connecting…"); setTimeout(refreshMqtt, 1500); } catch (e) { toast(e.message); }
+        toast(t("Saved. Connecting…")); setTimeout(refreshMqtt, 1500); } catch (e) { toast(e.message); }
 };
 
 // import
-$("importBtn").onclick = () => { $("iText").value = ""; $("iFile").value = ""; fillSelect($("iGroup"), "", "Keep folders as groups / no group"); $("importDlg").showModal(); };
+$("importBtn").onclick = () => { $("iText").value = ""; $("iFile").value = ""; fillSelect($("iGroup"), "", t("Keep folders as groups / no group")); $("importDlg").showModal(); };
 $("iGo").onclick = async () => {
   const fd = new FormData(); fd.append("text", $("iText").value); fd.append("group_id", $("iGroup").value);
   if ($("iFile").files[0]) fd.append("file", $("iFile").files[0]);
-  if (!$("iText").value.trim() && !$("iFile").files[0]) return toast("Paste some links or choose a file.");
+  if (!$("iText").value.trim() && !$("iFile").files[0]) return toast(t("Paste some links or choose a file."));
   $("iGo").disabled = true;
   try { const r = await api("POST", "api/import", fd); $("importDlg").close();
-        toast("Imported " + r.added + (r.added === 1 ? " link" : " links") + (r.skipped ? ", skipped " + r.skipped + " that are not web links" : "")
-          + (r.duplicates.length ? "; " + r.duplicates.length + " already saved, see the list." : "."));
+        toast(t("Imported {n} links.", { n: r.added }) + (r.skipped ? " " + t("Skipped {n} that are not web links.", { n: r.skipped }) : "")
+          + (r.duplicates.length ? " " + t("{n} already saved, see the list.", { n: r.duplicates.length }) : ""));
         await load(); if (r.duplicates.length) openReview(r.duplicates); }
   catch (e) { toast(e.message); } finally { $("iGo").disabled = false; }
 };

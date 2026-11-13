@@ -46,6 +46,7 @@ a.go { display: block; text-align: center; margin-top: 18px; font-weight: 600; c
   </div>
   <div id="none" hidden><p style="margin-top:14px">No web address was passed to this window.</p><a class="go" href="./">Open TileMark</a></div>
 </form>
+<script src="i18n.js"></script>
 <script>
 try { const th = JSON.parse(localStorage.getItem("tm.settings") || "{}").theme; if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch {}
 const $ = id => document.getElementById(id), P = new URLSearchParams(location.search);
@@ -60,7 +61,7 @@ async function start() {
   if (r.status === 401) { $("signin").href = "login?next=" + encodeURIComponent("/save" + location.search); $("need").hidden = false; return; }
   const d = await r.json(); let last = ""; try { last = localStorage.getItem("tm.saveGroup") || ""; } catch {}
   const opt = (v, label) => { const o = document.createElement("option"); o.value = v; o.textContent = label; return o; };
-  $("g").append(opt("", "No group"), ...d.groups.map(g => opt(g.id, g.name)));
+  $("g").append(opt("", t("No group")), ...d.groups.map(g => opt(g.id, g.name)));
   if ([...$("g").options].some(o => o.value === last)) $("g").value = last;
   $("t").value = title; $("u").textContent = url; $("form").hidden = false; $("go").focus();
 }
@@ -71,10 +72,10 @@ $("f").onsubmit = async e => {
       body: JSON.stringify({ url, title: $("t").value, group_id: +$("g").value || null, note: $("n").value }) });
     const d = await r.json().catch(() => ({}));
     try { localStorage.setItem("tm.saveGroup", $("g").value); } catch {}
-    if (r.ok) { $("msg").className = "good"; $("msg").textContent = "Saved."; setTimeout(done, 900); return; }
-    $("msg").className = "bad"; $("msg").textContent = d.error || "Could not save.";
+    if (r.ok) { $("msg").className = "good"; $("msg").textContent = t("Saved."); setTimeout(done, 900); return; }
+    $("msg").className = "bad"; $("msg").textContent = d.error ? t(d.error) : t("Could not save.");
     if (r.status === 409) setTimeout(done, 1600);
-  } catch { $("msg").className = "bad"; $("msg").textContent = "Could not reach TileMark."; }
+  } catch { $("msg").className = "bad"; $("msg").textContent = t("Could not reach TileMark."); }
   $("go").disabled = false;
 };
 start().catch(() => { $("none").hidden = false; });

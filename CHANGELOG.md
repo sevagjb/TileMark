@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.3.0 (unreleased)
+
+### New
+- **Languages: English, Dutch and Arabic.** TileMark follows the browser's language; Settings → Appearance → Language sets one for your account, so all your devices use it. Arabic is shown right to left.
+- Server messages (errors, link check, Home Assistant sensors status) and dates follow the chosen language.
+
 ## 2.2.0
 
 ### New

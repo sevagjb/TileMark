@@ -4,7 +4,7 @@
 # workflow sets it (and copies CHANGELOG.md here), so Home Assistant never offers an
 # update whose image does not exist yet.
 name: TileMark
-version: "2.3.0"
+version: "2.3.1"
 slug: tilemark
 description: Your saved links, with thumbnails and groups, in the Home Assistant sidebar.
 url: https://github.com/sevagjb/tilemark

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.1 (unreleased)
+## 2.3.1
 
 ### New
 - **Settings in cards:** every section opens and closes with a click on its title, and shows a short status while closed (for example "Two-factor sign-in: Off" or "Home Assistant sensors: Connected"). Open cards are remembered. Admin sections are grouped at the bottom.

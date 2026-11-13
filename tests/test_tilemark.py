@@ -238,7 +238,7 @@ def test_backup_restore_per_user(two):
     data = bob.post("/api/backup", json={"password": "bk-pass"}).get_data()
     with pytest.raises(A.RestoreError):
         A.restore_backup(1, data, "wrong")
-    plain = bob.post("/api/backup", json={}).get_data()
+    plain = bob.post("/api/backup", json={"plain": True}).get_data()
     z = zipfile.ZipFile(io.BytesIO(plain))
     assert sorted(z.namelist()) == sorted(["tilemark.db", f"thumbs/{lb}-b.webp"])  # nothing of admin's
     bob.post("/api/links", json={"url": "https://after-backup.example"})
@@ -677,8 +677,10 @@ def test_new_backups_use_new_format(two):
     enc = bob.post("/api/backup", json={"password": "x"})
     assert enc.get_data().startswith(b"TILEMARK-BACKUP-1\n") and enc.headers["X-Filename"].endswith(".tmk")
     assert enc.headers["X-Filename"].startswith("tilemark-backup-")
-    plain = bob.post("/api/backup", json={}).get_data()
+    plain = bob.post("/api/backup", json={"plain": True}).get_data()
     assert "tilemark.db" in zipfile.ZipFile(io.BytesIO(plain)).namelist()
+    sealed = bob.post("/api/backup", json={})  # the default since 2.4: locked with the login password
+    assert sealed.get_data().startswith(b"TILEMARK-BACKUP-2\n") and sealed.headers["X-Filename"].endswith(".tmk")
 
 
 def test_no_old_name_left():
@@ -991,9 +993,18 @@ def test_addon_setup_message_points_to_sidebar(tmp_path, capsys):
 
 
 @pytest.fixture
-def broker():
+def broker(monkeypatch):
     import asyncio
     import socket as _s
+    import time as _t
+    import paho.mqtt.client as pc
+    # amqtt (this test broker) confirms a message before it has finished handling it, and can
+    # drop what is still pending when the sender disconnects straight away, or when another
+    # client connects at that moment ("dictionary changed size during iteration" in its
+    # _handle_client_session). Mosquitto, Home Assistant's broker, does not do this. A short
+    # pause before each disconnect gives amqtt that time; TileMark itself is unchanged.
+    real_disconnect = pc.Client.disconnect
+    monkeypatch.setattr(pc.Client, "disconnect", lambda self, *a, **k: (_t.sleep(0.3), real_disconnect(self, *a, **k))[1])
     Broker = pytest.importorskip("amqtt.broker").Broker  # test-only broker; CI installs it
     sock = _s.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
     loop = asyncio.new_event_loop()
@@ -1248,3 +1259,240 @@ def test_addon_pictures_are_pinned_and_exist():
             assert m, f"{name}: picture not pinned to a release tag: {url}"
             assert os.path.exists(os.path.join(ROOT, m.group(1))), f"{name}: missing picture {m.group(1)}"
         assert not _re.search(r"\]\((?!https?://)[^)]+\)", text), f"{name}: relative links don't work in Home Assistant"
+
+
+# ------------------------------------------------------------------- 2.4.0: encrypted backups
+def _turn_on(c, pw="adminpass1"):
+    r = c.post("/api/backups/encryption", json={"action": "on", "password": pw})
+    assert r.status_code == 200, r.get_json()
+    return r.get_json()
+
+
+def _restore(c, name, secret):
+    date = re.search(r"\d{4}-\d{2}-\d{2}", name).group(0)
+    return c.post("/api/backups/restore", json={"name": name, "confirm": date, "secret": secret})
+
+
+def _newest(A):
+    return A.all_backups()[0]["name"]
+
+
+import re  # noqa: E402  (used by the helpers above)
+import shutil  # noqa: E402
+import time  # noqa: E402
+
+
+def test_turning_on_deletes_plain_backups_and_shows_recovery_key(fresh):
+    c = setup_admin(fresh)
+    c.post("/api/links", json={"url": "https://a.example"})
+    c.post("/api/backups")  # an unencrypted one from before
+    assert [b["encrypted"] for b in fresh.all_backups()] == [False]
+    assert c.post("/api/backups/encryption", json={"action": "on", "password": "wrong"}).status_code == 403
+    r = _turn_on(c)
+    assert re.fullmatch(r"([A-Z2-9]{5}-){4}[A-Z2-9]{5}", r["recovery"]) and r["removed"] == 1
+    assert r["encryption"] == {"on": True, "access": True, "personal_key": True, "admins_without_access": 0}
+    files = fresh.all_backups()
+    assert [b["encrypted"] for b in files] == [True] and files[0]["name"].endswith(".tmk")
+    raw = open(os.path.join(fresh.BACKUP_DIR, files[0]["name"]), "rb").read()
+    assert raw.startswith(b"TILEMARK-FULL-1\n")
+    for secret in (b"SQLite format 3", b"a.example", b"admin", r["recovery"].encode()):  # nothing readable inside
+        assert secret not in raw
+    assert c.post("/api/backups/encryption", json={"action": "on", "password": "adminpass1"}).status_code == 409
+
+
+def test_encrypted_backup_restores_with_password_or_recovery_key(fresh):
+    c = setup_admin(fresh)
+    c.post("/api/links", json={"url": "https://a.example"})
+    key = _turn_on(c)["recovery"]
+    name = _newest(fresh)
+    c.post("/api/links", json={"url": "https://after.example"})
+    r = _restore(c, name, "")
+    assert r.status_code == 400 and r.get_json()["need_secret"] is True
+    assert _restore(c, name, "not-it").status_code == 400
+    assert _restore(c, name, "adminpass1").status_code == 200  # today's password
+    c = sign_in(fresh, "admin", "adminpass1")
+    assert [l["url"] for l in c.get("/api/state").get_json()["links"]] == ["https://a.example"]
+    c.post("/api/links", json={"url": "https://again.example"})
+    assert _restore(c, name, key.lower().replace("-", " ")).status_code == 200  # recovery key, typed loosely
+    c = sign_in(fresh, "admin", "adminpass1")
+    assert len(c.get("/api/state").get_json()["links"]) == 1
+    # the safety copy made before the restore is encrypted too
+    assert all(b["encrypted"] for b in fresh.all_backups())
+
+
+def test_encrypted_backup_opens_on_a_new_installation(fresh, tmp_path):
+    c = setup_admin(fresh)
+    c.post("/api/links", json={"url": "https://a.example"})
+    key = _turn_on(c)["recovery"]
+    src = os.path.join(fresh.BACKUP_DIR, _newest(fresh))
+    other = tmp_path / "other"
+    B = load_app(other)
+    c2 = setup_admin(B, "someone", "otherpass1")  # a different installation, another admin and password
+    os.makedirs(B.BACKUP_DIR, exist_ok=True)
+    shutil.copy(src, B.BACKUP_DIR)
+    name = os.path.basename(src)
+    assert _restore(c2, name, "otherpass1").status_code == 400  # this admin's password is no use here
+    assert _restore(c2, name, "adminpass1").status_code == 200  # the password the old admin had that day
+    c3 = sign_in(B, "admin", "adminpass1")
+    assert [l["url"] for l in c3.get("/api/state").get_json()["links"]] == ["https://a.example"]
+    # and with the recovery key alone
+    C = load_app(tmp_path / "third")
+    c4 = setup_admin(C, "x", "thirdpass1")
+    os.makedirs(C.BACKUP_DIR, exist_ok=True)
+    shutil.copy(src, C.BACKUP_DIR)
+    assert _restore(c4, name, key).status_code == 200
+
+
+def test_tampered_encrypted_backup_is_refused(fresh):
+    c = setup_admin(fresh)
+    _turn_on(c)
+    path = os.path.join(fresh.BACKUP_DIR, _newest(fresh))
+    data = bytearray(open(path, "rb").read())
+    data[-20] ^= 1
+    open(path, "wb").write(bytes(data))
+    r = _restore(c, os.path.basename(path), "adminpass1")
+    assert r.status_code == 400 and "damaged" in r.get_json()["error"]
+
+
+def test_own_password_change_keeps_access(fresh):
+    c = setup_admin(fresh)
+    _turn_on(c)
+    old = "tilemark-2000-01-01.tmk"  # kept apart from today's, which "Make a backup now" replaces
+    os.rename(os.path.join(fresh.BACKUP_DIR, _newest(fresh)), os.path.join(fresh.BACKUP_DIR, old))
+    assert c.post("/api/account", json={"username": "admin", "password": "newpass123", "current_password": "adminpass1"}).status_code == 200
+    assert c.get("/api/backups").get_json()["encryption"]["access"] is True
+    c.post("/api/backups")
+    assert _restore(c, old, "newpass123").status_code == 200  # the new password opens the old backup
+    c = sign_in(fresh, "admin", "adminpass1")  # the restored accounts have the password of that day
+    assert _restore(c, old, "adminpass1").status_code == 200
+
+
+def test_reset_password_loses_access_until_another_admin_signs_in(fresh):
+    c = setup_admin(fresh)
+    add_user(c, "bea")
+    bea_id = next(u["id"] for u in c.get("/api/users").get_json()["users"] if u["username"] == "bea")
+    c.patch(f"/api/users/{bea_id}", json={"is_admin": True})
+    _turn_on(c)
+    bea = sign_in(fresh, "bea", "userpass11")
+    assert bea.get("/api/backups").get_json()["encryption"]["access"] is True  # granted when it was turned on
+    # an admin resets bea's password: her personal key is new, her access is gone ...
+    c.patch(f"/api/users/{bea_id}", json={"password": "beanewpass1"})
+    bea = sign_in(fresh, "bea", "beanewpass1")
+    st = bea.get("/api/backups").get_json()["encryption"]
+    assert st["access"] is False and st["admins_without_access"] == 1
+    assert _restore(bea, _newest(fresh), "beanewpass1").status_code == 400
+    # ... until an admin with access signs in
+    sign_in(fresh, "admin", "adminpass1")
+    assert bea.get("/api/backups").get_json()["encryption"]["access"] is True
+    assert _restore(bea, _newest(fresh), "beanewpass1").status_code == 200
+
+
+def test_new_admin_gets_access_and_former_admin_loses_it(fresh):
+    c = setup_admin(fresh)
+    _turn_on(c)
+    add_user(c, "cas")
+    cas_id = next(u["id"] for u in c.get("/api/users").get_json()["users"] if u["username"] == "cas")
+    c.patch(f"/api/users/{cas_id}", json={"is_admin": True})
+    cas = sign_in(fresh, "cas", "userpass11")
+    assert cas.get("/api/backups").get_json()["encryption"]["access"] is False
+    sign_in(fresh, "admin", "adminpass1")
+    assert cas.get("/api/backups").get_json()["encryption"]["access"] is True
+    c.patch(f"/api/users/{cas_id}", json={"is_admin": False})
+    with fresh.db() as con:
+        assert con.execute("SELECT COUNT(*) FROM bk_grants WHERE user_id=?", (cas_id,)).fetchone()[0] == 0
+
+
+def test_reset_login_then_recovery_key_gives_access_again(fresh):
+    c = setup_admin(fresh)
+    key = _turn_on(c)["recovery"]
+    _, pw = fresh.reset_login()
+    c = sign_in(fresh, "admin", pw)
+    assert c.get("/api/backups").get_json()["encryption"]["access"] is False
+    assert c.post("/api/backups/encryption", json={"action": "unlock", "password": "WRONG-KEY"}).status_code == 403
+    r = c.post("/api/backups/encryption", json={"action": "unlock", "password": key}).get_json()
+    assert r["encryption"]["access"] is True
+    assert _restore(c, _newest(fresh), pw).status_code == 200
+
+
+def test_new_recovery_key_replaces_the_old_one(fresh):
+    c = setup_admin(fresh)
+    old = _turn_on(c)["recovery"]
+    first = _newest(fresh)
+    new = c.post("/api/backups/encryption", json={"action": "recovery", "password": "adminpass1"}).get_json()["recovery"]
+    assert new != old
+    c.post("/api/backups")  # replaces today's backup, now with the new recovery key in it
+    name = _newest(fresh)
+    assert name == first
+    assert _restore(c, name, old).status_code == 400
+    c = sign_in(fresh, "admin", "adminpass1")
+    assert _restore(c, _newest(fresh), new).status_code == 200
+
+
+def test_turning_off_keeps_encrypted_backups_readable(fresh):
+    c = setup_admin(fresh)
+    key = _turn_on(c)["recovery"]
+    enc = _newest(fresh)
+    os.rename(os.path.join(fresh.BACKUP_DIR, enc), os.path.join(fresh.BACKUP_DIR, "tilemark-2000-01-01.tmk"))
+    assert c.post("/api/backups/encryption", json={"action": "off", "password": "x"}).status_code == 403
+    assert c.post("/api/backups/encryption", json={"action": "off", "password": "adminpass1"}).get_json()["encryption"]["on"] is False
+    c.post("/api/backups")
+    assert any(b["name"].endswith(".zip") and not b["encrypted"] for b in fresh.all_backups())  # new ones plain again
+    assert _restore(c, "tilemark-2000-01-01.tmk", key).status_code == 200
+
+
+def test_encryption_is_off_by_default_also_in_the_addon(fresh, tmp_path):
+    assert fresh.backup_encryption_on() is False
+    A = load_app(tmp_path / "addon", addon=True)
+    assert A.backup_encryption_on() is False
+
+
+def test_personal_backup_sealed_with_login_password(two):
+    A, admin, bob, *_ = two
+    data = bob.post("/api/backup", json={}).get_data()
+    assert data.startswith(b"TILEMARK-BACKUP-2\n") and b"SQLite format 3" not in data
+    bob.post("/api/links", json={"url": "https://later.example"})
+    assert bob.post("/api/restore", data={"file": (io.BytesIO(data), "b.tmk"), "password": "nope"}).status_code == 400
+    r = bob.post("/api/restore", data={"file": (io.BytesIO(data), "b.tmk"), "password": "userpass11"})
+    assert r.status_code == 200 and r.get_json()["links"] == 1
+    # after changing the password, both the old one and the new one open it
+    bob.post("/api/account", json={"username": "bob", "password": "bobnewpass1", "current_password": "userpass11"})
+    for pw in ("bobnewpass1", "userpass11"):
+        assert bob.post("/api/restore", data={"file": (io.BytesIO(data), "b.tmk"), "password": pw}).status_code == 200
+    # another account can't open it with its own password
+    assert admin.post("/api/restore", data={"file": (io.BytesIO(data), "b.tmk"), "password": "adminpass1"}).status_code == 400
+
+
+def test_personal_key_made_once_for_older_accounts(two):
+    A, admin, bob, *_ = two
+    with A.db() as con:  # as if made before 2.4
+        con.execute("UPDATE users SET uk_pub='', uk_priv='' WHERE username='bob'")
+    r = bob.post("/api/backup", json={})
+    assert r.status_code == 428 and r.get_json()["need_password"] is True
+    assert bob.post("/api/backup", json={"login_password": "wrong"}).status_code == 428
+    r = bob.post("/api/backup", json={"login_password": "userpass11"})
+    assert r.status_code == 200 and r.get_data().startswith(b"TILEMARK-BACKUP-2\n")
+    assert bob.get("/api/auth").get_json()["personal_key"] is True
+    # signing in also makes it
+    with A.db() as con:
+        con.execute("UPDATE users SET uk_pub='', uk_priv='' WHERE username='bob'")
+    sign_in(A, "bob", "userpass11")
+    assert bob.get("/api/auth").get_json()["personal_key"] is True
+
+
+def test_personal_backup_other_password_and_plain_still_possible(two):
+    A, admin, bob, *_ = two
+    other = bob.post("/api/backup", json={"password": "for-a-friend"}).get_data()
+    assert other.startswith(b"TILEMARK-BACKUP-1\n")
+    assert admin.post("/api/restore", data={"file": (io.BytesIO(other), "b.tmk"), "password": "for-a-friend"}).status_code == 200
+    plain = bob.post("/api/backup", json={"plain": True}).get_data()
+    assert plain.startswith(b"PK")
+
+
+def test_addon_account_without_password_gets_plain_backup_only_when_asked(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c = A.app.test_client()
+    h = {"X-Remote-User-Id": "ha1", "X-Remote-User-Name": "sevag", "X-Remote-User-Display-Name": "Sevag"}
+    c.environ_base["REMOTE_ADDR"] = "172.30.32.2"
+    r = c.post("/api/backup", json={}, headers=h)
+    assert r.status_code == 428 and r.get_json()["need_password"] is False
+    assert c.post("/api/backup", json={"plain": True}, headers=h).get_data().startswith(b"PK")

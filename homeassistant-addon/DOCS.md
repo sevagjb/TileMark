@@ -124,6 +124,7 @@ Everything is in **⚙ Settings** (top right). Each section is a card: click its
 | **Backup and restore** | Download a backup of your own links, or restore one. |
 | **People** *(admin)* | Everyone with an account, their number of links, admin rights, remove an account. |
 | **Installation** *(admin)* | The weekly link check, TileMark's own daily backup, fetching local addresses. |
+| **Restore the whole installation** *(admin)* | TileMark's own daily backups: encrypt them, download, restore, make one now. |
 | **Home Assistant sensors** *(admin)* | The MQTT device; see **Sensors and notifications** below. |
 
 The version you are running is shown at the bottom of Settings.
@@ -132,8 +133,8 @@ The version you are running is shown at the bottom of Settings.
 
 Everything TileMark stores is in the add-on's data folder, so **Home Assistant backups include TileMark**. The add-on pauses for a moment while Home Assistant makes a backup, so the copy is always consistent.
 
-- TileMark's own **daily backup** is **off** in the add-on, because Home Assistant already covers it. An admin can switch it on in **⚙ Settings → Installation** to have both.
-- Each person can always **download a backup of their own links** in **⚙ Settings → Backup and restore**, optionally protected with a password (it can't be recovered if forgotten).
+- TileMark's own **daily backup** is **off** in the add-on, because Home Assistant already covers it (and Home Assistant can encrypt its own backups). An admin can switch it on in **⚙ Settings → Installation** to have both, and encrypt it under **Restore the whole installation**.
+- Each person can always **download a backup of their own links** in **⚙ Settings → Backup and restore**. It is encrypted with their TileMark password; accounts made by Home Assistant have none until one is set in **Your account**, so until then use **More options → A different password** (it can't be recovered if forgotten).
 
 ## Sensors and notifications
 

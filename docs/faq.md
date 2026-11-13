@@ -28,6 +28,12 @@ In the container log: the stack's log in Dockge, or `docker logs tilemark`. Show
 **I forgot my password.**
 Another admin can set a new one in **People**. If you are the only admin, run `docker exec tilemark python app.py reset-login` on the server. See [Forgot your password?](accounts-and-security.md#forgot-your-password)
 
+**Are my backups encrypted?**
+Your own backups are, with your login password. The daily backups of the whole installation are encrypted once an admin turns it on in **⚙ Settings → Restore the whole installation**. See [Backups](backups.md).
+
+**I lost the recovery key.**
+As long as an admin still knows their password, nothing is lost: make a new one with **New recovery key**.
+
 **I lost the phone with my authenticator app.**
 Sign in with one of your recovery codes, or ask an admin to use **People → Turn off 2FA**.
 

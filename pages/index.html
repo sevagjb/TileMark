@@ -154,6 +154,8 @@ details.sec .sum { margin-inline-start: auto; color: var(--muted); font-size: 12
 details.sec .secb { padding: 0 14px 14px; border-top: 1px solid var(--line); background: var(--panel); border-radius: 0 0 12px 12px; }
 details.sec .secb > :first-child { margin-top: 12px; }
 dialog h3.group { margin: 22px 0 2px; font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.enc { border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px 12px; margin: 12px 0; background: var(--bg); }
+details.more { margin-top: 10px; } details.more > summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
 dialog h4.sub { margin: 18px 0 4px; font-size: 14px; font-weight: 650; color: var(--text); }
 .choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; cursor: pointer; }
 .choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -396,13 +398,17 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <button class="btn" type="button" id="rfAll">Refresh all titles and pictures</button></div>
   </div></details>
   <details class="sec" data-k="backup"><summary><span class="st">Backup and restore</span><span class="sum" id="sum-backup"></span></summary><div class="secb">
-    <p class="hint">One file with all your links, groups, their order and the thumbnails. Give it a password to encrypt it.</p>
-    <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
+    <p class="hint">One file with all your links, groups, their order and the thumbnails.</p>
+    <p class="hint" id="bkHow"></p>
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
+    <details class="more" id="bkMore"><summary>More options</summary>
+      <label for="bkPass">A different password instead (for example to give the file to someone)</label><input id="bkPass" type="password" autocomplete="new-password">
+      <label class="check"><input id="bkPlain" type="checkbox"> No encryption: a plain zip file that anyone can open</label>
+    </details>
     <h4 class="sub">Restore</h4>
     <p class="hint">Replaces all your current links and groups with the ones from a backup file (older backups work too). Your account and other people's links stay as they are.</p>
     <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
-    <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
+    <label for="rsPass">Password: your login password (from the day of the backup, or today's), or the backup's own password</label><input id="rsPass" type="password" autocomplete="off">
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
   </div></details>
   <div id="adminBox" hidden>
@@ -424,6 +430,20 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   </div></details>
   <details class="sec" data-k="fullrestore"><summary><span class="st">Restore the whole installation</span><span class="sum" id="sum-fullrestore"></span></summary><div class="secb">
     <p class="hint">Daily backups hold every account. Restoring one puts the whole installation back to that day; everyone signs in again afterwards. A safety copy of the current state is made first and listed here as "before restore", so a restore can be undone.</p>
+    <div class="enc" id="ekBox">
+      <p class="hint" id="ekState"></p>
+      <div class="row" style="justify-content:flex-start;margin-top:6px" id="ekButtons">
+        <button class="btn primary" type="button" id="ekOn">Turn on encryption</button>
+        <button class="btn" type="button" id="ekNewKey">New recovery key</button>
+        <button class="btn danger" type="button" id="ekOff">Turn off encryption</button></div>
+      <div id="ekUnlock" hidden><label for="ekRec">Recovery key</label><input id="ekRec" type="text" autocomplete="off" spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX">
+        <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="ekUnlockGo">Get access again</button></div></div>
+      <div id="ekKey" hidden>
+        <p class="hint"><b>Your recovery key.</b> It opens every encrypted backup when no admin password works, for example on a new server or after a forgotten password. Save it somewhere safe now (a password manager, or printed); it is not shown again.</p>
+        <div class="codes"><span id="ekKeyVal"></span></div>
+        <div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="ekKeyDl">Download</button><button class="btn primary" type="button" id="ekKeyDone">I have saved it</button></div>
+      </div>
+    </div>
     <div id="bkList"></div>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="bkNow">Make a backup now</button></div>
   </div></details>
@@ -939,6 +959,7 @@ async function refreshAuth() {
   $("adminBox").hidden = !a.is_admin;
   setSum("account", a.username + (a.is_admin ? " · " + t("admin") : ""));
   setSum("save", a.has_key ? t("API key active") : "");
+  showBackupHow(a);
   showTf(a); refreshSessions();
   if (a.is_admin) { refreshUsers(); refreshBackups(); refreshMqtt(); }
   $("appVersion").textContent = "TileMark " + (a.version || "");
@@ -1000,18 +1021,37 @@ $("nuGo").onclick = async () => {
         toast(t("{name} can now sign in.", { name: $("nuUser").value })); $("nuUser").value = ""; $("nuPass").value = ""; $("nuAdmin").checked = false; refreshUsers(); }
   catch (e) { toast(e.message); }
 };
-$("bkGo").onclick = async () => {
-  $("bkGo").disabled = true;
-  try {
-    const r = await fetch("api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("bkPass").value }) });
-    if (r.status === 401) { location.href = "login"; return; }
-    if (!r.ok) throw new Error(t("The backup could not be made ({code}).", { code: r.status }));
-    const a = el("a", { href: URL.createObjectURL(await r.blob()), download: r.headers.get("X-Filename") || "tilemark-backup" });
-    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    toast($("bkPass").value ? t("Encrypted backup downloaded. Keep the password: without it the file cannot be opened.") : t("Backup downloaded (not encrypted)."));
-    $("bkPass").value = "";
-  } catch (e) { toast(e.message); } finally { $("bkGo").disabled = false; }
-};
+// your own backup: locked with your login password by default (your personal key);
+// More options: another password, or no encryption
+let bkAuth = {};
+function showBackupHow(a) {
+  bkAuth = a;
+  $("bkHow").textContent = a.personal_key ? t("It is encrypted with your login password: only that password opens it. Change your password later, and both the old and the new one keep working for it.")
+    : a.ha ? t("Your account has no TileMark password, so the file can't be locked with one. Set a password under More options to encrypt it.")
+    : t("It is encrypted with your login password. The first time, TileMark asks for your password once to set this up.");
+}
+async function downloadBackup(extra = {}) {
+  const body = { password: $("bkPass").value, plain: $("bkPlain").checked, ...extra };
+  const r = await fetch("api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.status === 401) { location.href = "login"; return; }
+  if (r.status === 428) {  // no personal key yet
+    const d = await r.json().catch(() => ({}));
+    if (d.need_password) { const pw = prompt(t("Enter your password once to set up encrypted backups.")); if (pw) return downloadBackup({ login_password: pw }); return; }
+    if (!confirm(t("Your account has no TileMark password, so the file can't be locked with one. Download it without encryption?"))) return;
+    return downloadBackup({ plain: true });
+  }
+  if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ? t(d.error) : t("The backup could not be made ({code}).", { code: r.status })); }
+  const name = r.headers.get("X-Filename") || "tilemark-backup";
+  const a = el("a", { href: URL.createObjectURL(await r.blob()), download: name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(body.password ? t("Encrypted backup downloaded. Keep the password: without it the file cannot be opened.")
+        : name.endsWith(".tmk") ? t("Encrypted backup downloaded. It opens with your login password.") : t("Backup downloaded (not encrypted)."));
+  $("bkPass").value = ""; $("bkPlain").checked = false;
+  if (!bkAuth.personal_key && name.endsWith(".tmk")) refreshAuth();
+}
+$("bkGo").onclick = async () => { $("bkGo").disabled = true; try { await downloadBackup(); } catch (e) { toast(e.message); } finally { $("bkGo").disabled = false; } };
+$("bkPlain").onchange = () => { if ($("bkPlain").checked) $("bkPass").value = ""; };
+$("bkPass").oninput = () => { if ($("bkPass").value) $("bkPlain").checked = false; };
 $("rsGo").onclick = async () => {
   const f = $("rsFile").files[0]; if (!f) return toast(t("Choose a backup file first."));
   if (!confirm(t("Replace ALL your current links and groups with the contents of this backup?"))) return;
@@ -1227,7 +1267,7 @@ $("tfOff").onclick = async () => {
 // Except where closing would lose something: the import review (closing it discards the
 // duplicates) and Settings while the recovery codes are on screen (shown only once).
 const outsideBox = (d, e) => { const r = d.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
-const mayClose = d => d.id !== "reviewDlg" && !(d.id === "settingsDlg" && !$("tfCodes").hidden);
+const mayClose = d => d.id !== "reviewDlg" && !(d.id === "settingsDlg" && (!$("tfCodes").hidden || !$("ekKey").hidden));
 for (const d of document.querySelectorAll("dialog")) {
   let pressedOutside = false;  // a drag that starts inside (selecting text) and ends outside does not close it
   d.addEventListener("mousedown", e => { pressedOutside = e.target === d && outsideBox(d, e); });
@@ -1239,23 +1279,74 @@ for (const d of document.querySelectorAll("dialog")) {
 const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 async function refreshBackups() {
   let r; try { r = await api("GET", "api/backups"); } catch (e) { return; }
-  setSum("fullrestore", r.backups.length === 1 ? t("{n} backup", { n: 1 }) : t("{n} backups", { n: r.backups.length }));
+  showEncryption(r.encryption, r.backups);
   $("bkList").replaceChildren(...(r.backups.length ? r.backups.map(b => {
     const btn = (label, fn, cls = "btn") => { const x = el("button", { className: cls, type: "button", textContent: label }); x.onclick = fn; return x; };
     return el("div", { className: "sess" }, el("div", {},
       el("b", { textContent: b.kind === "safety" ? t("Before restore, {when}", { when: fmtDate(b.made_at, true) }) : b.date }),
       b.kind === "safety" ? el("span", { className: "pill", textContent: t("safety copy") }) : "",
+      b.encrypted ? el("span", { className: "pill", textContent: "🔒 " + t("encrypted") }) : "",
       el("small", { textContent: size(b.size) + " · " + t("made {when}", { when: fmtDate(b.made_at, true) }) })),
       btn(t("Download"), () => { location.href = "api/backups/" + encodeURIComponent(b.name); }),
       btn(t("Restore"), async () => {
         const typed = prompt(t("This puts EVERY account back to {date}. Links saved since then are gone (a safety copy of now is made first).\n\nType the date {date} to confirm:", { date: b.date }));
         if (typed === null) return;
-        try { const res = await api("POST", "api/backups/restore", { name: b.name, confirm: typed });
+        let secret = "";
+        if (b.encrypted) { secret = prompt(t("This backup is encrypted. Enter your password, or the recovery key:")); if (secret === null) return; }
+        try { const res = await api("POST", "api/backups/restore", { name: b.name, confirm: typed, secret });
               alert(t("Restored: {links} links in {users} accounts. Everyone signs in again now.", { links: res.links, users: res.users })); location.href = "login"; }
         catch (e) { toast(e.message); }
       }, "btn danger"));
   }) : [el("p", { className: "hint", style: "margin-top:0", textContent: t("No backups yet.") + " " + (r.daily ? t("The first daily backup is made within a day, or use the button below.") : t("Daily backups are off; use the button below to make one.")) })]));
 }
+let ekStatus = {}, ekBackups = [];
+function showEncryption(e, backups) {
+  ekStatus = e || {}; ekBackups = backups || [];
+  const on = !!ekStatus.on;
+  $("ekState").textContent = !on ? t("Backups of the whole installation are not encrypted. Anyone who gets a copy of a backup file can read it.")
+    : ekStatus.access ? t("Backups are encrypted. They open with an admin's password or the recovery key.")
+    : t("Backups are encrypted, but your password doesn't open them yet. Another admin gives you access when they sign in, or enter the recovery key.");
+  $("ekOn").hidden = on; $("ekNewKey").hidden = $("ekOff").hidden = !on; $("ekUnlock").hidden = !on || !!ekStatus.access;
+  setSum("fullrestore", (on ? "🔒 " : "") + (ekBackups.length === 1 ? t("{n} backup", { n: 1 }) : t("{n} backups", { n: ekBackups.length })));
+}
+function showRecoveryKey(key) {
+  $("ekKeyVal").textContent = key; $("ekKey").hidden = false; $("ekButtons").hidden = true;
+  $("ekKeyDl").onclick = () => download("tilemark-recovery-key.txt", t("TileMark recovery key") + "\n" + t("It opens every encrypted backup of this TileMark when no admin password works.") + "\n\n" + key + "\n", "text/plain");
+}
+$("ekKeyDone").onclick = () => { $("ekKey").hidden = true; $("ekButtons").hidden = false; refreshBackups(); };
+const ekPassword = () => tfAuth.ha ? "" : prompt(t("Enter your current password to confirm."));
+$("ekOn").onclick = async () => {
+  const old = ekBackups.filter(b => !b.encrypted), dates = old.map(b => b.date).sort();
+  const msg = (old.length
+      ? (old.length === 1 ? t("Turning on encryption deletes the 1 existing backup ({first}), because it is not encrypted.", { first: dates[0] })
+                          : t("Turning on encryption deletes all {n} existing backups (from {first} to {last}), because they are not encrypted.", { n: old.length, first: dates[0], last: dates[dates.length - 1] }))
+        + " " + t("A first encrypted backup is made right away.") + "\n\n"
+      : "")
+    + t("Next, TileMark shows a recovery key once. Save it: it opens the backups when no admin password works.") + "\n\n" + t("Turn on encryption?");
+  if (!confirm(msg)) return;
+  const pw = ekPassword(); if (pw === null) return;
+  try { const r = await api("POST", "api/backups/encryption", { action: "on", password: pw });
+        showEncryption(r.encryption, r.backups); refreshBackups(); showRecoveryKey(r.recovery);
+        if (r.removed) toast(r.removed === 1 ? t("Encryption is on. 1 old backup was deleted.") : t("Encryption is on. {n} old backups were deleted.", { n: r.removed })); }
+  catch (e) { toast(e.message); }
+};
+$("ekOff").onclick = async () => {
+  if (!confirm(t("Turn off encryption? New backups are no longer encrypted. The encrypted ones stay, and still open with a password or the recovery key."))) return;
+  const pw = ekPassword(); if (pw === null) return;
+  try { const r = await api("POST", "api/backups/encryption", { action: "off", password: pw }); showEncryption(r.encryption, ekBackups); toast(t("Encryption is off.")); }
+  catch (e) { toast(e.message); }
+};
+$("ekNewKey").onclick = async () => {
+  if (!confirm(t("Make a new recovery key? The old one stops working for new backups; backups made before keep opening with the old one."))) return;
+  const secret = prompt(t("Enter your password, or the current recovery key:")); if (secret === null) return;
+  try { const r = await api("POST", "api/backups/encryption", { action: "recovery", password: secret }); showRecoveryKey(r.recovery); }
+  catch (e) { toast(e.message); }
+};
+$("ekUnlockGo").onclick = async () => {
+  try { const r = await api("POST", "api/backups/encryption", { action: "unlock", password: $("ekRec").value }); $("ekRec").value = "";
+        showEncryption(r.encryption, ekBackups); toast(r.encryption.access ? t("You have access to the encrypted backups again.") : t("Recovery key accepted. Set a TileMark password in Your account to get access with it.")); }
+  catch (e) { toast(e.message); }
+};
 $("bkNow").onclick = async () => { $("bkNow").disabled = true; try { await api("POST", "api/backups"); toast(t("Backup made.")); refreshBackups(); } catch (e) { toast(e.message); } finally { $("bkNow").disabled = false; } };
 
 // ---------------------------------------------------------------- Home Assistant sensors over MQTT (admin)

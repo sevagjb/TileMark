@@ -36,6 +36,9 @@ from PIL import Image
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
@@ -100,7 +103,8 @@ def init_db():
     with db() as c:  # columns and tables added after 1.1.0 (plain additions, no rebuild)
         ucols = [r["name"] for r in c.execute("PRAGMA table_info(users)")]
         for col, ddl in (("ha_user", "TEXT NOT NULL DEFAULT ''"), ("totp_secret", "TEXT NOT NULL DEFAULT ''"),
-                         ("totp_last", "INTEGER NOT NULL DEFAULT 0"), ("recovery", "TEXT NOT NULL DEFAULT ''")):
+                         ("totp_last", "INTEGER NOT NULL DEFAULT 0"), ("recovery", "TEXT NOT NULL DEFAULT ''"),
+                         ("uk_pub", "TEXT NOT NULL DEFAULT ''"), ("uk_priv", "TEXT NOT NULL DEFAULT ''")):
             if col not in ucols:
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         lcols = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
@@ -115,6 +119,10 @@ def init_db():
             last_seen INTEGER NOT NULL,
             ua TEXT NOT NULL DEFAULT '',
             ip TEXT NOT NULL DEFAULT '')""")
+        c.execute("""CREATE TABLE IF NOT EXISTS bk_grants (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            uk_pub TEXT NOT NULL,
+            sealed TEXT NOT NULL)""")
         for r in c.execute("SELECT id, url FROM links WHERE ukey = ''").fetchall():  # links saved before 2.1
             c.execute("UPDATE links SET ukey=? WHERE id=?", (url_key(r["url"]), r["id"]))
 
@@ -914,6 +922,10 @@ class MqttBridge:
         self.wake = threading.Event()
         self._sup = (0, None)
         self._slug = None
+        # announcing (on connect, in paho's thread) and taking away (on disconnect) never
+        # run at the same time: otherwise a late "online" or state could land on topics
+        # that were just cleared, leaving stale entities in Home Assistant
+        self._io = threading.Lock()
 
     # -- configuration
     def node(self):
@@ -1062,6 +1074,12 @@ class MqttBridge:
         if reason.is_failure:
             self.status = {**self.status, "state": "error", "error": f"Broker refused the connection: {reason}"}
             return
+        with self._io:
+            if client is not self.client:  # replaced while connecting: say nothing on the old topics
+                return
+            self._announce(client)
+
+    def _announce(self, client):
         for topic, payload in self.discovery(self.cfg["prefix"]).items():
             client.publish(topic, json.dumps(payload), qos=1, retain=True)
         client.publish(f"{self.base()}/availability", "online", qos=1, retain=True)
@@ -1074,7 +1092,8 @@ class MqttBridge:
             self.status = {**self.status, "state": "connecting", "error": f"Connection lost ({reason}); retrying."}
 
     def _disconnect(self, remove=False):
-        cl, self.client = self.client, None
+        with self._io:
+            cl, self.client = self.client, None
         if not cl:
             return
         try:  # QoS 1 and wait for each, so nothing is lost when the connection closes right after
@@ -1085,8 +1104,9 @@ class MqttBridge:
                 for topic in ("state", "event"):  # and their retained values
                     sent.append(cl.publish(f"{self.base(old)}/{topic}", "", qos=1, retain=True))
             sent.append(cl.publish(f"{self.base(old)}/availability", "offline", qos=1, retain=True))
+            deadline = time.time() + 10  # one shared deadline: a slow broker gets time, a dead one costs 10 s at most
             for info in sent:
-                info.wait_for_publish(3)
+                info.wait_for_publish(max(0.1, deadline - time.time()))
         except Exception:
             pass
         cl.disconnect()
@@ -1436,7 +1456,8 @@ OPEN_ENDPOINTS = {"login_page", "api_login", "api_login_totp", "auth_status", "a
                   "service_worker", "healthz", "i18n_script"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
 ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings", "list_full_backups",
-                   "make_full_backup_now", "download_full_backup", "restore_full_backup_api", "mqtt_settings"}
+                   "make_full_backup_now", "download_full_backup", "restore_full_backup_api", "mqtt_settings",
+                   "backup_encryption"}
 
 
 @app.before_request
@@ -1510,7 +1531,8 @@ def auth_status():
     return jsonify(signed_in=bool(u), setup=not u and setup_needed(),
                    username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
                    has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON,
-                   totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0, version=APP_VERSION)
+                   totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0, version=APP_VERSION,
+                   personal_key=bool(u and u["uk_pub"]))
 
 
 @app.post("/api/setup")
@@ -1542,6 +1564,7 @@ def api_setup():
             return jsonify(error="TileMark is already set up. Sign in instead."), 409
         uid = con.execute("INSERT INTO users (username, pw_hash, is_admin, ver, created_at) VALUES (?,?,1,?,?)",
                           (user, _hash(pw), secrets.token_hex(16), int(time.time()))).lastrowid
+        personal_key_set(con, uid, pw)
         con.execute("UPDATE groups SET user_id=? WHERE user_id IS NULL", (uid,))
         con.execute("UPDATE links SET user_id=? WHERE user_id IS NULL", (uid,))
         con.execute("DELETE FROM settings WHERE key='setup_code'")
@@ -1569,6 +1592,7 @@ def api_login():
     _note_login(ip, ok)
     if not ok:
         return jsonify(error="Wrong username or password."), 401
+    keys_on_sign_in(row["id"], str(d.get("password", "")))  # the only moment the password is known
     if row["totp_secret"]:  # password right; the code comes next (5 minutes to enter it)
         session.clear()
         session["pending"] = {"uid": row["id"], "ver": row["ver"], "exp": int(time.time()) + 300,
@@ -1717,6 +1741,8 @@ def update_account():
             return jsonify(error="That username is already taken."), 409
         if pw:  # new value signs every other device out
             c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), me()))
+            # with the old password the personal key is only re-locked, so backups and access stay
+            personal_key_set(c, me(), pw, None if via_ingress() else str(d.get("current_password", "")))
         row = c.execute("SELECT * FROM users WHERE id=?", (me(),)).fetchone()
     if not via_ingress():
         _sign_in(row)
@@ -1770,6 +1796,7 @@ def create_user():
                              int(time.time()))).lastrowid
         except sqlite3.IntegrityError:
             return jsonify(error="That username is already taken."), 409
+        personal_key_set(c, uid, pw)
     return jsonify(id=uid), 201
 
 
@@ -1795,10 +1822,13 @@ def update_user(uid):
             return jsonify(error="That username is already taken."), 409
         if user is not None:
             c.execute("UPDATE users SET username=? WHERE id=?", (user, uid))
-        if pw:
+        if pw:  # a new personal key: the old one was locked with a password nobody here knows
             c.execute("UPDATE users SET pw_hash=?, ver=? WHERE id=?", (_hash(pw), secrets.token_hex(16), uid))
+            personal_key_set(c, uid, pw)
         if make is not None:
             c.execute("UPDATE users SET is_admin=? WHERE id=?", (make, uid))
+            if not make:
+                c.execute("DELETE FROM bk_grants WHERE user_id=?", (uid,))
         if d.get("totp") is False:
             c.execute("UPDATE users SET totp_secret='', totp_last=0, recovery='' WHERE id=?", (uid,))
         if pw:
@@ -2371,6 +2401,169 @@ def _export_json():
                     headers={"Content-Disposition": "attachment; filename=tilemark-export-" + time.strftime("%Y-%m-%d") + ".json"})
 
 
+# ---------------------------------------------------------------- encryption keys
+# Backups are encrypted without an extra password to remember:
+#
+# * Every account with a password has a personal key pair (X25519). The private
+#   half is stored locked with the login password (scrypt + AES-GCM), so only that
+#   password opens it. Personal backups are sealed to the public half.
+# * When an admin turns on encrypted backups, the installation gets a backup key
+#   pair. Daily backups and safety copies are sealed to its public half, so they
+#   can be made at night with nobody signed in. The private half is stored only
+#   sealed, once per admin to that admin's personal key ("grants"), and once
+#   locked with a recovery key shown a single time.
+# * Each backup file carries those locked copies in its header, so it opens on a
+#   brand-new installation with an admin's password from that day, or the
+#   recovery key.
+# * A password changed by its owner re-locks the same personal key, so nothing is
+#   lost. A password reset by someone else (admin, reset-login) gives a new
+#   personal key; access to backups comes back the next time an admin with access
+#   signs in, or with the recovery key.
+SEAL_INFO = b"tilemark-seal-1"
+KEY_AAD = b"tilemark-key-1"
+RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O, 1/I: easy to copy by hand
+
+
+def _b64(b):
+    return base64.b64encode(b).decode("ascii")
+
+
+def _unb64(s):
+    return base64.b64decode(s.encode("ascii")) if s else b""
+
+
+def _raw_priv(k):
+    return k.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
+
+
+def _raw_pub(k):
+    return k.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+
+
+def _pub_of(priv_raw):
+    return _raw_pub(X25519PrivateKey.from_private_bytes(priv_raw))
+
+
+def _lock(secret, password):
+    """secret locked with a password: 16-byte salt + 12-byte nonce + AES-GCM."""
+    salt, nonce = os.urandom(16), os.urandom(12)
+    return salt + nonce + AESGCM(_key(password, salt)).encrypt(nonce, secret, KEY_AAD)
+
+
+def _unlock(blob, password):
+    if len(blob) < 29 or not password:
+        return None
+    try:
+        return AESGCM(_key(password, blob[:16])).decrypt(blob[16:28], blob[28:], KEY_AAD)
+    except InvalidTag:
+        return None
+
+
+def _seal(data, pub_raw, aad=b""):
+    """data sealed to a public key: 32-byte one-time public key + 12-byte nonce + AES-GCM."""
+    eph = X25519PrivateKey.generate()
+    eph_pub = _raw_pub(eph)
+    shared = eph.exchange(X25519PublicKey.from_public_bytes(pub_raw))
+    key = HKDF(hashes.SHA256(), 32, salt=None, info=SEAL_INFO + eph_pub + pub_raw).derive(shared)
+    nonce = os.urandom(12)
+    return eph_pub + nonce + AESGCM(key).encrypt(nonce, data, aad)
+
+
+def _open(blob, priv_raw, aad=b""):
+    """The other side of _seal. Raises InvalidTag when the key or the data is wrong."""
+    if len(blob) < 44:
+        raise InvalidTag()
+    priv = X25519PrivateKey.from_private_bytes(priv_raw)
+    shared = priv.exchange(X25519PublicKey.from_public_bytes(blob[:32]))
+    key = HKDF(hashes.SHA256(), 32, salt=None, info=SEAL_INFO + blob[:32] + _raw_pub(priv)).derive(shared)
+    return AESGCM(key).decrypt(blob[32:44], blob[44:], aad)
+
+
+def new_recovery_key():
+    return "-".join("".join(secrets.choice(RECOVERY_ALPHABET) for _ in range(5)) for _ in range(5))
+
+
+def _recovery_norm(text):
+    return re.sub(r"[^A-Z0-9]", "", str(text or "").upper())
+
+
+# -- personal keys
+def personal_key_set(c, uid, password, old_password=None):
+    """Give this account a personal key locked with `password`. With the old password
+    the existing key is kept and only re-locked, so backups and grants stay valid."""
+    row = c.execute("SELECT uk_pub, uk_priv FROM users WHERE id=?", (uid,)).fetchone()
+    priv = _unlock(_unb64(row["uk_priv"]), old_password) if (row and row["uk_priv"] and old_password) else None
+    if priv is None:
+        priv = _raw_priv(X25519PrivateKey.generate())
+    c.execute("UPDATE users SET uk_pub=?, uk_priv=? WHERE id=?", (_b64(_pub_of(priv)), _b64(_lock(priv, password)), uid))
+    return priv
+
+
+def personal_key_open(row, password):
+    return _unlock(_unb64(row["uk_priv"]), password) if row["uk_priv"] else None
+
+
+# -- the installation's backup key
+def backup_encryption_on():
+    return get_setting("bk_on", "off") == "on" and bool(get_setting("bk_pub", ""))
+
+
+def _grant_valid(c, row):
+    g_ = c.execute("SELECT * FROM bk_grants WHERE user_id=?", (row["id"],)).fetchone()
+    return g_ if (g_ and row["uk_pub"] and g_["uk_pub"] == row["uk_pub"]) else None
+
+
+def backup_key_with_password(c, row, password):
+    """The backup key's private half, opened with this admin's password (or None)."""
+    grant = _grant_valid(c, row)
+    priv = personal_key_open(row, password) if grant else None
+    if not priv:
+        return None
+    try:
+        bk = _open(_unb64(grant["sealed"]), priv)
+    except InvalidTag:
+        return None
+    return bk if _b64(_pub_of(bk)) == get_setting("bk_pub", "") else None
+
+
+def backup_key_with_recovery(recovery, blob=None, pub=None):
+    bk = _unlock(blob if blob is not None else _unb64(get_setting("bk_recovery", "")), _recovery_norm(recovery))
+    return bk if bk and _b64(_pub_of(bk)) == (pub or get_setting("bk_pub", "")) else None
+
+
+def share_backup_key(c, bk):
+    """Seal the backup key to every admin who has a personal key but no valid grant;
+    take it away from accounts that are no longer admin."""
+    c.execute("DELETE FROM bk_grants WHERE user_id NOT IN (SELECT id FROM users WHERE is_admin=1)")
+    n = 0
+    for row in c.execute("SELECT id, uk_pub FROM users WHERE is_admin=1 AND uk_pub != ''").fetchall():
+        if not _grant_valid(c, row):
+            c.execute("INSERT INTO bk_grants (user_id, uk_pub, sealed) VALUES (?,?,?) ON CONFLICT(user_id) "
+                      "DO UPDATE SET uk_pub=excluded.uk_pub, sealed=excluded.sealed",
+                      (row["id"], row["uk_pub"], _b64(_seal(bk, _unb64(row["uk_pub"])))))
+            n += 1
+    return n
+
+
+def keys_on_sign_in(uid, password):
+    """Called whenever a password is known to be right: makes sure the account has a
+    personal key, and lets an admin with access pass access on to other admins."""
+    try:
+        with db() as c:
+            row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            if not row:
+                return
+            if not personal_key_open(row, password):  # none yet (made before 2.4), or reset by someone else
+                personal_key_set(c, uid, password)
+                row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            if row["is_admin"] and backup_encryption_on():
+                bk = backup_key_with_password(c, row, password)
+                if bk:
+                    share_backup_key(c, bk)
+    except Exception:  # never let key upkeep stop anyone from signing in
+        app.logger.exception("keys on sign-in")
+
+
 # ------------------------------------------------------- backup and restore
 # A backup holds one user's links, groups and thumbnails: a zip with a small
 # database (tables "groups" and "links") and the thumbnails. With a password it is
@@ -2379,6 +2572,11 @@ def _export_json():
 # Backups made under the app's previous name use LEGACY_MAGIC and a database named
 # LEGACY_DB in the zip; they restore exactly like new ones.
 MAGIC = b"TILEMARK-BACKUP-1\n"
+# Since 2.4 a backup is by default sealed to the account's personal key instead:
+# MAGIC2 + 4-byte header length + header (JSON: the personal key's public half and
+# its private half, locked with the login password of that day) + the sealed zip.
+# It opens with that password, or with today's password when it was changed since.
+MAGIC2 = b"TILEMARK-BACKUP-2\n"
 BACKUP_DB = "tilemark.db"
 LEGACY_MAGIC = b"LINK" + b"BOARD-BACKUP-1\n"
 LEGACY_DB = "link" + "board.db"
@@ -2389,7 +2587,9 @@ def _key(password, salt):
     return Scrypt(salt=salt, length=32, n=2 ** 15, r=8, p=1).derive(password.encode("utf-8"))
 
 
-def make_backup(uid, password=""):
+def make_backup(uid, password="", personal=True):
+    """password: lock with that password (format 1). Otherwise, with personal=True and
+    a personal key, seal to it (format 2). Otherwise a plain zip."""
     with tempfile.TemporaryDirectory() as tmp:
         snap = os.path.join(tmp, "tilemark.db")
         cols = ",".join(LINK_COLS)
@@ -2416,7 +2616,12 @@ def make_backup(uid, password=""):
     data = buf.getvalue()
     if password:
         salt, nonce = os.urandom(16), os.urandom(12)
-        data = MAGIC + salt + nonce + AESGCM(_key(password, salt)).encrypt(nonce, data, MAGIC)
+        return MAGIC + salt + nonce + AESGCM(_key(password, salt)).encrypt(nonce, data, MAGIC)
+    with db() as c:
+        row = c.execute("SELECT uk_pub, uk_priv FROM users WHERE id=?", (uid,)).fetchone()
+    if personal and row and row["uk_pub"]:
+        header = json.dumps({"v": 2, "uk_pub": row["uk_pub"], "uk_priv": row["uk_priv"]}).encode("utf-8")
+        return MAGIC2 + struct.pack(">I", len(header)) + header + _seal(data, _unb64(row["uk_pub"]), MAGIC2 + header)
     return data
 
 
@@ -2424,9 +2629,33 @@ class RestoreError(Exception):
     pass
 
 
+def _open_personal_backup(uid, data, password):
+    try:
+        n = struct.unpack(">I", data[len(MAGIC2):len(MAGIC2) + 4])[0]
+        header_raw = data[len(MAGIC2) + 4:len(MAGIC2) + 4 + n]
+        header, body = json.loads(header_raw), data[len(MAGIC2) + 4 + n:]
+    except (struct.error, ValueError):
+        raise RestoreError("This is not a TileMark backup file.")
+    if not password:
+        raise RestoreError("This backup is protected. Enter its password.")
+    uk = _unlock(_unb64(header.get("uk_priv", "")), password)  # the password of the day it was made
+    if not uk:
+        with db() as c:  # or today's, when the owner changed it since (the key stayed the same)
+            row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        uk = personal_key_open(row, password) if row and row["uk_pub"] == header.get("uk_pub") else None
+    if not uk:
+        raise RestoreError("Wrong password. Use your password from the day of the backup, or today's.")
+    try:
+        return _open(body, uk, MAGIC2 + header_raw)
+    except InvalidTag:
+        raise RestoreError("Wrong password, or the backup file is damaged.")
+
+
 def restore_backup(uid, data, password=""):
     """Replace this user's links and groups with the ones in the backup. Ids are
     given anew (other users' ids may be taken), so groups and pictures are mapped."""
+    if data.startswith(MAGIC2):
+        data = _open_personal_backup(uid, data, password)
     magic = next((m for m in (MAGIC, LEGACY_MAGIC) if data.startswith(m)), None)
     if magic:
         if not password:
@@ -2527,7 +2756,7 @@ def daily_backup_on():
 
 def list_backups():
     try:
-        return sorted(n for n in os.listdir(BACKUP_DIR) if re.fullmatch(r"tilemark-\d{4}-\d{2}-\d{2}\.zip", n))
+        return sorted(n for n in os.listdir(BACKUP_DIR) if re.fullmatch(r"tilemark-\d{4}-\d{2}-\d{2}\.(zip|tmk)", n))
     except OSError:
         return []
 
@@ -2538,7 +2767,7 @@ KEEP_ON_RESTORE = ("node_id", "secret_key", "mqtt_enabled", "mqtt_host", "mqtt_p
 
 
 def daily_backup():
-    final = _write_full_backup(time.strftime("tilemark-%Y-%m-%d.zip"))
+    final = _write_full_backup(time.strftime("tilemark-%Y-%m-%d"))
     for old in list_backups()[:-KEEP_BACKUPS]:
         try:
             os.remove(os.path.join(BACKUP_DIR, old))
@@ -2548,9 +2777,27 @@ def daily_backup():
     return final
 
 
-def _write_full_backup(filename):
+# With encryption on, a backup file is: MAGIC_FULL + 4-byte header length + header
+# (JSON: the backup key's public half, and its private half locked per admin and
+# with the recovery key) + the zip sealed to the backup key, with MAGIC_FULL and
+# the header as associated data, so neither can be changed unnoticed.
+MAGIC_FULL = b"TILEMARK-FULL-1\n"
+
+
+def _full_header():
+    with db() as c:
+        keys = [{"uk_priv": r["uk_priv"], "sealed": r["sealed"]} for r in c.execute(
+            "SELECT u.uk_priv, g.sealed FROM bk_grants g JOIN users u ON u.id = g.user_id "
+            "WHERE u.is_admin = 1 AND u.uk_pub = g.uk_pub AND u.uk_priv != ''")]
+    return json.dumps({"v": 1, "bk_pub": get_setting("bk_pub", ""), "keys": keys,
+                       "recovery": get_setting("bk_recovery", "")}).encode("utf-8")
+
+
+def _write_full_backup(base):
+    """Write a backup of the whole installation: base + ".tmk" when encryption is on, else ".zip"."""
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    final = os.path.join(BACKUP_DIR, filename)
+    encrypt = backup_encryption_on()
+    final = os.path.join(BACKUP_DIR, base + (".tmk" if encrypt else ".zip"))
     part = final + ".part"
     with tempfile.TemporaryDirectory() as tmp:
         snap = os.path.join(tmp, "tilemark.db")
@@ -2566,8 +2813,63 @@ def _write_full_backup(filename):
                 path = os.path.join(THUMB_DIR, os.path.basename(name))
                 if os.path.isfile(path):
                     z.write(path, "thumbs/" + os.path.basename(name), zipfile.ZIP_STORED)
+    if encrypt:
+        with open(part, "rb") as f:
+            plain = f.read()
+        header = _full_header()
+        with open(part, "wb") as f:
+            f.write(MAGIC_FULL + struct.pack(">I", len(header)) + header
+                    + _seal(plain, _unb64(get_setting("bk_pub", "")), MAGIC_FULL + header))
     os.replace(part, final)
     return final
+
+
+def read_full_backup(path, secret="", uid=None):
+    """The zip inside a backup of the whole installation. An encrypted one opens with
+    the password of an admin (the current one, or theirs on the day of the backup) or
+    with the recovery key."""
+    with open(path, "rb") as f:
+        data = f.read()
+    if not data.startswith(MAGIC_FULL):
+        return data
+    try:
+        n = struct.unpack(">I", data[len(MAGIC_FULL):len(MAGIC_FULL) + 4])[0]
+        header_raw = data[len(MAGIC_FULL) + 4:len(MAGIC_FULL) + 4 + n]
+        header, body = json.loads(header_raw), data[len(MAGIC_FULL) + 4 + n:]
+        pub = header["bk_pub"]
+    except (struct.error, ValueError, KeyError, TypeError):
+        raise FullRestoreError("That file is not a TileMark backup.")
+    if not secret:
+        raise FullRestoreError("This backup is encrypted. Enter your password or the recovery key.")
+    fits = lambda k: k if (k and _b64(_pub_of(k)) == pub) else None
+    bk = None
+    if uid:  # the current admin's password, through their access today
+        with db() as c:
+            row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+            if row and check_password_hash(row["pw_hash"], secret):
+                grant = _grant_valid(c, row)
+                uk = personal_key_open(row, secret) if grant else None
+                try:
+                    bk = fits(_open(_unb64(grant["sealed"]), uk)) if uk else None
+                except InvalidTag:
+                    bk = None
+    for k in header.get("keys", []) if not bk else []:  # an admin's password on the day of the backup
+        uk = _unlock(_unb64(k.get("uk_priv", "")), secret)
+        if uk:
+            try:
+                bk = fits(_open(_unb64(k.get("sealed", "")), uk))
+            except InvalidTag:
+                bk = None
+            if bk:
+                break
+    if not bk:
+        bk = backup_key_with_recovery(secret, _unb64(header.get("recovery", "")), pub)
+    if not bk:
+        raise FullRestoreError("That password or recovery key does not open this backup.")
+    try:
+        return _open(body, bk, MAGIC_FULL + header_raw)
+    except InvalidTag:
+        raise FullRestoreError("The backup file is damaged.")
 
 
 def all_backups():
@@ -2578,12 +2880,12 @@ def all_backups():
     except OSError:
         names = []
     for n in names:
-        m = re.fullmatch(r"tilemark-(\d{4}-\d{2}-\d{2})\.zip", n) or re.fullmatch(
-            re.escape(SAFETY_PREFIX) + r"(\d{4}-\d{2}-\d{2})-\d{6}\.zip", n)
+        m = re.fullmatch(r"tilemark-(\d{4}-\d{2}-\d{2})\.(zip|tmk)", n) or re.fullmatch(
+            re.escape(SAFETY_PREFIX) + r"(\d{4}-\d{2}-\d{2})-\d{6}\.(zip|tmk)", n)
         if m:
             st = os.stat(os.path.join(BACKUP_DIR, n))
             out.append({"name": n, "date": m.group(1), "size": st.st_size, "made_at": int(st.st_mtime),
-                        "kind": "safety" if n.startswith(SAFETY_PREFIX) else "daily"})
+                        "kind": "safety" if n.startswith(SAFETY_PREFIX) else "daily", "encrypted": n.endswith(".tmk")})
     return sorted(out, key=lambda b: b["made_at"], reverse=True)
 
 
@@ -2591,7 +2893,7 @@ class FullRestoreError(Exception):
     pass
 
 
-def restore_full_backup(name):
+def restore_full_backup(name, secret="", uid=None):
     """Replace the whole installation (every account) with a daily backup. A safety
     copy of the current state is made first, so a restore can itself be undone."""
     entry = next((b for b in all_backups() if b["name"] == name), None)
@@ -2600,7 +2902,7 @@ def restore_full_backup(name):
     path = os.path.join(BACKUP_DIR, name)
     with tempfile.TemporaryDirectory() as tmp:
         try:
-            z = zipfile.ZipFile(path)
+            z = zipfile.ZipFile(io.BytesIO(read_full_backup(path, secret, uid)))
             info = z.getinfo(BACKUP_DB)
         except (zipfile.BadZipFile, KeyError, OSError):
             raise FullRestoreError("That file is not a TileMark backup.")
@@ -2619,7 +2921,7 @@ def restore_full_backup(name):
             raise FullRestoreError("The backup's database cannot be read.")
         if not ok or users < 1:  # a backup without accounts would lock everyone out
             raise FullRestoreError("The backup's database is damaged or has no accounts.")
-        safety = _write_full_backup(SAFETY_PREFIX + time.strftime("%Y-%m-%d-%H%M%S") + ".zip")
+        safety = _write_full_backup(SAFETY_PREFIX + time.strftime("%Y-%m-%d-%H%M%S"))
         for old in [b["name"] for b in all_backups() if b["kind"] == "safety"][KEEP_SAFETY:]:
             try:
                 os.remove(os.path.join(BACKUP_DIR, old))
@@ -2658,9 +2960,19 @@ def restore_full_backup(name):
     return {"links": links, "users": users, "safety": os.path.basename(safety)}
 
 
+def _encryption_status():
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE id=?", (me(),)).fetchone()
+        access = bool(_grant_valid(c, row))
+        admins_without = c.execute("SELECT COUNT(*) FROM users u WHERE is_admin=1 AND NOT EXISTS "
+                                   "(SELECT 1 FROM bk_grants g WHERE g.user_id=u.id AND g.uk_pub=u.uk_pub AND u.uk_pub != '')").fetchone()[0]
+    return {"on": backup_encryption_on(), "access": access, "personal_key": bool(row["uk_pub"]),
+            "admins_without_access": admins_without}
+
+
 @app.get("/api/backups")
 def list_full_backups():
-    return jsonify(backups=all_backups(), daily=daily_backup_on())
+    return jsonify(backups=all_backups(), daily=daily_backup_on(), encryption=_encryption_status())
 
 
 @app.post("/api/backups")
@@ -2687,19 +2999,84 @@ def restore_full_backup_api():
     if str(d.get("confirm", "")).strip() != entry["date"]:
         return jsonify(error=f"To confirm, type the date of the backup: {entry['date']}"), 400
     try:
-        result = restore_full_backup(name)
+        result = restore_full_backup(name, str(d.get("secret", "")), me())
     except FullRestoreError as e:
-        return jsonify(error=str(e)), 400
+        return jsonify(error=str(e), need_secret=entry["encrypted"]), 400
     session.clear()
     return jsonify(ok=True, **result)
+
+
+@app.post("/api/backups/encryption")
+def backup_encryption():
+    """Admin: turn encryption of the whole-installation backups on or off, make a new
+    recovery key, or get access again with the recovery key."""
+    d = request.get_json(force=True, silent=True) or {}
+    action, secret = d.get("action"), str(d.get("password", ""))
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE id=?", (me(),)).fetchone()
+    password_ok = via_ingress() or check_password_hash(row["pw_hash"], secret)
+    if action == "on":
+        if not password_ok:
+            return jsonify(error="The current password is not correct."), 403
+        if backup_encryption_on():
+            return jsonify(error="Backups are already encrypted."), 409
+        bk, recovery = _raw_priv(X25519PrivateKey.generate()), new_recovery_key()
+        with db() as c:
+            for key, value in (("bk_pub", _b64(_pub_of(bk))), ("bk_recovery", _b64(_lock(bk, _recovery_norm(recovery)))),
+                               ("bk_on", "on")):
+                c.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                          (key, value))
+            c.execute("DELETE FROM bk_grants")
+            share_backup_key(c, bk)
+        if daily_backup_on():
+            daily_backup()  # the first encrypted one, before the old ones go
+        removed = 0
+        for b in all_backups():  # the unencrypted ones: confirmed by the admin before turning this on
+            if not b["encrypted"]:
+                try:
+                    os.remove(os.path.join(BACKUP_DIR, b["name"]))
+                    removed += 1
+                except OSError:
+                    pass
+        return jsonify(ok=True, recovery=recovery, removed=removed, encryption=_encryption_status(), backups=all_backups())
+    if action == "off":
+        if not password_ok:
+            return jsonify(error="The current password is not correct."), 403
+        with db() as c:
+            c.execute("DELETE FROM settings WHERE key IN ('bk_pub', 'bk_recovery', 'bk_on')")
+            c.execute("DELETE FROM bk_grants")
+        return jsonify(ok=True, encryption=_encryption_status())
+    if action in ("recovery", "unlock"):
+        if not backup_encryption_on():
+            return jsonify(error="Backups are not encrypted."), 400
+        with db() as c:
+            bk = (backup_key_with_password(c, row, secret) if check_password_hash(row["pw_hash"], secret) else None) \
+                or backup_key_with_recovery(secret)
+            if not bk:
+                return jsonify(error="That password or recovery key is not right."), 403
+            share_backup_key(c, bk)  # you (and any admin without access) can open the backups again
+            if action == "recovery":
+                recovery = new_recovery_key()
+                c.execute("UPDATE settings SET value=? WHERE key='bk_recovery'", (_b64(_lock(bk, _recovery_norm(recovery))),))
+                return jsonify(ok=True, recovery=recovery, encryption=_encryption_status())
+        return jsonify(ok=True, encryption=_encryption_status())
+    return jsonify(error="Nothing to do."), 400
 
 
 @app.post("/api/backup")
 def api_backup():
     d = request.get_json(force=True, silent=True) or {}
-    password = str(d.get("password", ""))
-    data = make_backup(me(), password)
-    name = "tilemark-backup-" + time.strftime("%Y-%m-%d") + (".tmk" if password else ".zip")
+    password, plain = str(d.get("password", "")), bool(d.get("plain"))
+    if not password and not plain and not g.user["uk_pub"]:
+        login = str(d.get("login_password", ""))  # an account from before 2.4: its key is made once, now
+        if via_ingress() or not check_password_hash(g.user["pw_hash"], login):
+            return jsonify(error="Enter your password once to set up encrypted backups.", need_password=not via_ingress(),
+                           no_key=True), 428
+        with db() as c:
+            personal_key_set(c, me(), login)
+    data = make_backup(me(), password, personal=not plain)
+    encrypted = data.startswith(MAGIC) or data.startswith(MAGIC2)
+    name = "tilemark-backup-" + time.strftime("%Y-%m-%d") + (".tmk" if encrypted else ".zip")
     return Response(data, mimetype="application/octet-stream",
                     headers={"Content-Disposition": f"attachment; filename={name}", "X-Filename": name})
 
@@ -2730,6 +3107,7 @@ def reset_login(username=None):
         pw = secrets.token_urlsafe(12)  # also turns off two-factor sign-in: a lost phone never locks anyone out
         c.execute("UPDATE users SET pw_hash=?, ver=?, totp_secret='', totp_last=0, recovery='' WHERE id=?",
                   (_hash(pw), secrets.token_hex(16), row["id"]))
+        personal_key_set(c, row["id"], pw)
         c.execute("DELETE FROM sessions WHERE user_id=?", (row["id"],))
     return row["username"], pw
 

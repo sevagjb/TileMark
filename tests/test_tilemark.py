@@ -3,6 +3,7 @@
 Run: pip install -r requirements.txt pytest && pytest -q
 """
 import importlib
+import json
 import io
 import os
 import sqlite3
@@ -925,3 +926,179 @@ def test_dupok_pref(fresh):
     c = setup_admin(fresh)
     c.put("/api/prefs", json={"dupok": [[3, 1, 1], "junk", [2, "x"]]})
     assert c.get("/api/state").get_json()["prefs"]["dupok"] == [[1, 3], [2]]
+
+
+# ------------------------------------------------------------------- 2.2.0
+def test_restore_daily_backup(fresh):
+    c = setup_admin(fresh)
+    add_user(c, "bob")
+    bob = sign_in(fresh, "bob", "userpass11")
+    keep = c.post("/api/links", json={"url": "https://kept.example", "note": "from the backup"}).get_json()["id"]
+    from PIL import Image
+    buf = io.BytesIO(); Image.new("RGB", (200, 120), (30, 30, 200)).save(buf, "PNG")
+    c.post(f"/api/links/{keep}/thumb", data={"file": (io.BytesIO(buf.getvalue()), "p.png")})
+    bob.post("/api/links", json={"url": "https://bob.example"})
+    assert c.post("/api/backups").status_code == 200
+    backups = c.get("/api/backups").get_json()["backups"]
+    daily = next(b for b in backups if b["kind"] == "daily")
+    # after the backup: a link deleted, a new one added, the own picture file lost
+    c.delete(f"/api/links/{keep}")
+    c.post("/api/links", json={"url": "https://after.example"})
+    for n in os.listdir(fresh.THUMB_DIR):
+        os.remove(os.path.join(fresh.THUMB_DIR, n))
+    assert bob.get("/api/backups").status_code == 403
+    assert c.post("/api/backups/restore", json={"name": daily["name"], "confirm": "wrong"}).status_code == 400
+    assert c.post("/api/backups/restore", json={"name": "../../etc/passwd", "confirm": "x"}).status_code == 404
+    r = c.post("/api/backups/restore", json={"name": daily["name"], "confirm": daily["date"]})
+    assert r.status_code == 200, r.get_json()
+    assert r.get_json()["links"] == 2 and r.get_json()["users"] == 2
+    assert c.get("/api/state").status_code == 401 and bob.get("/api/state").status_code == 401  # everyone signs in again
+    c = sign_in(fresh, "admin", "adminpass1")
+    s = c.get("/api/state").get_json()
+    assert [l["url"] for l in s["links"]] == ["https://kept.example"]
+    kept = s["links"][0]
+    assert kept["note"] == "from the backup" and kept["custom_thumb"] == 1 and c.get("/thumbs/" + kept["thumb"]).status_code == 200
+    assert [l["url"] for l in sign_in(fresh, "bob", "userpass11").get("/api/state").get_json()["links"]] == ["https://bob.example"]
+    # a safety copy of the state before the restore exists, and can be restored back
+    safety = next(b for b in c.get("/api/backups").get_json()["backups"] if b["kind"] == "safety")
+    assert c.get("/api/backups/" + safety["name"]).status_code == 200
+    r = c.post("/api/backups/restore", json={"name": safety["name"], "confirm": safety["date"]})
+    assert r.status_code == 200
+    c = sign_in(fresh, "admin", "adminpass1")
+    assert [l["url"] for l in c.get("/api/state").get_json()["links"]] == ["https://after.example"]
+
+
+def test_restore_refuses_bad_backup(fresh):
+    c = setup_admin(fresh)
+    os.makedirs(fresh.BACKUP_DIR, exist_ok=True)
+    with zipfile.ZipFile(os.path.join(fresh.BACKUP_DIR, "tilemark-2026-01-01.zip"), "w") as z:
+        z.writestr("tilemark.db", b"not a database")
+    r = c.post("/api/backups/restore", json={"name": "tilemark-2026-01-01.zip", "confirm": "2026-01-01"})
+    assert r.status_code == 400 and c.get("/api/state").status_code == 200  # nothing changed, still signed in
+
+
+def test_addon_setup_message_points_to_sidebar(tmp_path, capsys):
+    A = load_app(tmp_path, addon=True)
+    A.print_setup_code()
+    out = capsys.readouterr().out
+    assert "Home Assistant sidebar" in out and "docker exec" not in out
+
+
+@pytest.fixture
+def broker():
+    import asyncio
+    import socket as _s
+    from amqtt.broker import Broker
+    sock = _s.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
+    loop = asyncio.new_event_loop()
+    cfg = {"listeners": {"default": {"type": "tcp", "bind": f"127.0.0.1:{port}"}},
+           "plugins": {"amqtt.plugins.authentication.AnonymousAuthPlugin": {"allow_anonymous": True}}}
+    b = Broker(cfg, loop=loop)
+    t = threading.Thread(target=loop.run_forever, daemon=True); t.start()
+    asyncio.run_coroutine_threadsafe(b.start(), loop).result(10)
+    yield port
+    try:
+        asyncio.run_coroutine_threadsafe(b.shutdown(), loop).result(10)
+    except Exception:  # the test broker not stopping cleanly is not what is being tested
+        pass
+    loop.call_soon_threadsafe(loop.stop)
+
+
+def _listen(port, topic="#"):
+    import paho.mqtt.client as pc
+    got = {}
+    cl = pc.Client(pc.CallbackAPIVersion.VERSION2)
+    cl.on_message = lambda c, u, m: got.__setitem__(m.topic, m.payload.decode())
+    cl.connect("127.0.0.1", port); cl.subscribe(topic); cl.loop_start()
+    return cl, got
+
+
+def _wait(pred, timeout=8):
+    import time as _t
+    end = _t.time() + timeout
+    while _t.time() < end:
+        if pred():
+            return True
+        _t.sleep(0.1)
+    return False
+
+
+def test_mqtt_discovery_and_state(fresh, broker):
+    c = setup_admin(fresh)
+    c.post("/api/links", json={"url": "https://a.example"})
+    b = c.post("/api/links", json={"url": "https://b.example"}).get_json()["id"]
+    with fresh.db() as con:
+        con.execute("UPDATE links SET broken=1 WHERE id=?", (b,))
+    listener, got = _listen(broker)
+    r = c.post("/api/mqtt", json={"enabled": True, "host": "127.0.0.1", "port": broker, "prefix": "homeassistant"})
+    assert r.status_code == 200
+    bridge = fresh.mqtt
+    bridge.cfg = None
+    cfg = bridge.config()
+    bridge.cfg = cfg
+    bridge._connect(cfg)
+    node = bridge.node()
+    assert _wait(lambda: f"tilemark/{node}/state" in got), got.keys()
+    disc = json.loads(got[f"homeassistant/sensor/{node}/links/config"])
+    assert disc["unique_id"] == f"tilemark_{node}_links" and disc["device"]["name"] == "TileMark"
+    assert json.loads(got[f"homeassistant/event/{node}/link_check/config"])["event_types"] == ["finished"]
+    assert got[f"tilemark/{node}/availability"] == "online"
+    state = json.loads(got[f"tilemark/{node}/state"])
+    assert state["links"] == 2 and state["broken"] == 1 and state["last_check"] is None
+    assert c.get("/api/mqtt").get_json()["status"]["state"] == "connected"
+    # the weekly check finishing fires the event
+    bridge.check_finished(2, 1)
+    assert _wait(lambda: f"tilemark/{node}/event" in got)
+    assert json.loads(got[f"tilemark/{node}/event"]) == {"event_type": "finished", "checked": 2, "broken": 1, "new_broken": 1}
+    # a change in counts is published; turning MQTT off removes the entities
+    c.post("/api/links", json={"url": "https://c.example"})
+    bridge.publish_state()
+    assert _wait(lambda: json.loads(got[f"tilemark/{node}/state"])["links"] == 3)
+    bridge._disconnect(remove=True)
+    assert _wait(lambda: got.get(f"homeassistant/sensor/{node}/links/config") == "" and got.get(f"tilemark/{node}/availability") == "offline")
+    listener.loop_stop()
+
+
+def test_mqtt_settings_admin_only_and_validated(two):
+    A, admin, bob, *_ = two
+    assert bob.get("/api/mqtt").status_code == 403
+    assert admin.post("/api/mqtt", json={"port": "abc"}).status_code == 400
+    assert admin.post("/api/mqtt", json={"port": 70000}).status_code == 400
+    admin.post("/api/mqtt", json={"enabled": True, "host": "broker.lan", "user": "tm", "password": "secret"})
+    r = admin.get("/api/mqtt").get_json()
+    assert r["host"] == "broker.lan" and r["has_password"] is True and "password" not in r
+    admin.post("/api/mqtt", json={"password": ""})  # empty keeps the stored one
+    assert admin.get("/api/mqtt").get_json()["has_password"] is True
+
+
+def test_mqtt_uses_home_assistant_broker_in_addon(tmp_path, monkeypatch):
+    A = load_app(tmp_path, addon=True)
+    monkeypatch.setattr(A, "supervisor_mqtt", lambda: {"host": "core-mosquitto", "port": 1883, "username": "addons", "password": "pw", "ssl": False})
+    cfg = A.mqtt.config()
+    assert A.mqtt.enabled() is True  # on by default in the add-on
+    assert (cfg["host"], cfg["user"], cfg["source"]) == ("core-mosquitto", "addons", "home-assistant")
+    monkeypatch.setattr(A, "supervisor_mqtt", lambda: None)
+    A.mqtt._sup = (0, None)
+    assert A.mqtt.config() == {"missing": True}
+
+
+def test_newly_broken_counted(fresh, monkeypatch):
+    c = setup_admin(fresh)
+    a = c.post("/api/links", json={"url": "https://a.example"}).get_json()["id"]
+    monkeypatch.setattr(fresh, "_probe", lambda url: "broken")
+    monkeypatch.setattr(fresh.time, "sleep", lambda s: None)
+    fresh._check.update(new_broken=0)
+    fresh._check_one(a, "https://a.example")
+    fresh._check_one(a, "https://a.example")  # already broken: not new again
+    assert fresh._check["new_broken"] == 1
+
+
+def test_restore_keeps_installation_settings(fresh):
+    c = setup_admin(fresh)
+    c.post("/api/backups")
+    daily = c.get("/api/backups").get_json()["backups"][0]
+    node = fresh.mqtt.node()  # created after the backup
+    c.post("/api/mqtt", json={"enabled": True, "host": "broker.lan"})
+    r = c.post("/api/backups/restore", json={"name": daily["name"], "confirm": daily["date"]})
+    assert r.status_code == 200
+    assert fresh.get_setting("node_id") == node and fresh.get_setting("mqtt_host") == "broker.lan"

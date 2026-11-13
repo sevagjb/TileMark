@@ -52,6 +52,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
 
   # After a release image exists, point the Home Assistant add-on at it. Doing this
   # here (instead of by hand in a pull request) means Home Assistant never offers an

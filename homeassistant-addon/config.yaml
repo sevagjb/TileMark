@@ -26,6 +26,10 @@ ports:
   8080/tcp: null
 ports_description:
   8080/tcp: TileMark's own address (browser button, phone app, API key). Leave empty to use only the sidebar.
+# Lets TileMark find Home Assistant's MQTT broker for its sensors (used only when MQTT is on
+# and no broker is filled in under TileMark's Settings → Home Assistant sensors).
+services:
+  - mqtt:want
 environment:
   TILEMARK_HA_ADDON: "1"
 # Home Assistant restarts TileMark when this stops answering (checked on the add-on's own

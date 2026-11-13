@@ -5,8 +5,6 @@ What is planned next, and what each release brought. Changes per version in deta
 ## Next (medium)
 
 - [ ] **Shared groups:** share a group with another account, read-only or editable.
-- [ ] **Home Assistant integration:** sensors for the number of links and broken links, and a webhook or notification when the weekly check finds broken links.
-- [ ] **Restore a daily backup from the admin settings**, instead of stopping the container and unzipping by hand.
 - [ ] **Interface languages (14):** English, Dutch and Arabic, including right-to-left layout for Arabic.
 
 ## Parked (larger)
@@ -21,6 +19,11 @@ What is planned next, and what each release brought. Changes per version in deta
 - Desktop installer without Docker; Android app.
 
 ## Done
+
+### 2.2.0
+- [x] Home Assistant sensors and link-check event through MQTT discovery (add-on: Home Assistant's broker by itself).
+- [x] Restore a daily backup of the whole installation from the admin settings, with a safety copy first.
+- [x] Dialogs close with a click outside or Esc.
 
 ### 2.1.0
 - [x] Clean addresses (tracking parameters removed) and duplicates recognised across `http`/`https`, `www`, trailing slash, parameter order, YouTube short forms and redirects.

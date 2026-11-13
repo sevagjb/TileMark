@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.0 (unreleased)
+
+### New
+- **Home Assistant sensors over MQTT:** TileMark appears in Home Assistant as a device with sensors for links, broken links and the last weekly check, plus an event when that check finishes (with the number of newly broken links), set up by MQTT discovery. Settings → Home Assistant sensors; in the add-on it uses Home Assistant's broker by itself.
+- **Restore the whole installation from a daily backup** in the admin settings, with Download, Restore and "Make a backup now". The admin types the backup's date to confirm, and a safety copy of the current state is made first, so a restore can be undone.
+- The version number is shown at the bottom of Settings.
+
+### Changed
+- Dialogs (Settings, Export, Duplicates, editing) close with a click outside them or with Esc. The import review and Settings while recovery codes are shown stay open, so nothing is lost by accident.
+- In the Home Assistant add-on, the start-up message for a new installation points to the sidebar instead of a setup code.
+
 ## 2.1.0
 
 ### New

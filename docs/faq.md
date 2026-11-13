@@ -56,8 +56,8 @@ Pictures are fetched a few at a time, so the server and the sites aren't overloa
 
 ## Links
 
-**A link opens only with right-click → Open in new tab.**
-A browser extension is interfering with the click. Try a private window to confirm, then check your extensions.
+**A link shows "is blocked" or ERR_BLOCKED_BY_RESPONSE.**
+Update TileMark: since 2.4.1, links opened from the Home Assistant sidebar open normally. Before, Home Assistant's sandboxed add-on frame was passed on to the new tab, and sites like YouTube refuse to load there. If it still happens on TileMark's own address, a browser extension is interfering; try a private window to confirm.
 
 **I can't drag a card to reorder it.**
 Reordering works inside one group, not in mixed lists like **All links**, **Favourites** or search results. Sorting must be on **My order**.

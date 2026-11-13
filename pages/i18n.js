@@ -4,6 +4,9 @@
 const LANGS = { en: "English", nl: "Nederlands", ar: "العربية" };
 const COL = { nl: 0, ar: 1 };
 const D = {
+"Show password":["Wachtwoord tonen", "إظهار كلمة المرور"],
+"Hide password":["Wachtwoord verbergen", "إخفاء كلمة المرور"],
+"OK":["OK", "موافق"],
 "A first encrypted backup is made right away.":["Er wordt meteen een eerste versleutelde back-up gemaakt.", "تُنشأ أول نسخة احتياطية مشفّرة فورًا."],
 "Backups are already encrypted.":["Back-ups zijn al versleuteld.", "النسخ الاحتياطية مشفّرة بالفعل."],
 "Backups are encrypted, but your password doesn't open them yet. Another admin gives you access when they sign in, or enter the recovery key.":["Back-ups zijn versleuteld, maar jouw wachtwoord opent ze nog niet. Een andere beheerder geeft je toegang zodra die zich aanmeldt, of vul de herstelsleutel in.", "النسخ الاحتياطية مشفّرة، لكن كلمة مرورك لا تفتحها بعد. يمنحك مسؤول آخر الوصول عند تسجيل دخوله، أو أدخل مفتاح الاسترداد."],

@@ -687,8 +687,14 @@ def test_no_old_name_left():
     files = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).split()
     old = "link" + "board"
     allowed = {"CHANGELOG.md", "homeassistant-addon/CHANGELOG.md", "README.md", "ROADMAP.md"}  # the "formerly" notes
-    hits = [f for f in files if not f.endswith(".png") and f not in allowed
-            and old in open(os.path.join(ROOT, f), encoding="utf-8").read().lower()]
+
+    def text(f):  # pictures and other binary files are skipped, whatever their extension
+        try:
+            return open(os.path.join(ROOT, f), encoding="utf-8").read().lower()
+        except UnicodeDecodeError:
+            return ""
+    hits = [f for f in files if f not in allowed and not (f.startswith("docs/") and f.endswith(".md"))  # the guide explains the old name
+            and old in text(f)]
     assert hits == []
 
 

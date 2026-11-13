@@ -890,6 +890,19 @@ def supervisor_mqtt():
         return None
 
 
+def supervisor_slug():
+    """The add-on's own slug (for example abcd1234_tilemark), for the link back from Home Assistant."""
+    token = os.environ.get("SUPERVISOR_TOKEN")
+    if not (HA_ADDON and token):
+        return ""
+    try:
+        r = requests.get("http://supervisor/addons/self/info", headers={"Authorization": f"Bearer {token}"}, timeout=5)
+        data = r.json().get("data") if r.ok else None
+        return str(data.get("slug") or "") if isinstance(data, dict) else ""
+    except (requests.RequestException, ValueError):
+        return ""
+
+
 class MqttBridge:
     STATE_EVERY = 60  # seconds between checks for changed counts
 
@@ -900,6 +913,7 @@ class MqttBridge:
         self.last_payload = None
         self.wake = threading.Event()
         self._sup = (0, None)
+        self._slug = None
 
     # -- configuration
     def node(self):
@@ -908,6 +922,29 @@ class MqttBridge:
             n = secrets.token_hex(3)
             set_setting("node_id", n)
         return n
+
+    def new_node(self):
+        """A fresh device ID, for an installation copied from another one (same database, same
+        ID: Home Assistant would see the two as one device). The old entities are removed."""
+        set_setting("node_id", secrets.token_hex(3))
+        self.reload()
+
+    def link(self):
+        """Where this TileMark is opened: Home Assistant shows it as "Visit" on the device page."""
+        if HA_ADDON:
+            if self._slug is None:
+                self._slug = supervisor_slug()
+            return f"homeassistant://hassio/ingress/{self._slug}" if self._slug else ""
+        return get_setting("mqtt_url", "")
+
+    def default_name(self):
+        if HA_ADDON:
+            return "TileMark (Home Assistant)"
+        host = urlparse(get_setting("mqtt_url", "")).hostname
+        return f"TileMark ({host})" if host else "TileMark"
+
+    def name(self):
+        return get_setting("mqtt_name", "") or self.default_name()
 
     def enabled(self):
         return get_setting("mqtt_enabled", "on" if HA_ADDON else "off") == "on"
@@ -919,6 +956,7 @@ class MqttBridge:
                "user": get_setting("mqtt_user", ""), "password": get_setting("mqtt_pass", ""),
                "tls": get_setting("mqtt_tls", "off") == "on", "prefix": get_setting("mqtt_prefix", "") or "homeassistant",
                "source": "settings"}
+        cfg.update(node=self.node(), name=self.name(), link=self.link())  # a change republishes the device
         if not cfg["host"]:
             if time.time() - self._sup[0] > 600:  # ask the Supervisor at most every 10 minutes
                 self._sup = (time.time(), supervisor_mqtt())
@@ -926,18 +964,23 @@ class MqttBridge:
             if svc:
                 cfg.update(host=svc["host"], port=int(svc.get("port") or 1883), user=svc.get("username") or "",
                            password=svc.get("password") or "", tls=bool(svc.get("ssl")), source="home-assistant")
-        return cfg if cfg["host"] else {"missing": True}
+        return cfg if cfg["host"] else {"missing": True, "node": cfg["node"]}
 
     # -- topics
-    def base(self):
-        return f"tilemark/{self.node()}"
+    def base(self, node=None):
+        return f"tilemark/{node or self.node()}"
 
-    def device(self):
-        return {"identifiers": [f"tilemark_{self.node()}"], "name": "TileMark", "manufacturer": "TileMark",
-                "model": "TileMark", "sw_version": APP_VERSION}
+    def device(self, node=None):
+        node = node or self.node()
+        dev = {"identifiers": [f"tilemark_{node}"], "name": self.name(), "manufacturer": "TileMark",
+               "model": "Home Assistant add-on" if HA_ADDON else "Docker", "sw_version": APP_VERSION}
+        if self.link():
+            dev["configuration_url"] = self.link()
+        return dev
 
-    def discovery(self, prefix):
-        node, base, dev = self.node(), self.base(), self.device()
+    def discovery(self, prefix, node=None):
+        node = node or self.node()
+        base, dev = self.base(node), self.device(node)
         common = {"availability_topic": f"{base}/availability", "device": dev}
         state = f"{base}/state"
         return {
@@ -974,33 +1017,40 @@ class MqttBridge:
     def _run(self):
         while True:
             try:
-                cfg = self.config()
-                if cfg != self.cfg:
-                    self._disconnect(remove=self.cfg is not None and not cfg)
-                    self.cfg = cfg
-                    if not cfg:
-                        self.status = {"state": "off", "error": "", "broker": "", "source": ""}
-                    elif cfg.get("missing"):
-                        self.status = {"state": "error", "broker": "", "source": "",
-                                       "error": "No broker set" + (" and Home Assistant has no MQTT broker" if HA_ADDON else "") + "."}
-                    else:
-                        self._connect(cfg)
-                elif self.connected():
-                    self.publish_state()
+                self.step()
             except Exception as e:  # never let MQTT trouble stop TileMark
                 app.logger.exception("MQTT")
                 self.status = {**self.status, "state": "error", "error": str(e)[:200]}
             self.wake.wait(self.STATE_EVERY)
             self.wake.clear()
 
+    def step(self):
+        """One round: (re)connect when the settings changed, otherwise publish changed counts."""
+        cfg = self.config()
+        if cfg != self.cfg:
+            old = self.cfg or {}
+            # entities go away when MQTT is turned off or the device gets a new ID
+            self._disconnect(remove=bool(old) and (not cfg or cfg.get("node") != old.get("node")))
+            self.cfg = cfg
+            if not cfg:
+                self.status = {"state": "off", "error": "", "broker": "", "source": ""}
+            elif cfg.get("missing"):
+                self.status = {"state": "error", "broker": "", "source": "",
+                               "error": "No broker set" + (" and Home Assistant has no MQTT broker" if HA_ADDON else "") + "."}
+            else:
+                self._connect(cfg)
+        elif self.connected():
+            self.publish_state()
+
     def _connect(self, cfg):
         self.status = {"state": "connecting", "error": "", "broker": f"{cfg['host']}:{cfg['port']}", "source": cfg["source"]}
-        cl = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=f"tilemark-{self.node()}")
+        cl = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=f"tilemark-{self.node()}-{secrets.token_hex(3)}")
+        # the random part: two TileMarks never push each other off the broker, even with the same ID
         if cfg["user"]:
             cl.username_pw_set(cfg["user"], cfg["password"] or None)
         if cfg["tls"]:
             cl.tls_set()
-        cl.will_set(f"{self.base()}/availability", "offline", retain=True)
+        cl.will_set(f"{self.base(cfg['node'])}/availability", "offline", retain=True)
         cl.on_connect = self._on_connect
         cl.on_disconnect = self._on_disconnect
         cl.reconnect_delay_set(5, 300)
@@ -1028,11 +1078,13 @@ class MqttBridge:
         if not cl:
             return
         try:  # QoS 1 and wait for each, so nothing is lost when the connection closes right after
-            sent = []
-            if remove and self.cfg and not self.cfg.get("missing"):  # MQTT turned off: take the entities away
-                for topic in self.discovery(self.cfg["prefix"]):
+            sent, old = [], (self.cfg or {}).get("node")
+            if remove and self.cfg and not self.cfg.get("missing"):  # take the entities of the old ID away
+                for topic in self.discovery(self.cfg["prefix"], old):
                     sent.append(cl.publish(topic, "", qos=1, retain=True))
-            sent.append(cl.publish(f"{self.base()}/availability", "offline", qos=1, retain=True))
+                for topic in ("state", "event"):  # and their retained values
+                    sent.append(cl.publish(f"{self.base(old)}/{topic}", "", qos=1, retain=True))
+            sent.append(cl.publish(f"{self.base(old)}/availability", "offline", qos=1, retain=True))
             for info in sent:
                 info.wait_for_publish(3)
         except Exception:
@@ -1085,11 +1137,18 @@ def mqtt_settings():
             set_setting("mqtt_pass", "")
         if "tls" in d:
             set_setting("mqtt_tls", "on" if d["tls"] else "off")
+        if "name" in d:
+            set_setting("mqtt_name", str(d["name"] or "").strip()[:80])
+        if not HA_ADDON and not request.headers.get("X-Ingress-Path"):
+            set_setting("mqtt_url", request.host_url.rstrip("/"))  # the address the admin uses: the "Visit" link
+        if d.get("new_id"):
+            mqtt.new_node()
         mqtt.reload()
     return jsonify(enabled=mqtt.enabled(), host=get_setting("mqtt_host", ""), port=int(get_setting("mqtt_port", "1883") or 1883),
                    user=get_setting("mqtt_user", ""), has_password=bool(get_setting("mqtt_pass", "")),
                    tls=get_setting("mqtt_tls", "off") == "on", prefix=get_setting("mqtt_prefix", "") or "homeassistant",
-                   addon=HA_ADDON, status=mqtt.status, node=mqtt.node())
+                   addon=HA_ADDON, status=mqtt.status, node=mqtt.node(), name=get_setting("mqtt_name", ""),
+                   default_name=mqtt.default_name(), link=mqtt.link())
 
 
 # ------------------------------------------------------------------- login
@@ -2475,7 +2534,7 @@ def list_backups():
 
 SAFETY_PREFIX, KEEP_SAFETY = "tilemark-before-restore-", 3
 KEEP_ON_RESTORE = ("node_id", "secret_key", "mqtt_enabled", "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
-                   "mqtt_prefix")
+                   "mqtt_prefix", "mqtt_name", "mqtt_url")
 
 
 def daily_backup():

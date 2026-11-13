@@ -1040,7 +1040,9 @@ def test_mqtt_discovery_and_state(fresh, broker):
     node = bridge.node()
     assert _wait(lambda: f"tilemark/{node}/state" in got), got.keys()
     disc = json.loads(got[f"homeassistant/sensor/{node}/links/config"])
-    assert disc["unique_id"] == f"tilemark_{node}_links" and disc["device"]["name"] == "TileMark"
+    assert disc["unique_id"] == f"tilemark_{node}_links"
+    # named after the address the admin uses, with that address as the "Visit" link
+    assert disc["device"]["name"] == "TileMark (localhost)" and disc["device"]["configuration_url"] == "http://localhost"
     assert json.loads(got[f"homeassistant/event/{node}/link_check/config"])["event_types"] == ["finished"]
     assert got[f"tilemark/{node}/availability"] == "online"
     state = json.loads(got[f"tilemark/{node}/state"])
@@ -1079,7 +1081,7 @@ def test_mqtt_uses_home_assistant_broker_in_addon(tmp_path, monkeypatch):
     assert (cfg["host"], cfg["user"], cfg["source"]) == ("core-mosquitto", "addons", "home-assistant")
     monkeypatch.setattr(A, "supervisor_mqtt", lambda: None)
     A.mqtt._sup = (0, None)
-    assert A.mqtt.config() == {"missing": True}
+    assert A.mqtt.config() == {"missing": True, "node": A.mqtt.node()}
 
 
 def test_newly_broken_counted(fresh, monkeypatch):
@@ -1162,3 +1164,55 @@ def test_every_message_has_a_translation():
             k, (nl, ar) = json.loads(m.group(1)), json.loads(m.group(2))
             ph = sorted(re.findall(r"\{\w+\}", k))
             assert sorted(re.findall(r"\{\w+\}", nl)) == ph == sorted(re.findall(r"\{\w+\}", ar)), k
+
+
+# ------------------------------------------------------------------- 2.3.1
+def test_mqtt_name_and_new_id(fresh, broker):
+    c = setup_admin(fresh)
+    listener, got = _listen(broker)
+    c.post("/api/mqtt", json={"enabled": True, "host": "127.0.0.1", "port": broker, "name": "TileMark Dockge"})
+    bridge = fresh.mqtt
+    bridge.cfg = None
+    bridge.step()
+    old = bridge.node()
+    assert _wait(lambda: f"homeassistant/sensor/{old}/links/config" in got)
+    assert json.loads(got[f"homeassistant/sensor/{old}/links/config"])["device"]["name"] == "TileMark Dockge"
+    # a new ID: the old entities and values are removed, new ones published
+    r = c.post("/api/mqtt", json={"new_id": True}).get_json()
+    new = r["node"]
+    assert new != old and r["name"] == "TileMark Dockge"
+    bridge.step()
+    assert _wait(lambda: got.get(f"homeassistant/sensor/{old}/links/config") == "" and got.get(f"tilemark/{old}/state") == ""
+                 and got.get(f"tilemark/{old}/availability") == "offline")
+    assert _wait(lambda: got.get(f"tilemark/{new}/availability") == "online")
+    assert json.loads(got[f"homeassistant/sensor/{new}/links/config"])["unique_id"] == f"tilemark_{new}_links"
+    # renaming republishes the device under the same ID
+    c.post("/api/mqtt", json={"name": "Links at home"})
+    bridge.step()
+    assert _wait(lambda: json.loads(got.get(f"homeassistant/sensor/{new}/links/config") or "{}").get("device", {}).get("name") == "Links at home")
+    assert bridge.node() == new
+    bridge._disconnect()
+    listener.loop_stop()
+
+
+def test_mqtt_client_ids_differ(fresh):
+    """Two TileMarks with the same device ID must not push each other off the broker."""
+    fresh.set_setting("mqtt_enabled", "on")
+    fresh.set_setting("mqtt_host", "127.0.0.1")
+    fresh.set_setting("mqtt_port", "1")
+    ids = []
+    for _ in range(2):
+        b = fresh.MqttBridge()
+        cfg = b.config()
+        b._connect(cfg)
+        ids.append(b.client._client_id)
+        b._disconnect()
+    assert ids[0] != ids[1] and all(i.startswith(f"tilemark-{fresh.mqtt.node()}-".encode()) for i in ids)
+
+
+def test_mqtt_addon_name_and_link(tmp_path, monkeypatch):
+    A = load_app(tmp_path, addon=True)
+    monkeypatch.setattr(A, "supervisor_slug", lambda: "abcd1234_tilemark")
+    dev = A.MqttBridge().device()
+    assert dev["name"] == "TileMark (Home Assistant)" and dev["configuration_url"] == "homeassistant://hassio/ingress/abcd1234_tilemark"
+    assert dev["model"] == "Home Assistant add-on"

@@ -134,8 +134,20 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .lay-panel .only-sections { display: none; }
 .sec-head .edit { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; opacity: 0; }
 .sec-head:hover .edit, .sec-head .edit:focus-visible { opacity: 1; }
-dialog h3.sect { margin: 24px 0 8px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 15px; font-weight: 650; color: var(--text); }
-dialog h2 + h3.sect { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Settings: one card per section, opened by clicking its title */
+details.sec { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); margin-top: 8px; }
+details.sec > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; border-radius: 12px; user-select: none; }
+details.sec > summary::-webkit-details-marker { display: none; }
+details.sec > summary::after { content: ""; margin-inline-start: 4px; width: 7px; height: 7px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; flex: none; }
+details.sec[open] > summary::after { transform: rotate(-135deg); }
+details.sec > summary:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+details.sec > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+details.sec .st { font-size: 15px; font-weight: 650; color: var(--text); }
+details.sec .sum { margin-inline-start: auto; color: var(--muted); font-size: 12.5px; text-align: end; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+details.sec .secb { padding: 0 14px 14px; border-top: 1px solid var(--line); background: var(--panel); border-radius: 0 0 12px 12px; }
+details.sec .secb > :first-child { margin-top: 12px; }
+dialog h3.group { margin: 22px 0 2px; font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+dialog h4.sub { margin: 18px 0 4px; font-size: 14px; font-weight: 650; color: var(--text); }
 .choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-top: 8px; cursor: pointer; }
 .choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .choice input { margin-top: 3px; }
@@ -309,111 +321,125 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 
 <dialog id="settingsDlg"><form method="dialog">
   <h2>Settings</h2>
-  <h3 class="sect">Layout</h3>
-  <label class="choice"><input type="radio" name="layout" value="panel"><div><b>Side panel</b><span>Groups in a column on the left; click one to list its links beside it.</span></div></label>
-  <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
-  <h3 class="sect">Appearance</h3>
-  <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
-  <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option><option value="en" lang="en">English</option><option value="nl" lang="nl">Nederlands</option><option value="ar" lang="ar" dir="rtl">العربية</option></select>
-  <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
-  <h3 class="sect">Cards</h3>
-  <label for="setThumb">Picture size</label><select id="setThumb"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select>
-  <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
-  <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
-  <p class="hint">Layout, appearance and these card choices are saved with your account, so all your devices look the same.</p>
-  <p class="hint">Keyboard: <kbd>/</kbd> search, <kbd>n</kbd> add a link, <kbd>Esc</kbd> clear the search or leave a field.</p>
-  <h3 class="sect">Your account</h3>
-  <p class="hint" id="authState" style="margin-top:0"></p>
-  <div id="authForm">
+  <details class="sec" data-k="layout"><summary><span class="st">Layout</span><span class="sum" id="sum-layout"></span></summary><div class="secb">
+    <label class="choice"><input type="radio" name="layout" value="panel"><div><b>Side panel</b><span>Groups in a column on the left; click one to list its links beside it.</span></div></label>
+    <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
+  </div></details>
+  <details class="sec" data-k="appearance"><summary><span class="st">Appearance</span><span class="sum" id="sum-appearance"></span></summary><div class="secb">
+    <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+    <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option><option value="en" lang="en">English</option><option value="nl" lang="nl">Nederlands</option><option value="ar" lang="ar" dir="rtl">العربية</option></select>
+    <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
+  </div></details>
+  <details class="sec" data-k="cards"><summary><span class="st">Cards</span><span class="sum" id="sum-cards"></span></summary><div class="secb">
+    <label for="setThumb">Picture size</label><select id="setThumb"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select>
+    <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
+    <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
+    <p class="hint">Layout, appearance and these card choices are saved with your account, so all your devices look the same.</p>
+    <p class="hint">Keyboard: <kbd>/</kbd> search, <kbd>n</kbd> add a link, <kbd>Esc</kbd> clear the search or leave a field.</p>
+  </div></details>
+  <details class="sec" data-k="account"><summary><span class="st">Your account</span><span class="sum" id="sum-account"></span></summary><div class="secb">
+    <p class="hint" id="authState"></p>
+    <div id="authForm">
     <label for="auUser">Username</label><input id="auUser" type="text" maxlength="60" autocomplete="username">
     <label for="auPass">New password (leave empty to keep the current one)</label><input id="auPass" type="password" autocomplete="new-password">
     <div id="auCurWrap"><label for="auCur">Current password</label><input id="auCur" type="password" autocomplete="current-password"></div>
-  </div>
-  <div class="row" style="justify-content:flex-start;margin-top:12px">
+    </div>
+    <div class="row" style="justify-content:flex-start;margin-top:12px">
     <button class="btn primary" type="button" id="auSave">Save account</button>
     <button class="btn" type="button" id="auOut">Sign out</button>
-  </div>
-  <div id="tfBox">
-    <h3 class="sect">Two-factor sign-in</h3>
-    <p class="hint" id="tfState" style="margin-top:0"></p>
+    </div>
+  </div></details>
+  <details class="sec" data-k="tfa" id="tfBox"><summary><span class="st">Two-factor sign-in</span><span class="sum" id="sum-tfa"></span></summary><div class="secb">
+    <p class="hint" id="tfState"></p>
     <div id="tfSetup" hidden>
-      <p class="hint" style="margin-top:0">Scan this with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …), then enter the 6-digit code it shows.</p>
-      <div class="qr" id="tfQr"></div>
-      <p class="hint">Can't scan? Enter this key in the app: <span class="keybox" id="tfSecret"></span></p>
-      <label for="tfCode">Code from the app</label><input id="tfCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8">
-      <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" type="button" id="tfConfirm">Confirm and turn on</button><button class="btn" type="button" id="tfCancel">Cancel</button></div>
+    <p class="hint">Scan this with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …), then enter the 6-digit code it shows.</p>
+    <div class="qr" id="tfQr"></div>
+    <p class="hint">Can't scan? Enter this key in the app: <span class="keybox" id="tfSecret"></span></p>
+    <label for="tfCode">Code from the app</label><input id="tfCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8">
+    <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" type="button" id="tfConfirm">Confirm and turn on</button><button class="btn" type="button" id="tfCancel">Cancel</button></div>
     </div>
     <div id="tfCodes" hidden>
-      <p class="hint" style="margin-top:0"><b>Recovery codes.</b> Each one signs you in once if your phone is not at hand. Save them somewhere safe now; they are not shown again.</p>
-      <div class="codes" id="tfCodeList"></div>
-      <div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="tfCodesDl">Download</button><button class="btn primary" type="button" id="tfCodesDone">I have saved them</button></div>
+    <p class="hint"><b>Recovery codes.</b> Each one signs you in once if your phone is not at hand. Save them somewhere safe now; they are not shown again.</p>
+    <div class="codes" id="tfCodeList"></div>
+    <div class="row" style="justify-content:flex-start"><button class="btn" type="button" id="tfCodesDl">Download</button><button class="btn primary" type="button" id="tfCodesDone">I have saved them</button></div>
     </div>
     <div class="row" style="justify-content:flex-start;margin-top:8px" id="tfButtons">
-      <button class="btn primary" type="button" id="tfOn">Turn on</button>
-      <button class="btn" type="button" id="tfNewCodes">New recovery codes</button>
-      <button class="btn danger" type="button" id="tfOff">Turn off</button></div>
-  </div>
-  <h3 class="sect">Signed-in devices</h3>
-  <div id="sessList"></div>
-  <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="sessOthers">Sign out all other devices</button></div>
+    <button class="btn primary" type="button" id="tfOn">Turn on</button>
+    <button class="btn" type="button" id="tfNewCodes">New recovery codes</button>
+    <button class="btn danger" type="button" id="tfOff">Turn off</button></div>
+  </div></details>
+  <details class="sec" data-k="devices"><summary><span class="st">Signed-in devices</span><span class="sum" id="sum-devices"></span></summary><div class="secb">
+    <div id="sessList"></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="sessOthers">Sign out all other devices</button></div>
+  </div></details>
+  <details class="sec" data-k="save"><summary><span class="st">Save from anywhere</span><span class="sum" id="sum-save"></span></summary><div class="secb">
+    <p class="hint"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">🔖 Save to TileMark</a></div>
+    <p class="hint" id="pwaHint"></p>
+    <p class="hint"><b>API key</b> for scripts and phone shortcuts. It can only add links and read group names.</p>
+    <div id="keyShow" hidden><input class="keybox" id="keyVal" type="text" readonly>
+    <p class="hint">Copy it now; it is shown only this once. Send it as the header <span class="keybox">Authorization: Bearer &lt;key&gt;</span> with a POST to <span class="keybox">/api/links</span>.</p></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px">
+    <button class="btn" type="button" id="keyNew">Create API key</button><button class="btn danger" type="button" id="keyDel" hidden>Remove API key</button></div>
+  </div></details>
+  <details class="sec" data-k="check"><summary><span class="st">Link check</span><span class="sum" id="sum-check"></span></summary><div class="secb">
+    <p class="hint">Finds links that no longer work and lists them under "Broken links". A link counts as broken when its address cannot be reached twice in a row, or the site says the page is gone.</p>
+    <p class="hint" id="ckState"></p>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="ckNow">Check now</button>
+    <button class="btn" type="button" id="rfAll">Refresh all titles and pictures</button></div>
+  </div></details>
+  <details class="sec" data-k="backup"><summary><span class="st">Backup and restore</span><span class="sum" id="sum-backup"></span></summary><div class="secb">
+    <p class="hint">One file with all your links, groups, their order and the thumbnails. Give it a password to encrypt it.</p>
+    <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
+    <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
+    <h4 class="sub">Restore</h4>
+    <p class="hint">Replaces all your current links and groups with the ones from a backup file (older backups work too). Your account and other people's links stay as they are.</p>
+    <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
+    <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
+    <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
+  </div></details>
   <div id="adminBox" hidden>
-    <h3 class="sect">People (admin)</h3>
-    <p class="hint" style="margin-top:0">Everyone has their own links, groups, API key and backups. Nobody, the admin included, can see someone else's links.</p>
+  <h3 class="group">Installation (admin)</h3>
+  <details class="sec" data-k="people"><summary><span class="st">People</span><span class="sum" id="sum-people"></span></summary><div class="secb">
+    <p class="hint">Everyone has their own links, groups, API key and backups. Nobody, the admin included, can see someone else's links.</p>
     <div id="userList"></div>
     <label for="nuUser">Add a person: username</label><input id="nuUser" type="text" maxlength="60" autocomplete="off">
     <label for="nuPass">Their first password (at least 8 characters)</label><input id="nuPass" type="password" autocomplete="new-password">
     <label class="check"><input id="nuAdmin" type="checkbox"> Also an admin</label>
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="nuGo">Add person</button></div>
-    <h3 class="sect">Installation (admin)</h3>
-    <label class="check" style="margin-top:0"><input id="ckOn" type="checkbox"> Check everyone's links automatically once a week</label>
+  </div></details>
+  <details class="sec" data-k="install"><summary><span class="st">Installation</span><span class="sum" id="sum-install"></span></summary><div class="secb">
+    <label class="check"><input id="ckOn" type="checkbox"> Check everyone's links automatically once a week</label>
     <label class="check"><input id="dbOn" type="checkbox"> Keep a daily backup of the whole installation in the data folder (last 7 days)</label>
     <p class="hint" id="dbState"></p>
     <label class="check"><input id="fpOn" type="checkbox"> Fetch titles and pictures for local network addresses (192.168.x.x, nas.local, …)</label>
     <p class="hint">Off by default. When on, anyone with an account can make TileMark open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.</p>
-    <h3 class="sect">Restore the whole installation (admin)</h3>
-    <p class="hint" style="margin-top:0">Daily backups hold every account. Restoring one puts the whole installation back to that day; everyone signs in again afterwards. A safety copy of the current state is made first and listed here as "before restore", so a restore can be undone.</p>
+  </div></details>
+  <details class="sec" data-k="fullrestore"><summary><span class="st">Restore the whole installation</span><span class="sum" id="sum-fullrestore"></span></summary><div class="secb">
+    <p class="hint">Daily backups hold every account. Restoring one puts the whole installation back to that day; everyone signs in again afterwards. A safety copy of the current state is made first and listed here as "before restore", so a restore can be undone.</p>
     <div id="bkList"></div>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="bkNow">Make a backup now</button></div>
-    <h3 class="sect">Home Assistant sensors (admin)</h3>
-    <p class="hint" style="margin-top:0">Shows TileMark in Home Assistant as a device with sensors for the number of links and broken links (all accounts together, counts only) and the time of the last weekly check, plus an event when that check finishes, for a notification. Works through MQTT; Home Assistant needs its MQTT integration.</p>
+  </div></details>
+  <details class="sec" data-k="mqtt"><summary><span class="st">Home Assistant sensors</span><span class="sum" id="sum-mqtt"></span></summary><div class="secb">
+    <p class="hint">Shows TileMark in Home Assistant as a device with sensors for the number of links and broken links (all accounts together, counts only) and the time of the last weekly check, plus an event when that check finishes, for a notification. Works through MQTT; Home Assistant needs its MQTT integration.</p>
     <label class="check"><input id="mqOn" type="checkbox"> Send to Home Assistant over MQTT</label>
     <div id="mqForm">
-      <p class="hint" id="mqAddonHint" hidden>Leave the broker empty to use Home Assistant's own MQTT broker.</p>
-      <div style="display:grid;grid-template-columns:1fr 110px;gap:0 10px">
-        <div><label for="mqHost">Broker (host name or address)</label><input id="mqHost" type="text" autocomplete="off" placeholder="192.168.1.10"></div>
-        <div><label for="mqPort">Port</label><input id="mqPort" type="number" min="1" max="65535" value="1883"></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
-        <div><label for="mqUser">Username</label><input id="mqUser" type="text" autocomplete="off"></div>
-        <div><label for="mqPass">Password</label><input id="mqPass" type="password" autocomplete="new-password"></div></div>
-      <label class="check"><input id="mqTls" type="checkbox"> Encrypted connection (TLS)</label>
-      <label for="mqPrefix">Discovery prefix</label><input id="mqPrefix" type="text" placeholder="homeassistant">
-      <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" type="button" id="mqSave">Save and connect</button></div>
+    <label for="mqName">Device name in Home Assistant</label><input id="mqName" type="text" maxlength="80" autocomplete="off">
+    <p class="hint" id="mqAddonHint" hidden>Leave the broker empty to use Home Assistant's own MQTT broker.</p>
+    <div style="display:grid;grid-template-columns:1fr 110px;gap:0 10px">
+    <div><label for="mqHost">Broker (host name or address)</label><input id="mqHost" type="text" autocomplete="off" placeholder="192.168.1.10"></div>
+    <div><label for="mqPort">Port</label><input id="mqPort" type="number" min="1" max="65535" value="1883"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
+    <div><label for="mqUser">Username</label><input id="mqUser" type="text" autocomplete="off"></div>
+    <div><label for="mqPass">Password</label><input id="mqPass" type="password" autocomplete="new-password"></div></div>
+    <label class="check"><input id="mqTls" type="checkbox"> Encrypted connection (TLS)</label>
+    <label for="mqPrefix">Discovery prefix</label><input id="mqPrefix" type="text" placeholder="homeassistant">
+    <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" type="button" id="mqSave">Save and connect</button></div>
     </div>
     <p class="hint" id="mqState"></p>
+    <p class="hint" id="mqIdWrap" hidden><span id="mqId"></span> <button class="btn" type="button" id="mqNewId" style="padding:2px 10px;font-size:12.5px">New ID</button><br><span>Two TileMarks with the same ID (for example after copying the database) show up in Home Assistant as one device. Give one of them a new ID.</span></p>
+  </div></details>
   </div>
-  <h3 class="sect">Save from anywhere</h3>
-  <p class="hint" style="margin-top:0"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
-  <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">🔖 Save to TileMark</a></div>
-  <p class="hint" id="pwaHint"></p>
-  <p class="hint"><b>API key</b> for scripts and phone shortcuts. It can only add links and read group names.</p>
-  <div id="keyShow" hidden><input class="keybox" id="keyVal" type="text" readonly>
-    <p class="hint">Copy it now; it is shown only this once. Send it as the header <span class="keybox">Authorization: Bearer &lt;key&gt;</span> with a POST to <span class="keybox">/api/links</span>.</p></div>
-  <div class="row" style="justify-content:flex-start;margin-top:8px">
-    <button class="btn" type="button" id="keyNew">Create API key</button><button class="btn danger" type="button" id="keyDel" hidden>Remove API key</button></div>
-  <h3 class="sect">Link check</h3>
-  <p class="hint" style="margin-top:0">Finds links that no longer work and lists them under "Broken links". A link counts as broken when its address cannot be reached twice in a row, or the site says the page is gone.</p>
-  <p class="hint" id="ckState"></p>
-  <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="ckNow">Check now</button>
-    <button class="btn" type="button" id="rfAll">Refresh all titles and pictures</button></div>
-  <h3 class="sect">Backup</h3>
-  <p class="hint" style="margin-top:0">One file with all your links, groups, their order and the thumbnails. Give it a password to encrypt it.</p>
-  <label for="bkPass">Backup password (optional, but recommended)</label><input id="bkPass" type="password" autocomplete="new-password">
-  <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn primary" type="button" id="bkGo">Download backup</button></div>
-  <h3 class="sect">Restore</h3>
-  <p class="hint" style="margin-top:0">Replaces all your current links and groups with the ones from a backup file (older backups work too). Your account and other people's links stay as they are.</p>
-  <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
-  <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
-  <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
   <p class="hint" id="appVersion" style="text-align:end"></p>
   <div class="row"><button class="btn primary" value="close">Done</button></div>
 </form></dialog>
@@ -814,9 +840,11 @@ function showCheck() {
   $("ckOn").checked = !!c.enabled; $("ckNow").disabled = !!c.running;
   if (S.admin) {
     $("fpOn").checked = !!S.admin.fetch_private; $("dbOn").checked = !!S.admin.daily_backup;
+    setSum("install", [c.enabled ? t("Weekly check") : "", S.admin.daily_backup ? t("Daily backups") : ""].filter(Boolean).join(" · ") || t("Off"));
     $("dbState").textContent = (S.admin.backup_last ? t("Last daily backup: {when} ({n} kept).", { when: fmtDate(S.admin.backup_last, true), n: S.admin.backups }) + " " : t("No daily backup yet.") + " ")
       + t("Each holds every account; to restore one, stop TileMark and unzip it into the data folder.") + (S.admin.addon ? " " + t("Home Assistant's own backups already include TileMark.") : "");
   }
+  setSum("check", c.running ? t("Running…") : n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })).replace(/\.$/, "") : c.last ? t("No broken links.").replace(/\.$/, "") : "");
   $("ckState").textContent = c.running && !c.total ? t("A check is running.")
     : c.running ? t("Checking… {done} of {total} links done.", { done: c.done, total: c.total })
     : (c.last ? t("Last check: {when}.", { when: fmtDate(c.last, true) }) + " " + (n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })) : t("No broken links.")) : t("No check has run yet."));
@@ -854,20 +882,41 @@ $("selDelete").onclick = async () => {
 };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && selecting && !document.querySelector("dialog[open]")) $("selDone").click(); });
 
-// settings
+// settings: each section is a card; the open ones are remembered, and a closed card
+// shows a short status in its title
+const setSum = (k, text) => { const n = $("sum-" + k); if (n) n.textContent = text || ""; };
+const optText = id => { const o = $(id).selectedOptions[0]; return o ? o.textContent : ""; };
+function sumPrefs() {
+  setSum("layout", cfg.layout === "sections" ? t("Sections") : t("Side panel"));
+  setSum("appearance", optText("setTheme") + " · " + TM_LANGS[tmLang()]);  // the language in use, also when following the browser
+  setSum("cards", optText("setThumb") + " · " + optText("setOpen"));
+}
+(function () {
+  let open = [];
+  try { open = JSON.parse(localStorage.getItem("tm.openSec") || "[]"); } catch {}
+  for (const d of document.querySelectorAll("details.sec")) {
+    d.open = open.includes(d.dataset.k);
+    d.addEventListener("toggle", () => {
+      const now = [...document.querySelectorAll("details.sec[open]")].map(x => x.dataset.k);
+      try { localStorage.setItem("tm.openSec", JSON.stringify(now)); } catch {}
+    });
+  }
+})();
+
 $("newGroupBtn").onclick = () => openGroup(null);
 $("settingsBtn").onclick = () => {
-  for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); }; }
-  $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); };
-  $("setThumb").value = cfg.thumb; $("setThumb").onchange = e => { cfg.thumb = e.target.value; applySettings(); savePrefs(); };
+  for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); sumPrefs(); }; }
+  $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
+  $("setThumb").value = cfg.thumb; $("setThumb").onchange = e => { cfg.thumb = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
   $("setLang").value = storedLang(); $("setLang").onchange = async e => {
     const l = e.target.value;
     try { await api("PUT", "api/prefs", { lang: l }); } catch (err) { toast(err.message); return; }
     setLang(l); location.reload();
   };
-  $("setOpen").value = cfg.open; $("setOpen").onchange = e => { cfg.open = e.target.value; savePrefs(); render(); };
+  $("setOpen").value = cfg.open; $("setOpen").onchange = e => { cfg.open = e.target.value; savePrefs(); render(); sumPrefs(); };
   fillSelect($("setDefGroup"), group(+cfg.defgroup) ? cfg.defgroup : "", t("No group"));
   $("setDefGroup").onchange = e => { cfg.defgroup = e.target.value; addGroupPicked = null; savePrefs(); render(); };
+  sumPrefs();
   $("settingsDlg").showModal();
   showCheck();
   refreshAuth();
@@ -880,6 +929,8 @@ async function refreshAuth() {
   $("auCurWrap").hidden = $("auOut").hidden = !!a.ha;
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
   $("adminBox").hidden = !a.is_admin;
+  setSum("account", a.username + (a.is_admin ? " · " + t("admin") : ""));
+  setSum("save", a.has_key ? t("API key active") : "");
   showTf(a); refreshSessions();
   if (a.is_admin) { refreshUsers(); refreshBackups(); refreshMqtt(); }
   $("appVersion").textContent = "TileMark " + (a.version || "");
@@ -911,6 +962,7 @@ $("auSave").onclick = async () => {
 // people (admin)
 async function refreshUsers() {
   let r; try { r = await api("GET", "api/users"); } catch (e) { toast(e.message); return; }
+  setSum("people", r.users.length === 1 ? t("{n} person", { n: 1 }) : t("{n} people", { n: r.users.length }));
   $("userList").replaceChildren(...r.users.map(u => {
     const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
     const info = el("div", { style: "flex:1;min-width:0" }, el("b", { textContent: u.username }),
@@ -1114,6 +1166,8 @@ function ago(ts) {
 async function refreshSessions() {
   let r; try { r = await api("GET", "api/sessions"); } catch (e) { return; }
   $("sessOthers").hidden = r.sessions.filter(x => !x.current).length === 0;
+  const nd = r.sessions.length;
+  setSum("devices", nd === 1 ? t("{n} device", { n: nd }) : t("{n} devices", { n: nd }));
   $("sessList").replaceChildren(...(r.sessions.length ? r.sessions.map(x => {
     const out = el("button", { className: "btn", type: "button", textContent: t("Sign out"), hidden: x.current });
     out.onclick = async () => { try { await api("DELETE", "api/sessions/" + x.id); refreshSessions(); } catch (e) { toast(e.message); } };
@@ -1134,6 +1188,7 @@ function showTf(a) {
   $("tfState").textContent = a.totp ? t("On. After your password, TileMark asks for a code from your authenticator app. {n} recovery codes left.", { n: a.recovery_left })
     : t("Off. Turn it on to also ask for a code from an authenticator app on your phone after the password.");
   $("tfOn").hidden = !!a.totp; $("tfOff").hidden = $("tfNewCodes").hidden = !a.totp;
+  setSum("tfa", a.totp ? t("On") : t("Off"));
 }
 const tfPassword = what => tfAuth.ha ? "" : prompt(t("Enter your current password to confirm: {what}", { what }));
 function showCodes(codes) {
@@ -1176,6 +1231,7 @@ for (const d of document.querySelectorAll("dialog")) {
 const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 async function refreshBackups() {
   let r; try { r = await api("GET", "api/backups"); } catch (e) { return; }
+  setSum("fullrestore", r.backups.length === 1 ? t("{n} backup", { n: 1 }) : t("{n} backups", { n: r.backups.length }));
   $("bkList").replaceChildren(...(r.backups.length ? r.backups.map(b => {
     const btn = (label, fn, cls = "btn") => { const x = el("button", { className: cls, type: "button", textContent: label }); x.onclick = fn; return x; };
     return el("div", { className: "sess" }, el("div", {},
@@ -1200,10 +1256,13 @@ function showMqtt(m) {
   $("mqOn").checked = m.enabled; $("mqForm").hidden = !m.enabled; $("mqAddonHint").hidden = !m.addon;
   if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#mqForm")) { /* leave fields alone while typing */ }
   else { $("mqHost").value = m.host; $("mqPort").value = m.port; $("mqUser").value = m.user; $("mqTls").checked = m.tls; $("mqPrefix").value = m.prefix;
+         $("mqName").value = m.name; $("mqName").placeholder = m.default_name;
          $("mqPass").value = ""; $("mqPass").placeholder = m.has_password ? t("(unchanged)") : ""; }
   const st = m.status || {}, via = st.source === "home-assistant" ? " " + t("(Home Assistant's broker)") : "";
-  $("mqState").textContent = !m.enabled ? "" : st.state === "connected" ? t("Connected to {broker}.", { broker: st.broker + via }) + " " + t("In Home Assistant: Settings → Devices → TileMark.")
+  $("mqState").textContent = !m.enabled ? "" : st.state === "connected" ? t("Connected to {broker}.", { broker: st.broker + via }) + " " + t("In Home Assistant: Settings → Devices → {name}.", { name: m.name || m.default_name })
     : st.state === "connecting" ? t("Connecting to {broker}…", { broker: st.broker + via }) + " " + (st.error ? t(st.error) : "") : st.state === "error" ? t("Not connected: {error}", { error: t(st.error) }) : t("Starting…");
+  $("mqIdWrap").hidden = !m.enabled;
+  setSum("mqtt", !m.enabled ? t("Off") : st.state === "connected" ? t("Connected") : st.state === "error" ? t("Not connected") : t("Connecting…")); $("mqId").textContent = t("Device ID: {id}", { id: m.node });
   clearTimeout(mqTimer);
   if (m.enabled && st.state !== "connected" && $("settingsDlg").open) mqTimer = setTimeout(refreshMqtt, 2500);
 }
@@ -1211,8 +1270,13 @@ async function refreshMqtt() { try { showMqtt(await api("GET", "api/mqtt")); } c
 $("mqOn").onchange = async e => { try { showMqtt(await api("POST", "api/mqtt", { enabled: e.target.checked })); setTimeout(refreshMqtt, 1500); } catch (err) { toast(err.message); } };
 $("mqSave").onclick = async () => {
   try { showMqtt(await api("POST", "api/mqtt", { enabled: true, host: $("mqHost").value, port: $("mqPort").value, user: $("mqUser").value,
-                                               password: $("mqPass").value, tls: $("mqTls").checked, prefix: $("mqPrefix").value }));
+                                               password: $("mqPass").value, tls: $("mqTls").checked, prefix: $("mqPrefix").value, name: $("mqName").value }));
         toast(t("Saved. Connecting…")); setTimeout(refreshMqtt, 1500); } catch (e) { toast(e.message); }
+};
+
+$("mqNewId").onclick = async () => {
+  if (!confirm(t("Give this TileMark a new device ID? Its entities in Home Assistant are replaced by new ones; automations that use them need the new entities."))) return;
+  try { showMqtt(await api("POST", "api/mqtt", { new_id: true })); toast(t("New ID set.")); setTimeout(refreshMqtt, 1500); } catch (e) { toast(e.message); }
 };
 
 // import

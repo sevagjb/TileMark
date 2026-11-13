@@ -205,6 +205,12 @@ TileMark can appear in Home Assistant as a device **TileMark**, set up by itself
 
 Turn it on in **⚙ Settings → Home Assistant sensors** (admin): fill in your MQTT broker (the one Home Assistant's MQTT integration uses), and the status line shows when it is connected. In the **Home Assistant add-on** it is on by default and uses Home Assistant's own broker when the broker field is empty.
 
+**Several TileMarks in one Home Assistant** (for example the add-on and a Docker one) each show up as their own device:
+
+- **Device name:** set it in the same section. By default it is "TileMark (Home Assistant)" for the add-on and "TileMark (address)" for Docker, after the address you use to open it.
+- **Visit:** the device page in Home Assistant links back to that TileMark (the add-on's sidebar page, or the Docker address).
+- **Device ID:** shown under the status line. Two installations made from the same database (for example by copying the data folder or a daily backup) start with the same ID and would appear as one device; press **New ID** on one of them. Its entities are replaced by new ones, so automations that use them need updating.
+
 An automation for a phone notification could look like this:
 
 ```yaml

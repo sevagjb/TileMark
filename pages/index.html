@@ -594,9 +594,30 @@ async function moveGroup(gid, index) {
   await api("POST", "api/groups/order", { ids });
 }
 const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => { e.dataTransfer.setData("text/tilemark-group", g.id); e.dataTransfer.effectAllowed = "move"; }; };
+// Opening a link in a new tab. Inside the Home Assistant sidebar TileMark runs in a frame
+// that Home Assistant may sandbox; a tab opened from a sandboxed frame inherits the sandbox,
+// and sites that send a Cross-Origin-Opener-Policy (YouTube, X, …) then refuse to load
+// (ERR_BLOCKED_BY_RESPONSE). The frame has Home Assistant's own address, so the tab is
+// opened from Home Assistant's page instead, which is not sandboxed. Elsewhere (TileMark's
+// own address) nothing changes. Returns false when the browser blocked the tab, true when
+// it opened or when that can't be known.
+function inFrameOfSameSite() {
+  try { return window.top !== window && !!window.top.document.body; } catch { return false; }
+}
+function openTab(url) {
+  if (inFrameOfSameSite()) {
+    const d = window.top.document, a = d.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    d.body.appendChild(a); a.click(); a.remove();
+    return true;
+  }
+  const w = window.open(url, "_blank");  // without "noopener", so a blocked tab can be told apart (null)
+  if (w) { try { w.opener = null; } catch {} }
+  return !!w;
+}
 function openMany(list) {
   if (list.length > 8 && !confirm(t("Open {n} tabs?", { n: list.length }))) return;
-  let blocked = 0; for (const l of list) if (!window.open(l.url, "_blank", "noopener")) blocked++;
+  let blocked = 0; for (const l of list) if (!openTab(l.url)) blocked++;
   if (blocked) toast(t("Your browser blocked {n} tabs. Allow pop-ups for this page to open them all.", { n: blocked }));
 }
 
@@ -664,6 +685,7 @@ function card(l) {
     if (selecting) { e.preventDefault(); selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); return; }
     try { navigator.sendBeacon("api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); setTimeout(render, 0); } catch {}
     if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || cfg.open === "same") return;
+    if (inFrameOfSameSite()) { e.preventDefault(); openTab(l.url); return; }  // see openTab
     const w = window.open(l.url, "_blank", "noopener,noreferrer");
     if (w !== undefined) e.preventDefault();
   };

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.1 (unreleased)
+
+### Fixed
+- **YouTube links blocked in the Home Assistant sidebar.** A left click showed "www.youtube.com is blocked" (ERR_BLOCKED_BY_RESPONSE), while right-click → Open in new tab worked. Home Assistant shows add-ons in a sandboxed frame, a tab opened from it inherits the sandbox, and sites that send a Cross-Origin-Opener-Policy (YouTube, X …) refuse to load in a sandboxed tab. Tabs are now opened from Home Assistant's own page, which isn't sandboxed. On TileMark's own address nothing changes.
+- **Open all in tabs** said "Your browser blocked N tabs" even when every tab opened.
+
 ## 2.4.0 (unreleased)
 
 ### New

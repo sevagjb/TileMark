@@ -7,6 +7,9 @@ What is planned next, and what each release brought. Changes per version in deta
 Small items plus two-factor sign-in, in one round.
 
 - [ ] **Clean addresses when saving:** strip tracking parameters (`utm_*`, `fbclid`, `si` …) and recognise duplicates that only differ by `http`/`https`, `www` or a trailing slash.
+- [ ] **Same page, different address:** use the address a link finally lands on (after redirects and short links such as `youtu.be/…` → `youtube.com/watch?v=…`) when checking for duplicates.
+- [ ] **Duplicates from an import are reviewed, not dropped:** after an import, a list shows each duplicate next to the link already saved (title, group or folder, note). From there you can download them as a file (bookmarks or JSON) to keep a copy, keep one as a separate link where it really is different, and then remove the rest. Nothing is thrown away without being shown first.
+- [ ] **Duplicates list for links already saved:** a "Duplicates" entry in the left column, like "Broken links", for near-duplicates already in the collection (for example from earlier imports). Same choices: download a copy, choose which one to keep (its note, favourite and own picture are kept, details from the other can be taken over), remove the others.
 - [ ] **Full JSON export and import:** keeps notes, favourites, order, colours and own pictures (the bookmarks file loses those).
 - [ ] **Keyboard shortcuts:** `/` for search, `n` for a new link, Esc to clear.
 - [ ] **Sign out other devices:** a list of active sessions in "Your account".

@@ -39,7 +39,9 @@ Leave the port empty if you only use the sidebar. TileMark can then only be reac
 
 Everything TileMark stores is in the add-on's data folder, so **Home Assistant backups include TileMark**. The add-on pauses for a moment while Home Assistant makes a backup, so the copy is always consistent.
 
-TileMark's own daily backup is **off** in the add-on, because Home Assistant already covers it. You can switch it on in **⚙ Settings → Installation** if you want both. Each person can always download a backup of their own links; see [Backups](backups.md).
+TileMark's own daily backup is **off** in the add-on, because Home Assistant already covers it, and Home Assistant can encrypt its backups itself. You can switch TileMark's on in **⚙ Settings → Installation** if you want both, and encrypt them as well.
+
+Each person can always download a backup of their own links. It is encrypted with their TileMark password; accounts made by Home Assistant have none until they set one in **Your account**, so until then use **More options → A different password**. See [Backups](backups.md).
 
 ## Sensors and notifications
 

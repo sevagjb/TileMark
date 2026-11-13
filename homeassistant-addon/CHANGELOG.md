@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.4.0 (unreleased)
+
+### New
+- **Encrypted backups, without an extra password to remember.**
+  - **Your own backup** is encrypted with your login password by default. Change your password later and both the old and the new one still open it. Under **More options**: a different password, or no encryption.
+  - **Daily backups of the whole installation** can be encrypted by an admin (**⚙ Settings → Restore the whole installation → Turn on encryption**). Every admin opens them with their own password, and a **recovery key**, shown once, opens them when no password works, also on a brand-new installation.
+  - Turning encryption on first lists the unencrypted backups that will be deleted (how many, and their dates) and asks you to confirm. A first encrypted backup is made right away.
+  - A reset password gets access back when another admin signs in, or with the recovery key. **New recovery key** and **Turn off encryption** are in the same place.
+- Older backups, encrypted or not, still restore.
+
+### Fixed
+- Home Assistant sensors: when TileMark reconnected (for example after **New ID**) while it was still announcing itself, a late "online" could land on the old device's topics after they were cleared.
 ## 2.3.3
 
 ### Changed

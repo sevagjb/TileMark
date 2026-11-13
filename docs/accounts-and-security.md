@@ -79,6 +79,8 @@ Use it after signing in on someone else's computer, or if you think someone know
 
   It prints a new random password, turns off that account's two-factor sign-in and signs out its devices. Sign in with it and choose a new password in **Your account**.
 
+  With [encrypted backups](backups.md#encrypting-the-daily-backups-admin), a reset password doesn't open them straight away: access comes back when another admin signs in, or with the recovery key.
+
 ## Protection against guessing
 
 After **five wrong passwords**, further attempts from that address have to wait: 15 seconds at first, doubling up to 5 minutes. Passwords are stored only as salted hashes, never as plain text.

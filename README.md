@@ -29,7 +29,7 @@
 - **Links you can see.** Every link gets the picture and title its site publishes, so you find things at a glance instead of reading a list of names.
 - **Organised your way.** Coloured groups in your own order, favourites on top, notes on cards, and two layouts to choose from.
 - **Everywhere you are.** One page in any browser, on any device. Save from a browser button, your phone's Share menu, or a script.
-- **Yours, and private.** Runs on your own server with one container and one data folder. No cloud service, no tracking. Each person in your home gets their own private links.
+- **Yours, and private.** Runs on your own server with one container and one data folder. No cloud service, no tracking. Each person in your home gets their own private links, and backups are encrypted with your login password.
 - **Tidy by itself.** Duplicates are recognised, tracking junk is stripped from addresses, and a weekly check finds links that stopped working.
 - **At home in Home Assistant.** Install it as an add-on with its own sidebar page, and get sensors and notifications through MQTT.
 
@@ -66,7 +66,7 @@
 - Accounts for everyone in the home, links private per person
 - Two-factor sign-in with any authenticator app
 - See and sign out your signed-in devices
-- Daily backups, password-encrypted personal backups, easy restore
+- Encrypted backups, unlocked with your login password or a recovery key
 - Never visits addresses inside your network unless you allow it
 
 </td>

@@ -97,10 +97,11 @@ More in [Broken links](broken-links.md).
 
 | Option | What it does |
 | --- | --- |
-| **Backup password** | Optional, but recommended: encrypts the backup file. Can't be recovered if forgotten. |
-| **Download backup** | Downloads one file with all your links, groups and pictures. |
+| **Download backup** | Downloads one file with all your links, groups and pictures, encrypted with your login password. |
+| **More options → A different password instead** | Encrypts with a password of your choice instead, for example to give the file to someone. Can't be recovered if forgotten. |
+| **More options → No encryption** | A plain zip file that anyone can open. |
 | **Restore: choose file** | The backup file to restore (`.tmk` or `.zip`; LinkBoard backups work too). |
-| **Password of that backup** | Only if it has one. |
+| **Password** | Your login password (from the day of the backup, or today's), or the backup's own password. |
 | **Restore from backup** | Replaces **all** your links and groups with those in the file, after you confirm. |
 
 More in [Backups](backups.md).
@@ -136,12 +137,17 @@ More in [Accounts and security](accounts-and-security.md#adding-people-admin).
 
 | Part | What it does |
 | --- | --- |
-| The list | The daily backups and the safety copies made before a restore, newest first. |
+| Encryption status | Whether the daily backups are encrypted (🔒 in the card's title). |
+| **Turn on encryption** | Encrypts every new backup. First tells you which unencrypted backups will be deleted and asks you to confirm; then shows a recovery key once. |
+| **New recovery key** | Replaces the recovery key. Asks for your password or the current recovery key. |
+| **Turn off encryption** | New backups are no longer encrypted; the encrypted ones stay readable. |
+| **Recovery key → Get access again** | Shown when your password doesn't open the backups (for example after a password reset). |
+| The list | The daily backups and the safety copies made before a restore, newest first, with 🔒 on encrypted ones. |
 | **Download** | Downloads that backup. |
-| **Restore** | Puts every account back to that day. Type the date to confirm; a safety copy of now is made first. |
+| **Restore** | Puts every account back to that day. Type the date to confirm, and for an encrypted backup your password or the recovery key; a safety copy of now is made first. |
 | **Make a backup now** | Makes a backup straight away. |
 
-More in [Backups](backups.md#restoring-the-whole-installation-admin).
+More in [Backups](backups.md#encrypting-the-daily-backups-admin).
 
 ## Home Assistant sensors
 

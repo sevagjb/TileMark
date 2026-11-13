@@ -2,7 +2,11 @@
 
 What is planned next, and what each release brought. Changes per version in detail: [CHANGELOG.md](CHANGELOG.md).
 
-## Next (medium)
+## Next: 2.4.0
+
+- [ ] **Encrypted backups, unlocked with your login password.** Daily backups of the whole installation and the safety copy before a restore are encrypted automatically, with no extra password: an admin's login password (or a recovery key shown once) opens them, also on a new machine. Personal backup downloads are encrypted with your login password by default. Older unencrypted backups can still be restored.
+
+## Later (medium)
 
 - [ ] **Shared groups:** share a group with another account, read-only or editable.
 

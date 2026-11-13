@@ -182,13 +182,42 @@ docker exec tilemark python app.py reset-login bob
 
 **⚙ Settings → Restore** replaces all your links and groups with the contents of a backup file; other people's links are not touched. Backups made with LinkBoard (TileMark's earlier name) work too. It is all-or-nothing: a wrong password or a damaged file changes nothing.
 
-For the whole installation (all accounts), TileMark keeps a **daily backup** in `data/backups/`, the last 7 days (the admin can switch it off under **⚙ Settings → Installation**). It holds the database with every account and the pictures people uploaded themselves; fetched thumbnails are left out to keep it small and come back with ↻. To restore one: stop TileMark, unzip it into the `data` folder (replacing `tilemark.db`), start it again. Copying the whole `data` folder while the container is stopped works too.
+For the whole installation (all accounts), TileMark keeps a **daily backup** in `data/backups/`, the last 7 days (the admin can switch it off under **⚙ Settings → Installation**). It holds the database with every account and the pictures people uploaded themselves; fetched thumbnails are left out to keep it small and come back by themselves.
+
+**⚙ Settings → Restore the whole installation** (admin) lists these backups with **Download** and **Restore**, and has **Make a backup now**. Restoring puts every account back to that day; to confirm, you type the backup's date. Before anything changes, TileMark saves a **safety copy** of the current state (listed as "before restore", the last 3 kept), so a restore can itself be undone. Everyone signs in again afterwards. How the installation connects (the MQTT settings and its device in Home Assistant) is not changed by a restore.
+
+Copying the whole `data` folder while the container is stopped works as a full backup too.
 
 ## Broken links
 
 TileMark checks all links once a week and lists the ones that no longer work under **Broken links** in the left column; each also gets a "Broken" label on its card. **⚙ Settings → Link check** has a **Check now** button for your own links; the admin can switch the weekly check off under **Installation**.
 
 A link counts as broken when its address cannot be reached on two tries, or the site answers that the page does not exist (404 or 410). Sign-in walls, bot blocks and temporary server errors are not counted, so a link is not flagged just because a site is picky. The label disappears when a later check or a refresh succeeds.
+
+## Home Assistant sensors (MQTT)
+
+TileMark can appear in Home Assistant as a device **TileMark**, set up by itself through MQTT discovery (no YAML):
+
+- **Links** and **Broken links**: counts for all accounts together (only numbers; nobody's links leave TileMark).
+- **Last link check**: when the weekly check last ran.
+- **Link check** (event): fires when the weekly check finishes, with `checked`, `broken` and `new_broken`, for automations such as a notification.
+
+Turn it on in **⚙ Settings → Home Assistant sensors** (admin): fill in your MQTT broker (the one Home Assistant's MQTT integration uses), and the status line shows when it is connected. In the **Home Assistant add-on** it is on by default and uses Home Assistant's own broker when the broker field is empty.
+
+An automation for a phone notification could look like this:
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: event.tilemark_link_check
+conditions:
+  - condition: template
+    value_template: "{{ trigger.to_state.attributes.new_broken | int(0) > 0 }}"
+actions:
+  - action: notify.mobile_app_your_phone
+    data:
+      message: "TileMark found {{ trigger.to_state.attributes.new_broken }} new broken links."
+```
 
 ## Local addresses and safety
 

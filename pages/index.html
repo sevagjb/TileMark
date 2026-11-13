@@ -169,7 +169,7 @@ dialog { max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid var
 dialog::backdrop { background: rgba(10,12,18,.5); }
 dialog h2 { margin: 0 0 14px; font-size: 18px; }
 dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
-dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog select, dialog textarea {
+dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog input[type=number], dialog select, dialog textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
 dialog textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 dialog :is(input, select, textarea):focus { border-color: var(--accent); }
@@ -367,6 +367,26 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <p class="hint" id="dbState"></p>
     <label class="check"><input id="fpOn" type="checkbox"> Fetch titles and pictures for local network addresses (192.168.x.x, nas.local, …)</label>
     <p class="hint">Off by default. When on, anyone with an account can make TileMark open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.</p>
+    <h3 class="sect">Restore the whole installation (admin)</h3>
+    <p class="hint" style="margin-top:0">Daily backups hold every account. Restoring one puts the whole installation back to that day; everyone signs in again afterwards. A safety copy of the current state is made first and listed here as "before restore", so a restore can be undone.</p>
+    <div id="bkList"></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="bkNow">Make a backup now</button></div>
+    <h3 class="sect">Home Assistant sensors (admin)</h3>
+    <p class="hint" style="margin-top:0">Shows TileMark in Home Assistant as a device with sensors for the number of links and broken links (all accounts together, counts only) and the time of the last weekly check, plus an event when that check finishes, for a notification. Works through MQTT; Home Assistant needs its MQTT integration.</p>
+    <label class="check"><input id="mqOn" type="checkbox"> Send to Home Assistant over MQTT</label>
+    <div id="mqForm">
+      <p class="hint" id="mqAddonHint" hidden>Leave the broker empty to use Home Assistant's own MQTT broker.</p>
+      <div style="display:grid;grid-template-columns:1fr 110px;gap:0 10px">
+        <div><label for="mqHost">Broker (host name or address)</label><input id="mqHost" type="text" autocomplete="off" placeholder="192.168.1.10"></div>
+        <div><label for="mqPort">Port</label><input id="mqPort" type="number" min="1" max="65535" value="1883"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
+        <div><label for="mqUser">Username</label><input id="mqUser" type="text" autocomplete="off"></div>
+        <div><label for="mqPass">Password</label><input id="mqPass" type="password" autocomplete="new-password"></div></div>
+      <label class="check"><input id="mqTls" type="checkbox"> Encrypted connection (TLS)</label>
+      <label for="mqPrefix">Discovery prefix</label><input id="mqPrefix" type="text" placeholder="homeassistant">
+      <div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn primary" type="button" id="mqSave">Save and connect</button></div>
+    </div>
+    <p class="hint" id="mqState"></p>
   </div>
   <h3 class="sect">Save from anywhere</h3>
   <p class="hint" style="margin-top:0"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
@@ -391,6 +411,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   <input id="rsFile" type="file" accept=".tmk,.lbk,.zip">
   <label for="rsPass">Password of that backup (if it has one)</label><input id="rsPass" type="password" autocomplete="off">
   <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
+  <p class="hint" id="appVersion" style="text-align:end"></p>
   <div class="row"><button class="btn primary" value="close">Done</button></div>
 </form></dialog>
 
@@ -845,7 +866,8 @@ async function refreshAuth() {
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
   $("adminBox").hidden = !a.is_admin;
   showTf(a); refreshSessions();
-  if (a.is_admin) refreshUsers();
+  if (a.is_admin) { refreshUsers(); refreshBackups(); refreshMqtt(); }
+  $("appVersion").textContent = "TileMark " + (a.version || "");
   $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? "Replace API key" : "Create API key"; $("keyShow").hidden = true;
   const base = new URL(".", location.href).href.replace(/\/$/, "");  // works at / and under a path prefix
   $("bmLink").href = "javascript:(function(){window.open('" + base + "/save?u='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'tilemark-save','width=480,height=600')})()";
@@ -1121,6 +1143,61 @@ $("tfNewCodes").onclick = async () => {
 $("tfOff").onclick = async () => {
   const pw = tfPassword("turn off two-factor sign-in"); if (pw === null) return;
   try { await api("DELETE", "api/totp", { current_password: pw }); toast("Two-factor sign-in is off."); refreshAuth(); } catch (e) { toast(e.message); }
+};
+
+// ---------------------------------------------------------------- dialogs: a click outside or Esc closes them
+// Except where closing would lose something: the import review (closing it discards the
+// duplicates) and Settings while the recovery codes are on screen (shown only once).
+const outsideBox = (d, e) => { const r = d.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+const mayClose = d => d.id !== "reviewDlg" && !(d.id === "settingsDlg" && !$("tfCodes").hidden);
+for (const d of document.querySelectorAll("dialog")) {
+  let pressedOutside = false;  // a drag that starts inside (selecting text) and ends outside does not close it
+  d.addEventListener("mousedown", e => { pressedOutside = e.target === d && outsideBox(d, e); });
+  d.addEventListener("click", e => { if (pressedOutside && e.target === d && outsideBox(d, e) && mayClose(d)) d.close(); pressedOutside = false; });
+  d.addEventListener("cancel", e => { if (!mayClose(d)) e.preventDefault(); });
+}
+
+// ---------------------------------------------------------------- whole-installation backups (admin)
+const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
+async function refreshBackups() {
+  let r; try { r = await api("GET", "api/backups"); } catch (e) { return; }
+  $("bkList").replaceChildren(...(r.backups.length ? r.backups.map(b => {
+    const btn = (label, fn, cls = "btn") => { const x = el("button", { className: cls, type: "button", textContent: label }); x.onclick = fn; return x; };
+    return el("div", { className: "sess" }, el("div", {},
+      el("b", { textContent: b.kind === "safety" ? "Before restore, " + new Date(b.made_at * 1000).toLocaleString() : b.date }),
+      b.kind === "safety" ? el("span", { className: "pill", textContent: "safety copy" }) : "",
+      el("small", { textContent: size(b.size) + " · made " + new Date(b.made_at * 1000).toLocaleString() })),
+      btn("Download", () => { location.href = "api/backups/" + encodeURIComponent(b.name); }),
+      btn("Restore", async () => {
+        const typed = prompt("This puts EVERY account back to " + b.date + ". Links saved since then are gone (a safety copy of now is made first).\n\nType the date " + b.date + " to confirm:");
+        if (typed === null) return;
+        try { const res = await api("POST", "api/backups/restore", { name: b.name, confirm: typed });
+              alert("Restored: " + res.links + " links in " + res.users + " accounts. Everyone signs in again now."); location.href = "login"; }
+        catch (e) { toast(e.message); }
+      }, "btn danger"));
+  }) : [el("p", { className: "hint", style: "margin-top:0", textContent: "No backups yet. " + (r.daily ? "The first daily backup is made within a day, or use the button below." : "Daily backups are off; use the button below to make one.") })]));
+}
+$("bkNow").onclick = async () => { $("bkNow").disabled = true; try { await api("POST", "api/backups"); toast("Backup made."); refreshBackups(); } catch (e) { toast(e.message); } finally { $("bkNow").disabled = false; } };
+
+// ---------------------------------------------------------------- Home Assistant sensors over MQTT (admin)
+let mqTimer = null;
+function showMqtt(m) {
+  $("mqOn").checked = m.enabled; $("mqForm").hidden = !m.enabled; $("mqAddonHint").hidden = !m.addon;
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#mqForm")) { /* leave fields alone while typing */ }
+  else { $("mqHost").value = m.host; $("mqPort").value = m.port; $("mqUser").value = m.user; $("mqTls").checked = m.tls; $("mqPrefix").value = m.prefix;
+         $("mqPass").value = ""; $("mqPass").placeholder = m.has_password ? "(unchanged)" : ""; }
+  const st = m.status || {}, via = st.source === "home-assistant" ? " (Home Assistant's broker)" : "";
+  $("mqState").textContent = !m.enabled ? "" : st.state === "connected" ? "Connected to " + st.broker + via + ". In Home Assistant: Settings → Devices → TileMark."
+    : st.state === "connecting" ? "Connecting to " + st.broker + via + "… " + (st.error || "") : st.state === "error" ? "Not connected: " + st.error : "Starting…";
+  clearTimeout(mqTimer);
+  if (m.enabled && st.state !== "connected" && $("settingsDlg").open) mqTimer = setTimeout(refreshMqtt, 2500);
+}
+async function refreshMqtt() { try { showMqtt(await api("GET", "api/mqtt")); } catch (e) {} }
+$("mqOn").onchange = async e => { try { showMqtt(await api("POST", "api/mqtt", { enabled: e.target.checked })); setTimeout(refreshMqtt, 1500); } catch (err) { toast(err.message); } };
+$("mqSave").onclick = async () => {
+  try { showMqtt(await api("POST", "api/mqtt", { enabled: true, host: $("mqHost").value, port: $("mqPort").value, user: $("mqUser").value,
+                                               password: $("mqPass").value, tls: $("mqTls").checked, prefix: $("mqPrefix").value }));
+        toast("Saved. Connecting…"); setTimeout(refreshMqtt, 1500); } catch (e) { toast(e.message); }
 };
 
 // import

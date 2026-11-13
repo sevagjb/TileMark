@@ -24,6 +24,7 @@ from urllib.parse import unquote, urljoin, urlparse, urlsplit
 
 import requests
 import segno
+import paho.mqtt.client as paho
 from requests.adapters import HTTPAdapter
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
@@ -63,6 +64,7 @@ OEMBED = [
 ]
 COLORS = ["#4c8bf5", "#e5534b", "#e0a31b", "#3fa55a", "#d6589f", "#8e6ad8", "#2aa7b8", "#e8793a", "#7d8590"]
 SCHEMA = 2  # 1 = TileMark 1.0 (one owner), 2 = several users
+APP_VERSION = os.environ.get("TILEMARK_VERSION", "dev")  # set when the image is built
 
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
@@ -705,7 +707,7 @@ def _safe_fetch(link_id):
 # on two tries, or the site answered "not found" (404) or "gone" (410). Login walls,
 # bot blocks, server errors and addresses TileMark may not fetch are NOT counted,
 # to avoid false alarms.
-_check = {"running": False, "done": 0, "total": 0, "uid": None}
+_check = {"running": False, "done": 0, "total": 0, "uid": None, "new_broken": 0}
 _check_lock = threading.Lock()
 CHECK_EVERY = 7 * 24 * 3600
 
@@ -727,14 +729,18 @@ def _check_one(link_id, url):
     if result == "broken":
         time.sleep(8)
         result = _probe(url)
+    newly = False
     with db() as c:
         if result == "unknown":
             c.execute("UPDATE links SET checked_at=? WHERE id=?", (int(time.time()), link_id))
         else:
+            was = c.execute("SELECT broken FROM links WHERE id=?", (link_id,)).fetchone()
+            newly = result == "broken" and was is not None and not was["broken"]
             c.execute("UPDATE links SET broken=?, checked_at=? WHERE id=?",
                       (1 if result == "broken" else 0, int(time.time()), link_id))
     with _check_lock:
         _check["done"] += 1
+        _check["new_broken"] += 1 if newly else 0
 
 
 def run_link_check(uid=None):
@@ -743,7 +749,7 @@ def run_link_check(uid=None):
     with _check_lock:
         if _check["running"]:
             return False
-        _check.update(running=True, done=0, total=0, uid=uid)
+        _check.update(running=True, done=0, total=0, uid=uid, new_broken=0)
 
     def work():
         try:
@@ -760,6 +766,9 @@ def run_link_check(uid=None):
                 set_user_setting(uid, "linkcheck_last", now)
             else:
                 set_setting("linkcheck_last", now)
+                with _check_lock:
+                    checked, new_broken = _check["total"], _check["new_broken"]
+                mqtt.check_finished(checked, new_broken)  # the weekly check of every account
         except Exception:
             app.logger.exception("link check failed")
         finally:
@@ -861,6 +870,228 @@ def set_user_setting(uid, key, value):
                   "ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value", (uid, key, value))
 
 
+
+# ------------------------------------------------------- Home Assistant via MQTT
+# With MQTT on, TileMark appears in Home Assistant as a device "TileMark" (MQTT
+# discovery, no YAML): sensors for the number of links and broken links (all
+# accounts together; counts only, never links), the time of the last weekly check,
+# and an event entity that fires when the weekly check finishes, for automations
+# such as a notification. As an add-on, Home Assistant's own broker is used when no
+# broker is filled in (the add-on asks the Supervisor for it).
+def supervisor_mqtt():
+    token = os.environ.get("SUPERVISOR_TOKEN")
+    if not (HA_ADDON and token):
+        return None
+    try:
+        r = requests.get("http://supervisor/services/mqtt", headers={"Authorization": f"Bearer {token}"}, timeout=5)
+        data = r.json().get("data") if r.ok else None
+        return data if isinstance(data, dict) and data.get("host") else None
+    except (requests.RequestException, ValueError):
+        return None
+
+
+class MqttBridge:
+    STATE_EVERY = 60  # seconds between checks for changed counts
+
+    def __init__(self):
+        self.client = None
+        self.cfg = None
+        self.status = {"state": "off", "error": "", "broker": "", "source": ""}
+        self.last_payload = None
+        self.wake = threading.Event()
+        self._sup = (0, None)
+
+    # -- configuration
+    def node(self):
+        n = get_setting("node_id")
+        if not n:
+            n = secrets.token_hex(3)
+            set_setting("node_id", n)
+        return n
+
+    def enabled(self):
+        return get_setting("mqtt_enabled", "on" if HA_ADDON else "off") == "on"
+
+    def config(self):
+        if not self.enabled():
+            return None
+        cfg = {"host": get_setting("mqtt_host", ""), "port": int(get_setting("mqtt_port", "1883") or 1883),
+               "user": get_setting("mqtt_user", ""), "password": get_setting("mqtt_pass", ""),
+               "tls": get_setting("mqtt_tls", "off") == "on", "prefix": get_setting("mqtt_prefix", "") or "homeassistant",
+               "source": "settings"}
+        if not cfg["host"]:
+            if time.time() - self._sup[0] > 600:  # ask the Supervisor at most every 10 minutes
+                self._sup = (time.time(), supervisor_mqtt())
+            svc = self._sup[1]
+            if svc:
+                cfg.update(host=svc["host"], port=int(svc.get("port") or 1883), user=svc.get("username") or "",
+                           password=svc.get("password") or "", tls=bool(svc.get("ssl")), source="home-assistant")
+        return cfg if cfg["host"] else {"missing": True}
+
+    # -- topics
+    def base(self):
+        return f"tilemark/{self.node()}"
+
+    def device(self):
+        return {"identifiers": [f"tilemark_{self.node()}"], "name": "TileMark", "manufacturer": "TileMark",
+                "model": "TileMark", "sw_version": APP_VERSION}
+
+    def discovery(self, prefix):
+        node, base, dev = self.node(), self.base(), self.device()
+        common = {"availability_topic": f"{base}/availability", "device": dev}
+        state = f"{base}/state"
+        return {
+            f"{prefix}/sensor/{node}/links/config": {**common, "name": "Links", "unique_id": f"tilemark_{node}_links",
+                "state_topic": state, "value_template": "{{ value_json.links }}", "unit_of_measurement": "links",
+                "state_class": "measurement", "icon": "mdi:bookmark-multiple"},
+            f"{prefix}/sensor/{node}/broken/config": {**common, "name": "Broken links", "unique_id": f"tilemark_{node}_broken",
+                "state_topic": state, "value_template": "{{ value_json.broken }}", "unit_of_measurement": "links",
+                "state_class": "measurement", "icon": "mdi:link-off"},
+            f"{prefix}/sensor/{node}/last_check/config": {**common, "name": "Last link check", "unique_id": f"tilemark_{node}_last_check",
+                "state_topic": state, "value_template": "{{ value_json.last_check }}", "device_class": "timestamp",
+                "icon": "mdi:calendar-check"},
+            f"{prefix}/event/{node}/link_check/config": {**common, "name": "Link check", "unique_id": f"tilemark_{node}_link_check",
+                "state_topic": f"{base}/event", "event_types": ["finished"], "icon": "mdi:link-variant"},
+        }
+
+    def stats(self):
+        with db() as c:
+            links, broken = c.execute("SELECT COUNT(*), COALESCE(SUM(broken), 0) FROM links").fetchone()
+        last = int(get_setting("linkcheck_last", "0"))
+        return {"links": links, "broken": broken,
+                "last_check": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(last)) if last else None}
+
+    # -- connection
+    def start(self):
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def reload(self):
+        self.wake.set()
+
+    def connected(self):
+        return bool(self.client and self.client.is_connected())
+
+    def _run(self):
+        while True:
+            try:
+                cfg = self.config()
+                if cfg != self.cfg:
+                    self._disconnect(remove=self.cfg is not None and not cfg)
+                    self.cfg = cfg
+                    if not cfg:
+                        self.status = {"state": "off", "error": "", "broker": "", "source": ""}
+                    elif cfg.get("missing"):
+                        self.status = {"state": "error", "broker": "", "source": "",
+                                       "error": "No broker set" + (" and Home Assistant has no MQTT broker" if HA_ADDON else "") + "."}
+                    else:
+                        self._connect(cfg)
+                elif self.connected():
+                    self.publish_state()
+            except Exception as e:  # never let MQTT trouble stop TileMark
+                app.logger.exception("MQTT")
+                self.status = {**self.status, "state": "error", "error": str(e)[:200]}
+            self.wake.wait(self.STATE_EVERY)
+            self.wake.clear()
+
+    def _connect(self, cfg):
+        self.status = {"state": "connecting", "error": "", "broker": f"{cfg['host']}:{cfg['port']}", "source": cfg["source"]}
+        cl = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=f"tilemark-{self.node()}")
+        if cfg["user"]:
+            cl.username_pw_set(cfg["user"], cfg["password"] or None)
+        if cfg["tls"]:
+            cl.tls_set()
+        cl.will_set(f"{self.base()}/availability", "offline", retain=True)
+        cl.on_connect = self._on_connect
+        cl.on_disconnect = self._on_disconnect
+        cl.reconnect_delay_set(5, 300)
+        self.client = cl
+        cl.connect_async(cfg["host"], cfg["port"], keepalive=60)
+        cl.loop_start()
+
+    def _on_connect(self, client, userdata, flags, reason, properties=None):
+        if reason.is_failure:
+            self.status = {**self.status, "state": "error", "error": f"Broker refused the connection: {reason}"}
+            return
+        for topic, payload in self.discovery(self.cfg["prefix"]).items():
+            client.publish(topic, json.dumps(payload), qos=1, retain=True)
+        client.publish(f"{self.base()}/availability", "online", qos=1, retain=True)
+        self.last_payload = None
+        self.publish_state()
+        self.status = {**self.status, "state": "connected", "error": ""}
+
+    def _on_disconnect(self, client, userdata, flags, reason, properties=None):
+        if self.client is client and self.status.get("state") == "connected":
+            self.status = {**self.status, "state": "connecting", "error": f"Connection lost ({reason}); retrying."}
+
+    def _disconnect(self, remove=False):
+        cl, self.client = self.client, None
+        if not cl:
+            return
+        try:  # QoS 1 and wait for each, so nothing is lost when the connection closes right after
+            sent = []
+            if remove and self.cfg and not self.cfg.get("missing"):  # MQTT turned off: take the entities away
+                for topic in self.discovery(self.cfg["prefix"]):
+                    sent.append(cl.publish(topic, "", qos=1, retain=True))
+            sent.append(cl.publish(f"{self.base()}/availability", "offline", qos=1, retain=True))
+            for info in sent:
+                info.wait_for_publish(3)
+        except Exception:
+            pass
+        cl.disconnect()
+        cl.loop_stop()
+
+    # -- messages
+    def publish_state(self, force=False):
+        if not self.connected():
+            return
+        payload = json.dumps(self.stats())
+        if force or payload != self.last_payload:
+            self.client.publish(f"{self.base()}/state", payload, retain=True)
+            self.last_payload = payload
+
+    def check_finished(self, checked, new_broken):
+        if not self.connected():
+            return
+        st = self.stats()
+        self.client.publish(f"{self.base()}/event", json.dumps(
+            {"event_type": "finished", "checked": checked, "broken": st["broken"], "new_broken": new_broken}))
+        self.publish_state(force=True)
+
+
+mqtt = MqttBridge()
+
+
+@app.route("/api/mqtt", methods=["GET", "POST"])
+def mqtt_settings():
+    """Admin: MQTT settings and connection status. An empty password keeps the stored one."""
+    if request.method == "POST":
+        d = request.get_json(force=True, silent=True) or {}
+        if "enabled" in d:
+            set_setting("mqtt_enabled", "on" if d["enabled"] else "off")
+        for key, field, limit in (("host", "mqtt_host", 200), ("user", "mqtt_user", 200), ("prefix", "mqtt_prefix", 100)):
+            if key in d:
+                set_setting(field, str(d[key] or "").strip()[:limit])
+        if "port" in d:
+            try:
+                port = int(d["port"] or 1883)
+            except (TypeError, ValueError):
+                return jsonify(error="The port must be a number."), 400
+            if not 1 <= port <= 65535:
+                return jsonify(error="The port must be between 1 and 65535."), 400
+            set_setting("mqtt_port", str(port))
+        if d.get("password"):
+            set_setting("mqtt_pass", str(d["password"])[:500])
+        if d.get("clear_password"):
+            set_setting("mqtt_pass", "")
+        if "tls" in d:
+            set_setting("mqtt_tls", "on" if d["tls"] else "off")
+        mqtt.reload()
+    return jsonify(enabled=mqtt.enabled(), host=get_setting("mqtt_host", ""), port=int(get_setting("mqtt_port", "1883") or 1883),
+                   user=get_setting("mqtt_user", ""), has_password=bool(get_setting("mqtt_pass", "")),
+                   tls=get_setting("mqtt_tls", "off") == "on", prefix=get_setting("mqtt_prefix", "") or "homeassistant",
+                   addon=HA_ADDON, status=mqtt.status, node=mqtt.node())
+
+
 # ------------------------------------------------------------------- login
 def _hash(password):
     return generate_password_hash(password, method="pbkdf2:sha256:600000")
@@ -896,6 +1127,10 @@ def _same_code(sent, code):
 
 def print_setup_code():
     line = "=" * 64
+    if HA_ADDON:  # inside Home Assistant the sidebar creates the first account; the code is only for the direct port
+        print(f"\n{line}\n  TileMark has no account yet.\n  Open TileMark from the Home Assistant sidebar: the first person\n"
+              f"  to open it becomes the admin. (Only if you set up TileMark through\n  its own port instead, it asks for this code: {setup_code()})\n{line}\n", flush=True)
+        return
     print(f"\n{line}\n  TileMark has no account yet.\n  Open it in your browser and enter this setup code:\n\n"
           f"      {setup_code()}\n\n  (Show it again: docker exec tilemark python app.py setup-code)\n{line}\n", flush=True)
 
@@ -1141,7 +1376,8 @@ def _check_new_credentials(username, password, need_password=True):
 OPEN_ENDPOINTS = {"login_page", "api_login", "api_login_totp", "auth_status", "api_setup", "icon", "save_page", "manifest",
                   "service_worker", "healthz"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
-ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings"}
+ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings", "list_full_backups",
+                   "make_full_backup_now", "download_full_backup", "restore_full_backup_api", "mqtt_settings"}
 
 
 @app.before_request
@@ -1210,7 +1446,7 @@ def auth_status():
     return jsonify(signed_in=bool(u), setup=not u and setup_needed(),
                    username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
                    has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON,
-                   totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0)
+                   totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0, version=APP_VERSION)
 
 
 @app.post("/api/setup")
@@ -2231,9 +2467,25 @@ def list_backups():
         return []
 
 
+SAFETY_PREFIX, KEEP_SAFETY = "tilemark-before-restore-", 3
+KEEP_ON_RESTORE = ("node_id", "secret_key", "mqtt_enabled", "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
+                   "mqtt_prefix")
+
+
 def daily_backup():
+    final = _write_full_backup(time.strftime("tilemark-%Y-%m-%d.zip"))
+    for old in list_backups()[:-KEEP_BACKUPS]:
+        try:
+            os.remove(os.path.join(BACKUP_DIR, old))
+        except OSError:
+            pass
+    set_setting("backup_last", str(int(time.time())))
+    return final
+
+
+def _write_full_backup(filename):
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    final = os.path.join(BACKUP_DIR, time.strftime("tilemark-%Y-%m-%d.zip"))
+    final = os.path.join(BACKUP_DIR, filename)
     part = final + ".part"
     with tempfile.TemporaryDirectory() as tmp:
         snap = os.path.join(tmp, "tilemark.db")
@@ -2250,13 +2502,131 @@ def daily_backup():
                 if os.path.isfile(path):
                     z.write(path, "thumbs/" + os.path.basename(name), zipfile.ZIP_STORED)
     os.replace(part, final)
-    for old in list_backups()[:-KEEP_BACKUPS]:
-        try:
-            os.remove(os.path.join(BACKUP_DIR, old))
-        except OSError:
-            pass
-    set_setting("backup_last", str(int(time.time())))
     return final
+
+
+def all_backups():
+    """Daily backups and the safety copies made before a restore, newest first."""
+    out = []
+    try:
+        names = os.listdir(BACKUP_DIR)
+    except OSError:
+        names = []
+    for n in names:
+        m = re.fullmatch(r"tilemark-(\d{4}-\d{2}-\d{2})\.zip", n) or re.fullmatch(
+            re.escape(SAFETY_PREFIX) + r"(\d{4}-\d{2}-\d{2})-\d{6}\.zip", n)
+        if m:
+            st = os.stat(os.path.join(BACKUP_DIR, n))
+            out.append({"name": n, "date": m.group(1), "size": st.st_size, "made_at": int(st.st_mtime),
+                        "kind": "safety" if n.startswith(SAFETY_PREFIX) else "daily"})
+    return sorted(out, key=lambda b: b["made_at"], reverse=True)
+
+
+class FullRestoreError(Exception):
+    pass
+
+
+def restore_full_backup(name):
+    """Replace the whole installation (every account) with a daily backup. A safety
+    copy of the current state is made first, so a restore can itself be undone."""
+    entry = next((b for b in all_backups() if b["name"] == name), None)
+    if not entry:
+        raise FullRestoreError("That backup was not found.")
+    path = os.path.join(BACKUP_DIR, name)
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            z = zipfile.ZipFile(path)
+            info = z.getinfo(BACKUP_DB)
+        except (zipfile.BadZipFile, KeyError, OSError):
+            raise FullRestoreError("That file is not a TileMark backup.")
+        if info.file_size > MAX_BACKUP_DB:
+            raise FullRestoreError("The backup's database is too large.")
+        snap = os.path.join(tmp, "restore.db")
+        with open(snap, "wb") as f:
+            f.write(z.read(info))
+        try:
+            chk = sqlite3.connect(snap)
+            ok = chk.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+            users = chk.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            links = chk.execute("SELECT COUNT(*) FROM links").fetchone()[0]
+            chk.close()
+        except sqlite3.Error:
+            raise FullRestoreError("The backup's database cannot be read.")
+        if not ok or users < 1:  # a backup without accounts would lock everyone out
+            raise FullRestoreError("The backup's database is damaged or has no accounts.")
+        safety = _write_full_backup(SAFETY_PREFIX + time.strftime("%Y-%m-%d-%H%M%S") + ".zip")
+        for old in [b["name"] for b in all_backups() if b["kind"] == "safety"][KEEP_SAFETY:]:
+            try:
+                os.remove(os.path.join(BACKUP_DIR, old))
+            except OSError:
+                pass
+        with db() as c:  # how this installation connects (MQTT, its device id in HA, its key) stays as it is now
+            keep = c.execute(f"SELECT key, value FROM settings WHERE key IN ({','.join('?' * len(KEEP_ON_RESTORE))})",
+                             KEEP_ON_RESTORE).fetchall()
+        src, dst = sqlite3.connect(snap), sqlite3.connect(DB_PATH, timeout=60)
+        try:
+            src.backup(dst)  # replaces the live database in one step, while the app keeps running
+        finally:
+            src.close()
+            dst.close()
+        for member in z.infolist():
+            fname = os.path.basename(member.filename)
+            if (member.filename.startswith("thumbs/") and re.fullmatch(r"[\w.-]+\.(webp|png)", fname)
+                    and member.file_size <= 20_000_000 and not os.path.exists(os.path.join(THUMB_DIR, fname))):
+                with open(os.path.join(THUMB_DIR, fname), "wb") as f:
+                    f.write(z.read(member))
+    init_db()  # an older backup gets today's columns
+    pending = []
+    with db() as c:
+        for r in keep:
+            c.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                      (r["key"], r["value"]))
+        for r in c.execute("SELECT id, thumb, custom_thumb FROM links WHERE thumb != ''").fetchall():
+            if not os.path.isfile(os.path.join(THUMB_DIR, os.path.basename(r["thumb"]))):
+                c.execute("UPDATE links SET thumb='', thumb_kind='', custom_thumb=0, status='pending' WHERE id=?", (r["id"],))
+                pending.append(r["id"])
+        c.execute("DELETE FROM sessions")  # everyone signs in again, with the restored accounts
+    for link_id in pending:
+        queue(link_id)
+    mqtt.last_payload = None  # publish the restored counts
+    mqtt.reload()
+    return {"links": links, "users": users, "safety": os.path.basename(safety)}
+
+
+@app.get("/api/backups")
+def list_full_backups():
+    return jsonify(backups=all_backups(), daily=daily_backup_on())
+
+
+@app.post("/api/backups")
+def make_full_backup_now():
+    """Make today's daily backup now (replaces an earlier one from today)."""
+    daily_backup()
+    return jsonify(ok=True, backups=all_backups())
+
+
+@app.get("/api/backups/<name>")
+def download_full_backup(name):
+    if not any(b["name"] == name for b in all_backups()):
+        return jsonify(error="Not found"), 404
+    return send_from_directory(BACKUP_DIR, name, as_attachment=True, max_age=0)
+
+
+@app.post("/api/backups/restore")
+def restore_full_backup_api():
+    d = request.get_json(force=True, silent=True) or {}
+    name = str(d.get("name", ""))
+    entry = next((b for b in all_backups() if b["name"] == name), None)
+    if not entry:
+        return jsonify(error="That backup was not found."), 404
+    if str(d.get("confirm", "")).strip() != entry["date"]:
+        return jsonify(error=f"To confirm, type the date of the backup: {entry['date']}"), 400
+    try:
+        result = restore_full_backup(name)
+    except FullRestoreError as e:
+        return jsonify(error=str(e)), 400
+    session.clear()
+    return jsonify(ok=True, **result)
 
 
 @app.post("/api/backup")
@@ -2310,6 +2680,7 @@ if not _CLI and not os.environ.get("TILEMARK_NO_WORKERS"):
     if setup_needed():  # (as an add-on, opening it from the HA sidebar also creates the first account)
         print_setup_code()
     threading.Thread(target=_check_scheduler, daemon=True).start()
+    mqtt.start()
     with db() as _c:  # once: fetch again the titles saved from a bot-check page before 1.2.1
         if not _c.execute("SELECT 1 FROM settings WHERE key='wall_titles_fixed'").fetchone():
             for _r in _c.execute("SELECT id, title FROM links WHERE custom_title=0").fetchall():

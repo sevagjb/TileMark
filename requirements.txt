@@ -5,3 +5,4 @@ beautifulsoup4==4.12.*
 pillow>=11
 cryptography>=42
 segno==1.6.*
+paho-mqtt==2.*

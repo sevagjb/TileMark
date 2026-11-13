@@ -34,6 +34,10 @@ TileMark keeps everything in the add-on's data folder, so Home Assistant backups
 
 TileMark's own daily backup is off in the add-on (Home Assistant's backups already cover it). Each person can still download a backup of their own links in **⚙ Settings → Backup**.
 
+## Sensors
+
+With an MQTT broker in Home Assistant (for example the Mosquitto add-on and the MQTT integration), TileMark shows up by itself as a device **TileMark**: sensors for the number of links and broken links, the time of the last weekly check, and an event when that check finishes (for a notification). It uses Home Assistant's broker automatically; to use another one, or to turn it off, see TileMark's **⚙ Settings → Home Assistant sensors**.
+
 ## Local addresses
 
 To keep pages from making TileMark look inside your network, it does not fetch titles and pictures for local addresses (`192.168.x.x`, `homeassistant.local` …) unless the admin allows it in **⚙ Settings → Installation**. Local links can always be saved.

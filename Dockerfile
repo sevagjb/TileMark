@@ -4,6 +4,8 @@ LABEL org.opencontainers.image.source="https://github.com/sevagjb/TileMark" \
       org.opencontainers.image.description="A tiny self-hosted page for your links, with thumbnails and groups" \
       org.opencontainers.image.licenses="MIT"
 
+ARG VERSION=dev
+ENV TILEMARK_VERSION=$VERSION
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DATA_DIR=/data
 WORKDIR /app
 

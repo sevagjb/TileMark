@@ -1216,3 +1216,12 @@ def test_mqtt_addon_name_and_link(tmp_path, monkeypatch):
     dev = A.MqttBridge().device()
     assert dev["name"] == "TileMark (Home Assistant)" and dev["configuration_url"] == "homeassistant://hassio/ingress/abcd1234_tilemark"
     assert dev["model"] == "Home Assistant add-on"
+
+
+# ------------------------------------------------------------------- docs
+def test_website_builds_without_broken_links(tmp_path):
+    """The guide in docs/ builds into the website, with every link and #anchor pointing somewhere real."""
+    pytest.importorskip("markdown")
+    import subprocess
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "build_site.py")], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr

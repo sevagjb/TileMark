@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.2 (unreleased)
+
+### New
+- **A new guide and website:** every feature and every option explained step by step, with screenshots, at <https://sevagjb.github.io/TileMark/> and in the `docs` folder. The README is now a short introduction with a quick start.
+
+### Changed
+- Settings: opening a card closes the one that was open, so only one is open at a time.
+- On phones, the buttons on a card sit in a row under the text, so titles are no longer cut short.
+
+### Fixed
+- Messages about a single link no longer say "1 links" (import, duplicates, removing a person).
+
 ## 2.3.1
 
 ### New

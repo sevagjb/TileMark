@@ -4,6 +4,9 @@
 const LANGS = { en: "English", nl: "Nederlands", ar: "العربية" };
 const COL = { nl: 0, ar: 1 };
 const D = {
+"1 link was not added because you already have it.":["1 link is niet toegevoegd omdat je hem al hebt.","لم يُضف رابط واحد لأنه موجود لديك بالفعل."],
+"Remove {name}?\nTheir 1 link, groups and pictures are deleted too. This cannot be undone.":["{name} verwijderen?\nDe link, groepen en afbeeldingen van deze persoon worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.","إزالة {name}؟\nسيُحذف أيضًا رابطه ومجموعاته وصوره. لا يمكن التراجع عن ذلك."],
+"Imported {n} link.":["{n} link geïmporteerd.","استُورد {n} رابط."],
 "Backup and restore":["Back-up en terugzetten", "النسخ الاحتياطي والاستعادة"],
 "People":["Personen", "الأشخاص"],
 "Installation":["Installatie", "التثبيت"],

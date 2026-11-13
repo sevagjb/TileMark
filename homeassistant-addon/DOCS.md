@@ -14,7 +14,7 @@ Every Home Assistant user who opens TileMark gets their own TileMark account, wi
 
 - The first person to open TileMark becomes its admin, and so does every Home Assistant administrator.
 - The admin can manage accounts and installation settings in TileMark's **⚙ Settings**.
-- Already have TileMark in Docker? Make a backup there (**⚙ Settings → Backup**) and restore it here (**⚙ Settings → Restore**). Each person restores their own backup.
+- Already have TileMark in Docker? Make a backup there and restore it here, both in **⚙ Settings → Backup and restore**. Each person restores their own backup.
 
 ## TileMark's own address (optional)
 
@@ -32,7 +32,7 @@ For the phone app (installing TileMark and sharing to it from other apps), that 
 
 TileMark keeps everything in the add-on's data folder, so Home Assistant backups include it. The add-on stops for a moment while a backup is made, so the copy is always consistent.
 
-TileMark's own daily backup is off in the add-on (Home Assistant's backups already cover it). Each person can still download a backup of their own links in **⚙ Settings → Backup**.
+TileMark's own daily backup is off in the add-on (Home Assistant's backups already cover it). Each person can still download a backup of their own links in **⚙ Settings → Backup and restore**.
 
 ## Sensors
 
@@ -41,6 +41,10 @@ With an MQTT broker in Home Assistant (for example the Mosquitto add-on and the 
 ## Local addresses
 
 To keep pages from making TileMark look inside your network, it does not fetch titles and pictures for local addresses (`192.168.x.x`, `homeassistant.local` …) unless the admin allows it in **⚙ Settings → Installation**. Local links can always be saved.
+
+## More
+
+The full guide, with every option explained: <https://sevagjb.github.io/TileMark/>
 
 ## Support
 

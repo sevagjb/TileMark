@@ -23,6 +23,10 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.3.2
+- [x] A complete guide with screenshots, and a website for it.
+- [x] Settings: one card open at a time. Phone cards: buttons under the text.
+
 ### 2.3.1
 - [x] Settings as collapsible cards with a status line each.
 - [x] Home Assistant device name, Visit link and device ID, so several TileMarks can live side by side.

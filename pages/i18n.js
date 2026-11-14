@@ -99,6 +99,7 @@ const D = {
 "Search":["Zoeken", "بحث"],
 "Search links":["Links zoeken", "البحث في الروابط"],
 "Import":["Importeren", "استيراد"],
+"Import and export":["Importeren en exporteren", "استيراد وتصدير"],
 "Export":["Exporteren", "تصدير"],
 "Settings":["Instellingen", "الإعدادات"],
 "Groups":["Groepen", "المجموعات"],

@@ -29,6 +29,9 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
          backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-inline-end: 6px; }
+.brand .bname { display: flex; flex-direction: column; line-height: 1.05; }
+.brand .ver { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.brand .ver:empty { display: none; }
 .add { flex: 2 1 280px; max-width: 520px; display: flex; background: var(--panel); border: 1px solid var(--line);
        border-radius: 10px; overflow: hidden; }
 .add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -194,6 +197,7 @@ dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12p
 dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog input[type=number], dialog select, dialog textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
 .pw { position: relative; display: block; }
+#helpBtn { font-weight: 700; min-width: 40px; }
 dialog input.bad { border-color: var(--danger) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
 .hint.err { color: var(--danger); margin-top: 6px; }
 .pw input { padding-inline-end: 42px !important; }
@@ -235,7 +239,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>TileMark</div>
+    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg><span class="bname"><span>TileMark</span><span class="ver" id="brandVer"></span></span></div>
     <form class="add" id="addForm">
       <input id="addUrl" type="text" dir="auto" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
       <select id="addGroup" aria-label="Group"></select>
@@ -244,6 +248,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <input class="search" id="search" type="search" dir="auto" placeholder="Search" aria-label="Search links">
     <button class="btn" id="importBtn">Import</button>
     <button class="btn" id="exportBtn">Export</button>
+    <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help">?</button>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
@@ -364,7 +369,6 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     </div>
     <div class="row" style="justify-content:flex-start;margin-top:12px">
     <button class="btn primary" type="button" id="auSave">Save account</button>
-    <button class="btn" type="button" id="auOut">Sign out</button>
     </div>
   </div></details>
   <details class="sec" data-k="tfa" id="tfBox"><summary><span class="st">Two-factor sign-in</span><span class="sum" id="sum-tfa"></span></summary><div class="secb">
@@ -478,7 +482,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   </div></details>
   </div>
   <p class="hint" id="appVersion" style="text-align:end"></p>
-  <div class="row"><button class="btn primary" value="close">Done</button></div>
+  <div class="row"><button class="btn left" type="button" id="auOut">Sign out</button><button class="btn primary" value="close">Done</button></div>
 </form></dialog>
 
 <dialog id="secretDlg"><form method="dialog">
@@ -555,7 +559,12 @@ function takePrefs(p) {
 }
 
 async function load() {
+  lastLoad = Date.now();
   try { S = await api("GET", "api/state"); } catch (e) { toast(e.message); return; }
+  if (S.version) {  // the version under the name (and on hover), so nobody has to open Settings for it
+    $("brandVer").textContent = /^\d/.test(S.version) ? "v" + S.version : S.version;
+    document.querySelector(".brand").title = "TileMark " + S.version;
+  }
   if (!prefsLoaded) takePrefs(S.prefs);
   dupok = (S.prefs && S.prefs.dupok) || [];
   if (filter === "none" ? !S.links.some(l => l.group_id === null) : !(filter in SPECIAL) && !group(+filter))
@@ -565,6 +574,13 @@ async function load() {
   if (S.links.some(l => l.status === "pending") || (S.check && S.check.running)) timer = setTimeout(load, 2000);
   if ($("settingsDlg").open) showCheck();
 }
+// Links can be added elsewhere (browser button, phone, API key, another device): fetch the
+// list again when this tab is shown again, and every 5 minutes while it is visible.
+let lastLoad = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() - lastLoad > 3000 && !document.querySelector("dialog[open]")) load();
+});
+setInterval(() => { if (document.visibilityState === "visible" && !selecting && !document.querySelector("dialog[open]")) load(); }, 5 * 60 * 1000);
 function setFilter(f) { filter = String(f); localStorage.setItem("tm.filter", filter); render(); }
 
 function visible() {
@@ -1112,6 +1128,8 @@ $("rsGo").onclick = async () => {
         $("settingsDlg").close(); toast(t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups })); load(); }
   catch (e) { if (/password/i.test(e.message)) missingPassword(e.message); toast(e.message); } finally { $("rsGo").disabled = false; }
 };
+const GUIDE = "https://sevagjb.github.io/TileMark/guide.html";
+$("helpBtn").onclick = () => openTab(GUIDE);
 $("auOut").onclick = async () => { try { await api("POST", "api/logout"); } catch (e) {} location.href = "login"; };
 applySettings();
 if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("sw.js").catch(() => {});

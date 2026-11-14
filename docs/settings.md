@@ -46,7 +46,6 @@ The keyboard shortcuts are listed here too: `/` search, `n` add a link, `Esc` cl
 | **New password** | Leave empty to keep your current one. At least 8 characters. A new password signs out your other devices. |
 | **Current password** | Needed to save any change. |
 | **Save account** | Saves the changes above. |
-| **Sign out** | Signs you out on this device. |
 
 In the [Home Assistant add-on](home-assistant-add-on.md) you are signed in through Home Assistant; set a password here only if you also want to use TileMark's own address.
 
@@ -165,4 +164,4 @@ More in [Home Assistant sensors](home-assistant-sensors.md).
 
 ---
 
-The version of TileMark you are running is shown at the bottom of Settings.
+At the bottom of Settings: the version of TileMark you are running, **Sign out** (signs you out on this device; not shown in the Home Assistant sidebar, where Home Assistant's own sign-in applies) and **Done**.

@@ -8,11 +8,13 @@ Everything you do day to day happens on one page. This guide walks through it fr
 
 | Part | What it does |
 | --- | --- |
+| **TileMark** (top left) | The version you are running is shown under the name. |
 | **Paste a link and press Enter** | Saves a link. The list next to it chooses the group it goes to. |
 | **Add** | Same as pressing Enter. |
 | **Search** | Finds links by title, address, description, note or group name, across all your groups. |
 | **Import** | Brings in browser bookmarks, a list of links or a TileMark file. See [Import and export](import-export.md). |
 | **Export** | Downloads your links as a TileMark file or a bookmarks file. |
+| **?** | Opens this guide on the website. |
 | **⚙** | Opens [Settings](settings.md). |
 
 ## Saving a link
@@ -24,6 +26,7 @@ Paste an address into the field at the top and press **Enter**. The card appears
 - **No `http://`?** Addresses typed without it get `https://`. Local ones (`192.168.x.x`, `localhost`, `name.local`) get `http://`.
 - **Tracking removed:** parameters that only track you (`utm_…`, `fbclid`, `gclid`, YouTube's and Spotify's `si` …) are removed before saving.
 - **Already saved?** TileMark tells you where the link already is instead of saving it twice. See [Duplicates](import-export.md#duplicates).
+- **Saved somewhere else?** Links you add with the browser button, from your phone or on another device show up when you come back to the TileMark tab, and otherwise within 5 minutes.
 
 ### Where the picture comes from
 

@@ -1901,7 +1901,7 @@ def state():
     check.pop("uid")
     check.update(enabled=get_setting("linkcheck", "on") == "on",
                  last=max(int(get_setting("linkcheck_last", "0")), int(get_user_setting(uid, "linkcheck_last", "0"))))
-    out = dict(groups=groups, links=links, check=check, prefs=_prefs(uid),
+    out = dict(groups=groups, links=links, check=check, prefs=_prefs(uid), version=APP_VERSION,
                me={"username": g.user["username"], "is_admin": bool(g.user["is_admin"])})
     if g.user["is_admin"]:
         out["admin"] = {"fetch_private": fetch_private(), "daily_backup": daily_backup_on(),

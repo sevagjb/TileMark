@@ -222,7 +222,7 @@ dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12p
 dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog input[type=number], dialog select, dialog textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
 .pw { position: relative; display: block; }
-#helpBtn { font-weight: 700; min-width: 40px; }
+#helpBtn { min-width: 40px; display: inline-flex; align-items: center; justify-content: center; color: #e0a31b; }
 dialog input.bad { border-color: var(--danger) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
 .hint.err { color: var(--danger); margin-top: 6px; }
 .pw input { padding-inline-end: 42px !important; }
@@ -276,7 +276,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <button class="btn" id="exportBtn">Export</button>
     <span class="iowrap"><button class="btn" id="ioBtn" title="Import and export" aria-label="Import and export" aria-haspopup="menu" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20V5"/><path d="M4 9l4-4 4 4"/><path d="M16 4v15"/><path d="M12 15l4 4 4-4"/></svg></button>
       <span class="iomenu" id="ioMenu" role="menu" hidden><button type="button" role="menuitem" data-go="importBtn">Import</button><button type="button" role="menuitem" data-go="exportBtn">Export</button></span></span>
-    <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help">?</button>
+    <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg></button>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>

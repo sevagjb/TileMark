@@ -14,7 +14,7 @@ Everything you do day to day happens on one page. This guide walks through it fr
 | **Search** | Finds links by title, address, description, note or group name, across all your groups. |
 | **Import** | Brings in browser bookmarks, a list of links or a TileMark file. See [Import and export](import-export.md). |
 | **Export** | Downloads your links as a TileMark file or a bookmarks file. |
-| **?** | Opens this guide on the website. |
+| **Light bulb** | Opens this guide on the website. |
 | **⚙** | Opens [Settings](settings.md). |
 
 ## Saving a link

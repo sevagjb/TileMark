@@ -5,6 +5,7 @@
 ### Changed
 - **The top bar on phones takes two rows, not three.** Search, the guide and Settings are small icon buttons beside the name, **Import** and **Export** share one button that opens a short menu with both names, and the add field has the row below. Search opens from the magnifier and closes again when it is empty. On a computer nothing changes: the buttons keep their names and search is always there.
 - **The row under a group's name on phones** (sorting, refresh, Open all in tabs, Select) wraps to a second line when it doesn't fit; before, the last buttons ran off the screen.
+- **The guide button** is a yellow light bulb now, in place of the question mark.
 
 ## 2.4.2
 

@@ -10,7 +10,7 @@ You don't have to open TileMark to save a link. There are three ways to send a p
 
 All three are found in **⚙ Settings → Save from anywhere**. Links saved this way show up in an open TileMark tab as soon as you switch back to it.
 
-> **Home Assistant add-on:** these need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
+> **Home Assistant app:** these need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
 
 ## Browser button
 

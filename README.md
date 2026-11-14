@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/sevagjb/TileMark/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/sevagjb/TileMark?label=release"></a>
-  <a href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Ftilemark"><img alt="Home Assistant add-on" src="https://img.shields.io/badge/Home%20Assistant-add--on-18bcf2?logo=homeassistant&logoColor=white"></a>
+  <a href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Ftilemark"><img alt="Home Assistant app" src="https://img.shields.io/badge/Home%20Assistant-app-18bcf2?logo=homeassistant&logoColor=white"></a>
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/github/license/sevagjb/TileMark"></a>
 </p>
 
@@ -31,7 +31,7 @@
 - **Everywhere you are.** One page in any browser, on any device. Save from a browser button, your phone's Share menu, or a script.
 - **Yours, and private.** Runs on your own server with one container and one data folder. No cloud service, no tracking. Each person in your home gets their own private links, and backups are encrypted with your login password.
 - **Tidy by itself.** Duplicates are recognised, tracking junk is stripped from addresses, and a weekly check finds links that stopped working.
-- **At home in Home Assistant.** Install it as an add-on with its own sidebar page, and get sensors and notifications through MQTT.
+- **At home in Home Assistant.** Install it as an app with its own sidebar page, and get sensors and notifications through MQTT.
 
 ## Features
 
@@ -105,11 +105,11 @@ services:
 
 Full walkthrough: [Getting started](docs/getting-started.md).
 
-### Home Assistant add-on
+### Home Assistant app
 
 [![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsevagjb%2Ftilemark)
 
-Add the repository, install **TileMark**, turn on **Show in sidebar** and start it. You're signed in with your Home Assistant account. More: [Home Assistant add-on](docs/home-assistant-add-on.md).
+Add the repository, install **TileMark**, turn on **Show in sidebar** and start it. You're signed in with your Home Assistant account. More: [Home Assistant app](docs/home-assistant-add-on.md).
 
 ## A closer look
 
@@ -129,7 +129,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | | |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Install, first account, first links, updating, HTTPS |
-| [Home Assistant add-on](docs/home-assistant-add-on.md) | Sidebar, accounts, own address, backups |
+| [Home Assistant app](docs/home-assistant-add-on.md) | Sidebar, accounts, own address, backups |
 | [Links and groups](docs/links-and-groups.md) | Everything on the main page |
 | [Import and export](docs/import-export.md) | Bookmarks in, files out, duplicates |
 | [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API key |

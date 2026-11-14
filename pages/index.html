@@ -1074,7 +1074,7 @@ async function refreshAuth() {
   // and the phone app need TileMark's own port (add-on → Configuration → Network).
   $("bmLink").hidden = !!a.ha;
   if (a.ha) $("pwaHint").replaceChildren(el("b", { textContent: t("Inside Home Assistant:") + " " }),
-    t("the browser button and the phone app need TileMark's own address. Turn on the port under the add-on's Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well."));
+    t("the browser button and the phone app need TileMark's own address. Turn on the port in Home Assistant under Settings → Apps → TileMark → Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well."));
 }
 $("bmLink").onclick = e => { e.preventDefault(); toast(t("Drag this button to your favorites bar; don't click it here.")); };
 $("keyNew").onclick = async () => {

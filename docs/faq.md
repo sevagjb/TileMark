@@ -23,7 +23,7 @@ English, Dutch and Arabic. TileMark follows your browser's language; you can cho
 ## Setting up
 
 **Where is the setup code?**
-In the container log: the stack's log in Dockge, or `docker logs tilemark`. Show it again with `docker exec tilemark python app.py setup-code`. In the Home Assistant add-on there is none: open TileMark from the sidebar.
+In the container log: the stack's log in Dockge, or `docker logs tilemark`. Show it again with `docker exec tilemark python app.py setup-code`. In the Home Assistant app there is none: open TileMark from the sidebar.
 
 **I forgot my password.**
 Another admin can set a new one in **People**. If you are the only admin, run `docker exec tilemark python app.py reset-login` on the server. See [Forgot your password?](accounts-and-security.md#forgot-your-password)
@@ -41,7 +41,7 @@ Sign in with one of your recovery codes, or ask an admin to use **People → Tur
 It is shown under the TileMark name at the top left, and at the bottom of Settings.
 
 **How do I update?**
-Dockge: **Update**. Docker: `docker compose pull && docker compose up -d`. Home Assistant: the add-on's update button. Your data is kept. See [Updating](getting-started.md#updating).
+Dockge: **Update**. Docker: `docker compose pull && docker compose up -d`. Home Assistant: the app's update button. Your data is kept. See [Updating](getting-started.md#updating).
 
 ## Pictures and titles
 
@@ -60,7 +60,7 @@ Pictures are fetched a few at a time, so the server and the sites aren't overloa
 ## Links
 
 **A link shows "is blocked" or ERR_BLOCKED_BY_RESPONSE.**
-Update TileMark: since 2.4.1, links opened from the Home Assistant sidebar open normally. Before, Home Assistant's sandboxed add-on frame was passed on to the new tab, and sites like YouTube refuse to load there. If it still happens on TileMark's own address, a browser extension is interfering; try a private window to confirm.
+Update TileMark: since 2.4.1, links opened from the Home Assistant sidebar open normally. Before, Home Assistant's sandboxed app frame was passed on to the new tab, and sites like YouTube refuse to load there. If it still happens on TileMark's own address, a browser extension is interfering; try a private window to confirm.
 
 **I can't drag a card to reorder it.**
 Reordering works inside one group, not in mixed lists like **All links**, **Favourites** or search results. Sorting must be on **My order**.
@@ -73,10 +73,10 @@ The site was unreachable twice during the last check. The label clears by itself
 
 ## Home Assistant
 
-**The add-on update doesn't show up.**
-Home Assistant checks for updates now and then. Force it: **Add-on store → ⋮ → Check for updates**.
+**The update doesn't show up in Home Assistant.**
+Home Assistant checks for updates now and then. Force it: **Settings → Apps → App store → ⋮ → Check for updates**.
 
-**The browser button or API key doesn't work in the add-on.**
+**The browser button or API key doesn't work in Home Assistant.**
 They need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
 
 **I see only one TileMark device, but I run two.**
@@ -84,4 +84,4 @@ They share one device ID. Press **New ID** in one of them. See [Several TileMark
 
 ## Something else?
 
-Ask a question or report a problem in the [issues](https://github.com/sevagjb/tilemark/issues). Mention your TileMark version (bottom of **⚙ Settings**) and whether you use Docker or the add-on.
+Ask a question or report a problem in the [issues](https://github.com/sevagjb/tilemark/issues). Mention your TileMark version (bottom of **⚙ Settings**) and whether you use Docker or Home Assistant.

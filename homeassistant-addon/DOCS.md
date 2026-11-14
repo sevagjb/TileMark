@@ -188,7 +188,7 @@ Leave the port empty if you only use the sidebar; TileMark can then only be reac
 ## Moving from Docker
 
 1. In your Docker TileMark, each person downloads a backup: **⚙ Settings → Backup and restore → Download backup**.
-2. In the app, each person opens TileMark from the sidebar once (this creates their account) and restores their file in the same section.
+2. In Home Assistant, each person opens TileMark from the sidebar once (this creates their account) and restores their file in the same section.
 
 If you keep both running, see *Two TileMarks showing as one device* under **Sensors**.
 

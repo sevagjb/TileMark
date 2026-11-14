@@ -26,7 +26,7 @@ For each person, the list shows how many links they have and offers:
 | **Turn off 2FA** | For someone who lost their phone (only shown when they use it). |
 | **Remove** | Deletes the account with **all its links, groups and pictures**. Can't be undone. |
 
-In the [Home Assistant add-on](home-assistant-add-on.md), accounts are made automatically for every Home Assistant user who opens TileMark.
+In the [Home Assistant app](home-assistant-add-on.md), accounts are made automatically for every Home Assistant user who opens TileMark.
 
 ## Your account
 

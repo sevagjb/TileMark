@@ -47,7 +47,7 @@ The keyboard shortcuts are listed here too: `/` search, `n` add a link, `Esc` cl
 | **Current password** | Needed to save any change. |
 | **Save account** | Saves the changes above. |
 
-In the [Home Assistant add-on](home-assistant-add-on.md) you are signed in through Home Assistant; set a password here only if you also want to use TileMark's own address.
+In the [Home Assistant app](home-assistant-add-on.md) you are signed in through Home Assistant; set a password here only if you also want to use TileMark's own address.
 
 ## Two-factor sign-in
 
@@ -129,7 +129,7 @@ More in [Accounts and security](accounts-and-security.md#adding-people-admin).
 | Option | Default | What it does |
 | --- | --- | --- |
 | **Check everyone's links automatically once a week** | On | The weekly [link check](broken-links.md) for all accounts. |
-| **Keep a daily backup of the whole installation** | On (off in the add-on) | Daily copies of everything in `data/backups`, the last 7 kept. The status line shows the last one. See [Backups](backups.md#daily-backups-of-the-whole-installation). |
+| **Keep a daily backup of the whole installation** | On (off in Home Assistant) | Daily copies of everything in `data/backups`, the last 7 kept. The status line shows the last one. See [Backups](backups.md#daily-backups-of-the-whole-installation). |
 | **Fetch titles and pictures for local network addresses** | Off | Lets TileMark visit addresses inside your network (`192.168.x.x`, `nas.local` …). Turn it on only if you trust everyone with an account. See [Local addresses](accounts-and-security.md#local-addresses). |
 
 ## Restore the whole installation
@@ -152,9 +152,9 @@ More in [Backups](backups.md#encrypting-the-daily-backups-admin).
 
 | Option | What it does |
 | --- | --- |
-| **Send to Home Assistant over MQTT** | Shows TileMark in Home Assistant as a device with sensors. On by default in the add-on. |
+| **Send to Home Assistant over MQTT** | Shows TileMark in Home Assistant as a device with sensors. On by default in Home Assistant. |
 | **Device name in Home Assistant** | The device's name. Empty uses the default. |
-| **Broker, Port, Username, Password** | Your MQTT broker. In the add-on, leave the broker empty to use Home Assistant's own. |
+| **Broker, Port, Username, Password** | Your MQTT broker. In Home Assistant, leave the broker empty to use Home Assistant's own. |
 | **Encrypted connection (TLS)** | For brokers that use TLS. |
 | **Discovery prefix** | Leave at `homeassistant` unless you changed it in Home Assistant. |
 | **Save and connect** | Saves and connects. The status line shows the result. |

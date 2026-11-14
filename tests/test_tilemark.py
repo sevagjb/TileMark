@@ -1508,3 +1508,18 @@ def test_version_comes_with_the_page_data(fresh):
     assert c.get("/api/state").get_json()["version"] == fresh.APP_VERSION
     page = c.get("/").get_data(as_text=True)
     assert 'id="brandVer"' in page and 'id="helpBtn"' in page
+
+
+# ------------------------------------------------------------------- 2.4.3
+def test_phone_top_bar_has_a_search_toggle_and_one_import_export_menu(fresh):
+    """On phones the top bar is two rows: icon buttons beside the name, search behind a
+    magnifier, and Import and Export together in one menu that names both."""
+    c = setup_admin(fresh)
+    page = c.get("/").get_data(as_text=True)
+    assert 'id="searchBtn"' in page and "showSearch" in page
+    menu = page[page.index('id="ioMenu"'):]
+    menu = menu[:menu.index("</span>")]
+    assert 'data-go="importBtn">Import<' in menu and 'data-go="exportBtn">Export<' in menu
+    assert 'id="importBtn">Import<' in page and 'id="exportBtn">Export<' in page  # computers keep both words
+    i18n = open(os.path.join(os.path.dirname(fresh.__file__), "pages", "i18n.js"), encoding="utf-8").read()
+    assert '"Import and export":' in i18n

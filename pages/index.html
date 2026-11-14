@@ -40,6 +40,13 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
 .add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
 .search { flex: 3 1 240px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
 .search:focus { border-color: var(--accent); }
+#searchBtn, .iowrap { display: none; }
+.iowrap { position: relative; }
+.iomenu { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 8; min-width: 150px; padding: 5px; background: var(--panel);
+          border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.iomenu[hidden] { display: none; }
+.iomenu button { border: 0; background: none; color: inherit; text-align: start; padding: 10px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+.iomenu button:hover, .iomenu button:focus-visible { background: color-mix(in srgb, var(--accent) 14%, transparent); outline: none; }
 .btn { color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 13px; cursor: pointer; white-space: nowrap; }
 .btn:hover { border-color: var(--muted); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
@@ -125,7 +132,21 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .list .title { -webkit-line-clamp: 1; }
 .list .actions { top: 50%; inset-inline-end: 10px; transform: translateY(-50%); }
 .desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* phones: two rows instead of three. Row 1 is the name and four small icon buttons (search,
+   import/export as one menu, guide, settings), row 2 the add field. Search opens as its own row
+   from the magnifier and closes again when it is empty. */
 @media (max-width: 760px) {
+  header { padding: 10px 12px 8px; }
+  .bar { gap: 6px; row-gap: 8px; }
+  .brand { margin-inline-end: auto; }
+  .bar > .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 9px; }
+  #importBtn, #exportBtn { display: none; }
+  #searchBtn, .iowrap { display: inline-flex; }
+  .bar.searching #searchBtn { border-color: var(--accent); color: var(--accent); }
+  .add { order: 10; flex: 1 1 100%; max-width: none; }
+  .search { order: 11; flex: 1 1 100%; display: none; }
+  .bar.searching .search { display: block; }
+  .tools { flex-wrap: wrap; row-gap: 8px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .side { position: static; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 6px; }
   .side hr { display: none; }
@@ -138,6 +159,10 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
   .list .body { padding-inline-end: 12px; padding-bottom: 46px; }
   .list .actions { top: auto; bottom: 8px; inset-inline-end: 8px; transform: none; }
   .actions button { width: 34px; height: 34px; }
+}
+@media (max-width: 380px) {  /* narrow phones: slightly smaller buttons so row 1 still fits */
+  .bar { column-gap: 4px; }
+  .bar > .btn { min-width: 36px; height: 36px; padding: 0 6px; }
 }
 .lay-sections .layout { grid-template-columns: minmax(0, 1fr); }
 .lay-sections .side, .lay-sections #ptitle, .lay-sections #openAll, .lay-sections #sortSel { display: none; }
@@ -197,7 +222,7 @@ dialog label { display: block; font-size: 13px; color: var(--muted); margin: 12p
 dialog input[type=text], dialog input[type=password], dialog input[type=url], dialog input[type=number], dialog select, dialog textarea {
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; outline: none; }
 .pw { position: relative; display: block; }
-#helpBtn { font-weight: 700; min-width: 40px; }
+#helpBtn { min-width: 40px; display: inline-flex; align-items: center; justify-content: center; color: #e0a31b; }
 dialog input.bad { border-color: var(--danger) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
 .hint.err { color: var(--danger); margin-top: 6px; }
 .pw input { padding-inline-end: 42px !important; }
@@ -246,9 +271,12 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
       <button type="submit">Add</button>
     </form>
     <input class="search" id="search" type="search" dir="auto" placeholder="Search" aria-label="Search links">
+    <button class="btn" id="searchBtn" title="Search" aria-label="Search" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></button>
     <button class="btn" id="importBtn">Import</button>
     <button class="btn" id="exportBtn">Export</button>
-    <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help">?</button>
+    <span class="iowrap"><button class="btn" id="ioBtn" title="Import and export" aria-label="Import and export" aria-haspopup="menu" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20V5"/><path d="M4 9l4-4 4 4"/><path d="M16 4v15"/><path d="M12 15l4 4 4-4"/></svg></button>
+      <span class="iomenu" id="ioMenu" role="menu" hidden><button type="button" role="menuitem" data-go="importBtn">Import</button><button type="button" role="menuitem" data-go="exportBtn">Export</button></span></span>
+    <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg></button>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </header>
@@ -855,6 +883,19 @@ $("addForm").onsubmit = async e => {
   catch (err) { toast(err.message); }
 };
 $("search").oninput = e => { q = e.target.value; render(); };
+// phones: the magnifier opens the search row; it closes again when left empty
+function showSearch(on) {
+  document.querySelector(".bar").classList.toggle("searching", on); $("searchBtn").setAttribute("aria-expanded", String(on));
+  if (on) $("search").focus(); else if ($("search").value) { $("search").value = ""; q = ""; render(); }
+}
+// phones: Import and Export share one button that opens a two-line menu
+function showIo(on) { $("ioMenu").hidden = !on; $("ioBtn").setAttribute("aria-expanded", String(on)); }
+$("ioBtn").onclick = e => { e.stopPropagation(); showIo($("ioMenu").hidden); };
+for (const b of $("ioMenu").querySelectorAll("button")) b.onclick = () => { showIo(false); $(b.dataset.go).click(); };
+document.addEventListener("click", e => { if (!$("ioMenu").hidden && !e.target.closest(".iowrap")) showIo(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("ioMenu").hidden) { showIo(false); $("ioBtn").focus(); } });
+$("searchBtn").onclick = () => showSearch(!document.querySelector(".bar").classList.contains("searching"));
+$("search").addEventListener("blur", () => { if (!$("search").value) setTimeout(() => { if (document.activeElement !== $("searchBtn")) showSearch(false); }, 150); });
 $("addGroup").addEventListener("change", e => { if (!group(+filter)) addGroupPicked = e.target.value; });
 $("openAll").onclick = () => openMany(visible());
 

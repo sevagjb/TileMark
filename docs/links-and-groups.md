@@ -14,7 +14,7 @@ Everything you do day to day happens on one page. This guide walks through it fr
 | **Search** | Finds links by title, address, description, note or group name, across all your groups. |
 | **Import** | Brings in browser bookmarks, a list of links or a TileMark file. See [Import and export](import-export.md). |
 | **Export** | Downloads your links as a TileMark file or a bookmarks file. |
-| **?** | Opens this guide on the website. |
+| **Light bulb** | Opens this guide on the website. |
 | **⚙** | Opens [Settings](settings.md). |
 
 ## Saving a link
@@ -128,6 +128,8 @@ Choose in **⚙ Settings → Layout**. The choice is saved with your account, so
 ## Search
 
 Type in **Search** to find links by title, address, description, note or group name. Results come from all your groups; clear the field (or press **Esc**) to go back.
+
+On a phone, tap the magnifier next to the name to open the search field. It closes again when you leave it empty.
 
 ## Keyboard shortcuts
 

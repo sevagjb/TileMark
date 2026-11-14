@@ -73,7 +73,8 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           grep -q "^## ${version}\b" CHANGELOG.md || { echo "CHANGELOG.md has no '## ${version}' section"; exit 1; }
           sed -i -E "s/^version: .*/version: \"${version}\"/" homeassistant-addon/config.yaml
-          sed -i -E "s/^## ${version} \(unreleased\)/## ${version}/" CHANGELOG.md
+          # this version and any earlier one still marked unreleased (a version that was skipped)
+          awk -v v="## ${version} (unreleased)" 'found==0 && $0==v {found=1} found==1 && /^## / {sub(/ \(unreleased\)$/, "")} {print}' CHANGELOG.md > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
           cp CHANGELOG.md homeassistant-addon/CHANGELOG.md
           if git diff --quiet; then echo "Add-on already at ${version}"; exit 0; fi
           git config user.name "github-actions[bot]"

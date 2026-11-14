@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.1 (unreleased)
+## 2.4.1
 
 ### Fixed
 - **YouTube links blocked in the Home Assistant sidebar.** A left click showed "www.youtube.com is blocked" (ERR_BLOCKED_BY_RESPONSE), while right-click → Open in new tab worked. Home Assistant shows add-ons in a sandboxed frame, a tab opened from it inherits the sandbox, and sites that send a Cross-Origin-Opener-Policy (YouTube, X …) refuse to load in a sandboxed tab. Tabs are now opened from Home Assistant's own page, which isn't sandboxed. On TileMark's own address nothing changes.
@@ -8,7 +8,7 @@
 - **Passwords are hidden while you type them.** The questions for a password (setting up encrypted backups, turning encryption on or off, a new recovery key, restoring an encrypted backup, two-factor sign-in, a new password for someone in People) used the browser's own box, which shows what is typed. They now use TileMark's own window, hidden by default. Every password field has a button to show what you typed.
 - **Restoring a protected backup with no password** looked like nothing happened. The message was there, but behind the Settings window. Messages now always appear on top, and a missing password is said right away, next to the password field.
 
-## 2.4.0 (unreleased)
+## 2.4.0
 
 ### New
 - **Encrypted backups, without an extra password to remember.**

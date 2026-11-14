@@ -3,6 +3,7 @@
 ## 2.4.2 (unreleased)
 
 ### New
+- **The version** is shown under the TileMark name at the top left, in both layouts, so you don't need to open Settings to see it.
 - **?** button next to ⚙ opens the guide on the website.
 - **Sign out** is at the bottom of Settings, always visible, next to **Done** (not shown in the Home Assistant sidebar, where Home Assistant's own sign-in applies).
 

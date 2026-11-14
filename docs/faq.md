@@ -37,6 +37,9 @@ As long as an admin still knows their password, nothing is lost: make a new one 
 **I lost the phone with my authenticator app.**
 Sign in with one of your recovery codes, or ask an admin to use **People → Turn off 2FA**.
 
+**Which version am I running?**
+It is shown under the TileMark name at the top left, and at the bottom of Settings.
+
 **How do I update?**
 Dockge: **Update**. Docker: `docker compose pull && docker compose up -d`. Home Assistant: the add-on's update button. Your data is kept. See [Updating](getting-started.md#updating).
 

@@ -1499,3 +1499,12 @@ def test_addon_account_without_password_gets_plain_backup_only_when_asked(tmp_pa
     r = c.post("/api/backup", json={}, headers=h)
     assert r.status_code == 428 and r.get_json()["need_password"] is False
     assert c.post("/api/backup", json={"plain": True}, headers=h).get_data().startswith(b"PK")
+
+
+# ------------------------------------------------------------------- 2.4.2
+def test_version_comes_with_the_page_data(fresh):
+    """The main page shows the version under the name, from /api/state (no Settings needed)."""
+    c = setup_admin(fresh)
+    assert c.get("/api/state").get_json()["version"] == fresh.APP_VERSION
+    page = c.get("/").get_data(as_text=True)
+    assert 'id="brandVer"' in page and 'id="helpBtn"' in page

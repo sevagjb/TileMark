@@ -8,6 +8,7 @@ Everything you do day to day happens on one page. This guide walks through it fr
 
 | Part | What it does |
 | --- | --- |
+| **TileMark** (top left) | The version you are running is shown under the name. |
 | **Paste a link and press Enter** | Saves a link. The list next to it chooses the group it goes to. |
 | **Add** | Same as pressing Enter. |
 | **Search** | Finds links by title, address, description, note or group name, across all your groups. |

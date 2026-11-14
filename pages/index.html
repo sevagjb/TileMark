@@ -29,6 +29,9 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
          backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 20px 10px; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; max-width: 1500px; margin: 0 auto; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; margin-inline-end: 6px; }
+.brand .bname { display: flex; flex-direction: column; line-height: 1.05; }
+.brand .ver { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.brand .ver:empty { display: none; }
 .add { flex: 2 1 280px; max-width: 520px; display: flex; background: var(--panel); border: 1px solid var(--line);
        border-radius: 10px; overflow: hidden; }
 .add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -236,7 +239,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg>TileMark</div>
+    <div class="brand"><svg viewBox="0 0 120 120" width="26" height="26" aria-hidden="true"><rect width="120" height="120" rx="28" fill="#2f6fe4"/><rect x="22" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="22" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="22" y="63" width="35" height="35" rx="9" fill="#fff" opacity=".55"/><rect x="63" y="63" width="35" height="35" rx="9" fill="#fff"/><path d="M77 57h14v26l-7-6-7 6z" fill="#f5b83d"/></svg><span class="bname"><span>TileMark</span><span class="ver" id="brandVer"></span></span></div>
     <form class="add" id="addForm">
       <input id="addUrl" type="text" dir="auto" placeholder="Paste a link and press Enter" autocomplete="off" aria-label="Link to add">
       <select id="addGroup" aria-label="Group"></select>
@@ -558,6 +561,10 @@ function takePrefs(p) {
 async function load() {
   lastLoad = Date.now();
   try { S = await api("GET", "api/state"); } catch (e) { toast(e.message); return; }
+  if (S.version) {  // the version under the name (and on hover), so nobody has to open Settings for it
+    $("brandVer").textContent = /^\d/.test(S.version) ? "v" + S.version : S.version;
+    document.querySelector(".brand").title = "TileMark " + S.version;
+  }
   if (!prefsLoaded) takePrefs(S.prefs);
   dupok = (S.prefs && S.prefs.dupok) || [];
   if (filter === "none" ? !S.links.some(l => l.group_id === null) : !(filter in SPECIAL) && !group(+filter))

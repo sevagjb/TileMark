@@ -16,6 +16,7 @@ What is planned next, and what each release brought. Changes per version in deta
 - Keep a readable copy of the page (12), so the text survives if the site goes away.
 - Screenshot thumbnails for sites without a preview image (needs a headless browser; would make the image much larger).
 - Desktop installer without Docker; Android app.
+- Sync between two installations (for example the add-on and a Docker one), one-way mirror first. For now: use one installation from everywhere (the add-on's own port), or move links with Backup or Export and Import.
 
 ## Done
 

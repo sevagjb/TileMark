@@ -145,9 +145,11 @@ If Home Assistant has an MQTT broker (for example the **Mosquitto broker** app w
 | **Links** | The number of links, all accounts together. |
 | **Broken links** | How many links the last check couldn't reach. |
 | **Last link check** | When the weekly check last ran. |
+| **Last backup** | When the newest daily backup of the whole installation was made. Empty while daily backups are off. |
+| **Backup encryption** | On when the daily backups are encrypted, off when they are not. |
 | **Link check** (event) | Fires when the weekly check finishes, with `checked`, `broken` and `new_broken`. |
 
-Only **numbers** are sent; nobody's links or addresses leave TileMark. The device page also has a **Visit** link that opens TileMark in the sidebar.
+Only **counts, times and on/off states** are sent; nobody's links or addresses leave TileMark. The device page also has a **Visit** link that opens TileMark in the sidebar.
 
 ![Home Assistant sensors in Settings](https://raw.githubusercontent.com/sevagjb/tilemark/v2.3.3/docs/images/settings-mqtt.webp)
 

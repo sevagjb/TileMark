@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.5
+
+### New
+- **Two more entities in Home Assistant** (over MQTT), next to the link sensors:
+  - **Last backup**: when the newest daily backup of the whole installation was made. It is empty while there is none, for example in the Home Assistant app, where daily backups are off unless you turn them on.
+  - **Backup encryption**: on or off, following **⚙ Settings → Restore the whole installation**.
+- They appear by themselves after the update; nothing needs to be set up again.
+
 ## 2.4.4
 
 ### Changed

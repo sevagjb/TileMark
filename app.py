@@ -1005,6 +1005,13 @@ class MqttBridge:
             f"{prefix}/sensor/{node}/last_check/config": {**common, "name": "Last link check", "unique_id": f"tilemark_{node}_last_check",
                 "state_topic": state, "value_template": "{{ value_json.last_check }}", "device_class": "timestamp",
                 "icon": "mdi:calendar-check"},
+            f"{prefix}/sensor/{node}/last_backup/config": {**common, "name": "Last backup", "unique_id": f"tilemark_{node}_last_backup",
+                "state_topic": state, "value_template": "{{ value_json.last_backup }}", "device_class": "timestamp",
+                "icon": "mdi:backup-restore"},
+            f"{prefix}/binary_sensor/{node}/backup_encryption/config": {**common, "name": "Backup encryption",
+                "unique_id": f"tilemark_{node}_backup_encryption", "state_topic": state,
+                "value_template": "{{ value_json.backup_encryption }}", "payload_on": "ON", "payload_off": "OFF",
+                "icon": "mdi:shield-lock"},
             f"{prefix}/event/{node}/link_check/config": {**common, "name": "Link check", "unique_id": f"tilemark_{node}_link_check",
                 "state_topic": f"{base}/event", "event_types": ["finished"], "icon": "mdi:link-variant"},
         }
@@ -1013,8 +1020,11 @@ class MqttBridge:
         with db() as c:
             links, broken = c.execute("SELECT COUNT(*), COALESCE(SUM(broken), 0) FROM links").fetchone()
         last = int(get_setting("linkcheck_last", "0"))
-        return {"links": links, "broken": broken,
-                "last_check": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(last)) if last else None}
+        iso = lambda ts: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)) if ts else None
+        # the newest daily backup of the whole installation (not the safety copies made before a restore)
+        backup = max((b["made_at"] for b in all_backups() if b["kind"] == "daily"), default=0)
+        return {"links": links, "broken": broken, "last_check": iso(last), "last_backup": iso(backup),
+                "backup_encryption": "ON" if backup_encryption_on() else "OFF"}
 
     # -- connection
     def start(self):
@@ -2774,6 +2784,10 @@ def daily_backup():
         except OSError:
             pass
     set_setting("backup_last", str(int(time.time())))
+    try:
+        mqtt.publish_state()  # Home Assistant's "Last backup" follows right away
+    except Exception:
+        app.logger.exception("MQTT")
     return final
 
 

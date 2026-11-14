@@ -1543,3 +1543,44 @@ def test_phone_top_bar_has_a_search_toggle_and_one_import_export_menu(fresh):
     assert 'id="importBtn">Import<' in page and 'id="exportBtn">Export<' in page  # computers keep both words
     i18n = open(os.path.join(os.path.dirname(fresh.__file__), "pages", "i18n.js"), encoding="utf-8").read()
     assert '"Import and export":' in i18n
+
+
+# ------------------------------------------------------------------- 2.4.5
+def test_mqtt_backup_entities(fresh, broker):
+    """Home Assistant also gets "Last backup" (a time) and "Backup encryption" (on/off)."""
+    import time
+    c = setup_admin(fresh)
+    listener, got = _listen(broker)
+    assert c.post("/api/mqtt", json={"enabled": True, "host": "127.0.0.1", "port": broker, "prefix": "homeassistant"}).status_code == 200
+    bridge = fresh.mqtt
+    bridge.cfg = None
+    cfg = bridge.config()
+    bridge.cfg = cfg
+    bridge._connect(cfg)
+    node = bridge.node()
+    state = lambda: json.loads(got[f"tilemark/{node}/state"])
+    assert _wait(lambda: f"tilemark/{node}/state" in got), got.keys()
+    last = json.loads(got[f"homeassistant/sensor/{node}/last_backup/config"])
+    assert last["unique_id"] == f"tilemark_{node}_last_backup" and last["device_class"] == "timestamp"
+    enc = json.loads(got[f"homeassistant/binary_sensor/{node}/backup_encryption/config"])
+    assert enc["unique_id"] == f"tilemark_{node}_backup_encryption" and (enc["payload_on"], enc["payload_off"]) == ("ON", "OFF")
+    # no backup yet, encryption off
+    assert state()["last_backup"] is None and state()["backup_encryption"] == "OFF"
+    # a daily backup is announced right away, as a time Home Assistant understands
+    assert c.post("/api/backups").status_code == 200
+    assert _wait(lambda: state()["last_backup"] is not None)
+    stamp = state()["last_backup"]
+    assert len(stamp) == 20 and stamp.endswith("Z") and stamp[:4] == time.strftime("%Y", time.gmtime())
+    # a safety copy made before a restore is not "the last backup"
+    newest = max(b["made_at"] for b in fresh.all_backups() if b["kind"] == "daily")
+    assert stamp == time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(newest))
+    # turning encryption on shows up with the next state
+    assert c.post("/api/backups/encryption", json={"action": "on", "password": "adminpass1", "confirm": True}).status_code in (200, 201)
+    bridge.publish_state()
+    assert _wait(lambda: state()["backup_encryption"] == "ON")
+    # turning MQTT off takes the new entities away too
+    bridge._disconnect(remove=True)
+    assert _wait(lambda: got.get(f"homeassistant/sensor/{node}/last_backup/config") == ""
+                 and got.get(f"homeassistant/binary_sensor/{node}/backup_encryption/config") == "")
+    listener.loop_stop()
+

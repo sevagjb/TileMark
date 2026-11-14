@@ -11,9 +11,11 @@ This works with the [Home Assistant app](home-assistant-add-on.md) **and** with 
 | **Links** | Sensor | The number of links, all accounts together. |
 | **Broken links** | Sensor | How many links the last check couldn't reach. |
 | **Last link check** | Sensor (time) | When the weekly check last ran. |
+| **Last backup** | Sensor (time) | When the newest daily backup of the whole installation was made. Empty while there is none. |
+| **Backup encryption** | Binary sensor | On when the daily backups are encrypted, off when they are not. |
 | **Link check** | Event | Fires when the weekly check finishes, with `checked`, `broken` and `new_broken`. |
 
-Only **numbers** are sent. Nobody's links, titles or addresses ever leave TileMark.
+Only **counts, times and on/off states** are sent. Nobody's links, titles or addresses ever leave TileMark.
 
 The device page also shows the TileMark version, and a **Visit** link back to TileMark: the sidebar page in Home Assistant, or the address you use for Docker.
 

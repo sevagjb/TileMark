@@ -4,6 +4,7 @@
 const LANGS = { en: "English", nl: "Nederlands", ar: "العربية" };
 const COL = { nl: 0, ar: 1 };
 const D = {
+"Guide and help":["Handleiding en hulp", "الدليل والمساعدة"],
 "Show password":["Wachtwoord tonen", "إظهار كلمة المرور"],
 "Hide password":["Wachtwoord verbergen", "إخفاء كلمة المرور"],
 "OK":["OK", "موافق"],

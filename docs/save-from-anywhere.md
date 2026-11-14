@@ -8,7 +8,7 @@ You don't have to open TileMark to save a link. There are three ways to send a p
 | [Phone app](#phone) | Android, from any app's Share menu | TileMark on an HTTPS address |
 | [API key](#api-key) | Scripts, iPhone Shortcuts, automations | An API key from Settings |
 
-All three are found in **⚙ Settings → Save from anywhere**.
+All three are found in **⚙ Settings → Save from anywhere**. Links saved this way show up in an open TileMark tab as soon as you switch back to it.
 
 > **Home Assistant add-on:** these need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
 

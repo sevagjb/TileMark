@@ -32,7 +32,7 @@ In the [Home Assistant add-on](home-assistant-add-on.md), accounts are made auto
 
 **⚙ Settings → Your account** changes your **username** or **password**. Saving needs your **current password**. A new password signs you out on your other devices.
 
-**Sign out** is also here.
+**Sign out** is at the bottom of Settings, whichever card is open.
 
 "**Keep me signed in on this device for 30 days**" on the sign-in page remembers the device. Without it, you're signed out when the browser closes.
 

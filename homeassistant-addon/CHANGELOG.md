@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.4.2 (unreleased)
+
+### New
+- **?** button next to ⚙ opens the guide on the website.
+- **Sign out** is at the bottom of Settings, always visible, next to **Done** (not shown in the Home Assistant sidebar, where Home Assistant's own sign-in applies).
+
+### Changed
+- Links added elsewhere (browser button, phone, API key, another device) show up when you come back to the TileMark tab, and otherwise every 5 minutes while it is open. Before, only after a reload.
+
 ## 2.4.1
 
 ### Fixed

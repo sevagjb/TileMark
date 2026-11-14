@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.4 (unreleased)
+
+### Changed
+- **"App" instead of "add-on".** Home Assistant calls add-ons *apps* since 2026.2. TileMark's Home Assistant page, the guide, the Settings hint for the direct port (English, Nederlands, العربية) and the device model in Home Assistant now say app. Menu paths point to **Settings → Apps → App store**. Web addresses of the guide pages stay the same.
+- **Home Assistant app meets the current app standards.** The image carries the labels Home Assistant reads (type, version and architecture). The app's settings no longer use the outdated *watchdog* line: Home Assistant now restarts TileMark through the image's own health check, as before. Every change to the app is checked with the community app linter.
+- The app's Documentation tab has a **License** section (MIT).
+
 ## 2.4.3
 
 ### Changed

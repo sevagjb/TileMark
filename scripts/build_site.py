@@ -22,7 +22,7 @@ REPO = "https://github.com/sevagjb/TileMark"
 # (file in docs/, title in the menu). The order is the order of the menu.
 PAGES = [
     ("getting-started.md", "Getting started"),
-    ("home-assistant-add-on.md", "Home Assistant add-on"),
+    ("home-assistant-add-on.md", "Home Assistant app"),
     ("links-and-groups.md", "Links and groups"),
     ("import-export.md", "Import and export"),
     ("save-from-anywhere.md", "Save from anywhere"),

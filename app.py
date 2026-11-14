@@ -985,7 +985,7 @@ class MqttBridge:
     def device(self, node=None):
         node = node or self.node()
         dev = {"identifiers": [f"tilemark_{node}"], "name": self.name(), "manufacturer": "TileMark",
-               "model": "Home Assistant add-on" if HA_ADDON else "Docker", "sw_version": APP_VERSION}
+               "model": "Home Assistant app" if HA_ADDON else "Docker", "sw_version": APP_VERSION}
         if self.link():
             dev["configuration_url"] = self.link()
         return dev

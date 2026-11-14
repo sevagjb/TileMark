@@ -1,6 +1,6 @@
 # Getting started
 
-This page takes you from nothing to your first saved links in about five minutes. TileMark runs in **Docker** (any Linux server, NAS, Raspberry Pi, or a Proxmox container) or as a **Home Assistant add-on**. For the add-on, see [Home Assistant add-on](home-assistant-add-on.md) instead.
+This page takes you from nothing to your first saved links in about five minutes. TileMark runs in **Docker** (any Linux server, NAS, Raspberry Pi, or a Proxmox container) or as a **Home Assistant app**. For the app, see [Home Assistant app](home-assistant-add-on.md) instead.
 
 ## What you need
 

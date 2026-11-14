@@ -1,5 +1,5 @@
-# Home Assistant add-on for TileMark. It runs the same image as the Docker install
-# (ghcr.io/sevagjb/tilemark:<version>), so "version" must be a released TileMark version.
+# Home Assistant app (formerly "add-on") for TileMark. It runs the same image as the Docker
+# install (ghcr.io/sevagjb/tilemark:<version>), so "version" must be a released TileMark version.
 # Do not change "version" by hand: when a v* tag has been built and pushed, the release
 # workflow sets it (and copies CHANGELOG.md here), so Home Assistant never offers an
 # update whose image does not exist yet.
@@ -12,7 +12,6 @@ arch:
   - aarch64
   - amd64
 image: ghcr.io/sevagjb/tilemark
-stage: stable
 # Open from the sidebar; Home Assistant signs people in. Every HA user gets their
 # own TileMark account, so the panel is not limited to admins.
 ingress: true
@@ -32,8 +31,7 @@ services:
   - mqtt:want
 environment:
   TILEMARK_HA_ADDON: "1"
-# Home Assistant restarts TileMark when this stops answering (checked on the add-on's own
-# address, so it works whether or not the direct port is turned on).
-watchdog: http://[HOST]:[PORT:8080]/healthz
+# No "watchdog" line: the image has a Docker HEALTHCHECK on /healthz, and Home Assistant
+# restarts the app when that check reports it unhealthy (when Watchdog is on, on the Info tab).
 # Stopped for a moment while Home Assistant makes a backup, so the database copy is consistent.
 backup: cold

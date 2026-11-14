@@ -26,7 +26,7 @@ Under **More options** you can choose differently:
 | **A different password instead** | To give the file to someone, or to keep a password that has nothing to do with your login. A forgotten backup password can't be recovered. |
 | **No encryption** | A plain `.zip` file that anyone can open. Only if you really need that. |
 
-In the [Home Assistant add-on](home-assistant-add-on.md), accounts made by Home Assistant have no TileMark password until you set one in **Your account**. Until then, use **A different password** to encrypt your backup.
+In the [Home Assistant app](home-assistant-add-on.md), accounts made by Home Assistant have no TileMark password until you set one in **Your account**. Until then, use **A different password** to encrypt your backup.
 
 A backup holds your links, groups, colours, order, notes, favourites and pictures. Accounts, passwords and API keys are never part of it.
 
@@ -46,7 +46,7 @@ You can restore into another TileMark or another account, as long as you know th
 
 Every day TileMark copies the whole installation (every account with its links and settings, and the pictures people uploaded themselves) into `data/backups/`. The **last 7** are kept. Fetched pictures are left out to keep the files small; they come back by themselves.
 
-The admin can switch this off in **⚙ Settings → Installation → Keep a daily backup of the whole installation**. In the Home Assistant add-on it is off by default, because Home Assistant's own backups already include TileMark.
+The admin can switch this off in **⚙ Settings → Installation → Keep a daily backup of the whole installation**. In the Home Assistant app it is off by default, because Home Assistant's own backups already include TileMark.
 
 > **Copy them elsewhere.** A backup on the same disk doesn't survive a broken disk. Copy the `data/backups` folder to a NAS, another computer or cloud storage now and then, or let your server's backup tool include it. With encryption on, those copies are safe to store anywhere.
 

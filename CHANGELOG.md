@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.2 (unreleased)
+## 2.4.2
 
 ### New
 - **The version** is shown under the TileMark name at the top left, in both layouts, so you don't need to open Settings to see it.

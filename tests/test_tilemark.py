@@ -871,15 +871,18 @@ def test_totp_login_flow(fresh):
     # the code used to turn it on cannot be used again (same time step)
     with fresh.db() as con:
         last = con.execute("SELECT totp_last FROM users").fetchone()[0]
-    assert fresh.totp_check(secret, _totp_now(fresh, secret), last) is None
+    # (the code of that exact step, and checked at that moment: a 30-second boundary passing
+    # during the test must not turn it into a newer, valid code)
+    assert fresh.totp_check(secret, fresh._hotp(secret, last), last, now=last * 30) is None
     with fresh.db() as con:  # pretend that was a while ago, then sign in with a fresh code
         con.execute("UPDATE users SET totp_last = totp_last - 5")
-    assert c.post("/api/login/totp", json={"code": _totp_now(fresh, secret)}).status_code == 200
+    code = _totp_now(fresh, secret)
+    assert c.post("/api/login/totp", json={"code": code}).status_code == 200
     assert c.get("/api/state").status_code == 200
     # replay: the same code on another device is refused
     d = fresh.app.test_client()
     d.post("/api/login", json={"username": "admin", "password": "adminpass1"})
-    assert d.post("/api/login/totp", json={"code": _totp_now(fresh, secret)}).status_code == 401
+    assert d.post("/api/login/totp", json={"code": code}).status_code == 401
     # a recovery code works once
     assert d.post("/api/login/totp", json={"code": recovery[0].lower()}).status_code == 200
     e = fresh.app.test_client()

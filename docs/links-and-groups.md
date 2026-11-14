@@ -129,6 +129,8 @@ Choose in **⚙ Settings → Layout**. The choice is saved with your account, so
 
 Type in **Search** to find links by title, address, description, note or group name. Results come from all your groups; clear the field (or press **Esc**) to go back.
 
+On a phone, tap the magnifier next to the name to open the search field. It closes again when you leave it empty.
+
 ## Keyboard shortcuts
 
 | Key | What it does |

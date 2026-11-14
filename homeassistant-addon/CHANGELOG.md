@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.3
+
+### Changed
+- **The top bar on phones takes two rows, not three.** Import, Export, the guide and Settings are small icon buttons beside the name, and the add field has the row below. Search opens from the magnifier and closes again when it is empty. On a computer nothing changes: the buttons keep their names and search is always there.
+- **The row under a group's name on phones** (sorting, refresh, Open all in tabs, Select) wraps to a second line when it doesn't fit; before, the last buttons ran off the screen.
+
 ## 2.4.2
 
 ### New

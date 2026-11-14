@@ -40,6 +40,8 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
 .add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
 .search { flex: 3 1 240px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
 .search:focus { border-color: var(--accent); }
+.bar .ico { display: none; }
+#searchBtn { display: none; }
 .btn { color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 13px; cursor: pointer; white-space: nowrap; }
 .btn:hover { border-color: var(--muted); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
@@ -125,7 +127,20 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .list .title { -webkit-line-clamp: 1; }
 .list .actions { top: 50%; inset-inline-end: 10px; transform: translateY(-50%); }
 .desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* phones: two rows instead of three. Row 1 is the name and five small icon buttons, row 2 the
+   add field. Search opens as its own row from the magnifier and closes again when it is empty. */
 @media (max-width: 760px) {
+  header { padding: 10px 12px 8px; }
+  .bar { gap: 6px; row-gap: 8px; }
+  .brand { margin-inline-end: auto; }
+  .bar > .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 9px; }
+  .bar .ico { display: block; } .bar .lbl { display: none; }
+  #searchBtn { display: inline-flex; }
+  .bar.searching #searchBtn { border-color: var(--accent); color: var(--accent); }
+  .add { order: 10; flex: 1 1 100%; max-width: none; }
+  .search { order: 11; flex: 1 1 100%; display: none; }
+  .bar.searching .search { display: block; }
+  .tools { flex-wrap: wrap; row-gap: 8px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .side { position: static; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 6px; }
   .side hr { display: none; }
@@ -138,6 +153,10 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
   .list .body { padding-inline-end: 12px; padding-bottom: 46px; }
   .list .actions { top: auto; bottom: 8px; inset-inline-end: 8px; transform: none; }
   .actions button { width: 34px; height: 34px; }
+}
+@media (max-width: 380px) {  /* narrow phones: slightly smaller buttons so row 1 still fits */
+  .bar { column-gap: 4px; }
+  .bar > .btn { min-width: 36px; height: 36px; padding: 0 6px; }
 }
 .lay-sections .layout { grid-template-columns: minmax(0, 1fr); }
 .lay-sections .side, .lay-sections #ptitle, .lay-sections #openAll, .lay-sections #sortSel { display: none; }
@@ -246,8 +265,9 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
       <button type="submit">Add</button>
     </form>
     <input class="search" id="search" type="search" dir="auto" placeholder="Search" aria-label="Search links">
-    <button class="btn" id="importBtn">Import</button>
-    <button class="btn" id="exportBtn">Export</button>
+    <button class="btn" id="searchBtn" title="Search" aria-label="Search" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></button>
+    <button class="btn" id="importBtn" title="Import" aria-label="Import"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg><span class="lbl">Import</span></button>
+    <button class="btn" id="exportBtn" title="Export" aria-label="Export"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 20h16"/></svg><span class="lbl">Export</span></button>
     <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help">?</button>
     <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
   </div>
@@ -855,6 +875,13 @@ $("addForm").onsubmit = async e => {
   catch (err) { toast(err.message); }
 };
 $("search").oninput = e => { q = e.target.value; render(); };
+// phones: the magnifier opens the search row; it closes again when left empty
+function showSearch(on) {
+  document.querySelector(".bar").classList.toggle("searching", on); $("searchBtn").setAttribute("aria-expanded", String(on));
+  if (on) $("search").focus(); else if ($("search").value) { $("search").value = ""; q = ""; render(); }
+}
+$("searchBtn").onclick = () => showSearch(!document.querySelector(".bar").classList.contains("searching"));
+$("search").addEventListener("blur", () => { if (!$("search").value) setTimeout(() => { if (document.activeElement !== $("searchBtn")) showSearch(false); }, 150); });
 $("addGroup").addEventListener("change", e => { if (!group(+filter)) addGroupPicked = e.target.value; });
 $("openAll").onclick = () => openMany(visible());
 

@@ -1,4 +1,4 @@
-# TileMark add-on
+# TileMark
 
 Your web links as picture tiles, in the Home Assistant sidebar. Coloured groups, favourites, notes, duplicate detection, a weekly broken-link check, and sensors for your dashboards. Every Home Assistant user gets their own private TileMark; no separate login.
 

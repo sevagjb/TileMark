@@ -633,12 +633,32 @@ def test_addon_watchdog_and_changelog():
     import re as _re
     import yaml
     cfg = yaml.safe_load(open(os.path.join(ROOT, "homeassistant-addon", "config.yaml")))
-    # the Supervisor's own pattern for a valid watchdog address
-    assert _re.match(r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:(\[PORT:\d+\]|\d+).*$", cfg["watchdog"])
-    assert cfg["watchdog"].endswith("/healthz")
+    # The Supervisor's watchdog uses the image's Docker HEALTHCHECK; Frenck's app linter
+    # rejects the old "watchdog" key and keys that only repeat a default.
+    assert "watchdog" not in cfg and "stage" not in cfg
+    dockerfile = open(os.path.join(ROOT, "Dockerfile")).read()
+    assert _re.search(r"^HEALTHCHECK .*\n.*/healthz", dockerfile, _re.M)
     root = open(os.path.join(ROOT, "CHANGELOG.md")).read()
     assert open(os.path.join(ROOT, "homeassistant-addon", "CHANGELOG.md")).read() == root, \
         "copy CHANGELOG.md to homeassistant-addon/CHANGELOG.md"
+
+
+def test_image_has_home_assistant_labels():
+    """The Supervisor reads io.hass.type, io.hass.version and io.hass.arch from the image.
+    The image is built with docker/build-push-action, not Home Assistant's builder, so the
+    Dockerfile has to set them, with one io.hass.arch per platform in config.yaml."""
+    import re as _re
+    import yaml
+    d = open(os.path.join(ROOT, "Dockerfile")).read()
+    assert 'io.hass.type="app"' in d and 'io.hass.version="${VERSION}"' in d
+    arch = {"amd64": "amd64", "arm64": "aarch64"}  # Docker platform -> Home Assistant name
+    for docker_arch, ha_arch in arch.items():
+        assert _re.search(rf"AS base-{docker_arch}\nLABEL io\.hass\.arch=\"{ha_arch}\"", d), docker_arch
+    assert "FROM base-${TARGETARCH}" in d
+    cfg = yaml.safe_load(open(os.path.join(ROOT, "homeassistant-addon", "config.yaml")))
+    assert set(cfg["arch"]) == set(arch.values())
+    wf = open(os.path.join(ROOT, ".github", "workflows", "docker.yml")).read()
+    assert "platforms: linux/amd64,linux/arm64" in wf
 
 
 # ------------------------------------------------------------------- 2.0.0

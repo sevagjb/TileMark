@@ -17,7 +17,7 @@ The full guide, with every option explained, is on the website: <https://sevagjb
 3. Paste a web address into the field at the top and press **Enter**. The card appears at once and fills in with a title and picture a moment later.
 4. Have bookmarks in your browser already? Use **Import** to bring them all in at once (see **Importing bookmarks** below).
 
-The add-on has **no options** on the Configuration tab. Everything is set inside TileMark, under **⚙ Settings** (top right).
+The app has **no options** on the Configuration tab. Everything is set inside TileMark, under **⚙ Settings** (top right).
 
 ## Accounts
 
@@ -131,14 +131,14 @@ The version you are running is shown at the bottom of Settings.
 
 ## Backups
 
-Everything TileMark stores is in the add-on's data folder, so **Home Assistant backups include TileMark**. The add-on pauses for a moment while Home Assistant makes a backup, so the copy is always consistent.
+Everything TileMark stores is in the app's data folder, so **Home Assistant backups include TileMark**. The app pauses for a moment while Home Assistant makes a backup, so the copy is always consistent.
 
-- TileMark's own **daily backup** is **off** in the add-on, because Home Assistant already covers it (and Home Assistant can encrypt its own backups). An admin can switch it on in **⚙ Settings → Installation** to have both, and encrypt it under **Restore the whole installation**.
+- TileMark's own **daily backup** is **off** in the app, because Home Assistant already covers it (and Home Assistant can encrypt its own backups). An admin can switch it on in **⚙ Settings → Installation** to have both, and encrypt it under **Restore the whole installation**.
 - Each person can always **download a backup of their own links** in **⚙ Settings → Backup and restore**. It is encrypted with their TileMark password; accounts made by Home Assistant have none until one is set in **Your account**, so until then use **More options → A different password** (it can't be recovered if forgotten).
 
 ## Sensors and notifications
 
-If Home Assistant has an MQTT broker (for example the **Mosquitto broker** add-on with the **MQTT** integration), TileMark shows up by itself as a device called **TileMark (Home Assistant)**. No setup is needed: the add-on uses Home Assistant's own broker.
+If Home Assistant has an MQTT broker (for example the **Mosquitto broker** app with the **MQTT** integration), TileMark shows up by itself as a device called **TileMark (Home Assistant)**. No setup is needed: the app uses Home Assistant's own broker.
 
 | Entity | Shows |
 | --- | --- |
@@ -178,7 +178,7 @@ actions:
 
 Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button** (save the page you are on with one click), the **phone app** (install TileMark and share links to it from other apps) and the **API key** (for scripts and iPhone Shortcuts). To use them:
 
-1. On this add-on's **Configuration** tab, under **Network**, enter a port for TileMark (for example `8080`), save, and restart the add-on.
+1. On this app's **Configuration** tab, under **Network**, enter a port for TileMark (for example `8080`), save, and restart the app.
 2. In TileMark (from the sidebar), open **⚙ Settings → Your account** and **set a password**. Accounts made through Home Assistant have none until you set one.
 3. Open `http://<your-home-assistant>:<port>` and sign in with your TileMark username and that password.
 4. Set up the browser button, the phone app or the API key from **⚙ Settings → Save from anywhere** on that page.
@@ -188,22 +188,26 @@ Leave the port empty if you only use the sidebar; TileMark can then only be reac
 ## Moving from Docker
 
 1. In your Docker TileMark, each person downloads a backup: **⚙ Settings → Backup and restore → Download backup**.
-2. In the add-on, each person opens TileMark from the sidebar once (this creates their account) and restores their file in the same section.
+2. In the app, each person opens TileMark from the sidebar once (this creates their account) and restores their file in the same section.
 
 If you keep both running, see *Two TileMarks showing as one device* under **Sensors**.
 
 ## Updating
 
-Home Assistant shows an update for TileMark like for any add-on; the **Changelog** tab shows what changed. If a new version doesn't appear yet, open the **Add-on store → ⋮ → Check for updates**.
+Home Assistant shows an update for TileMark like for any app; the **Changelog** tab shows what changed. If a new version doesn't appear yet, open **Settings → Apps → App store → ⋮ → Check for updates**.
 
 ## Troubleshooting
 
 - **No title or picture for a link.** Sites that need a sign-in (Instagram, for example) often have none; use **✎** to add your own picture. For pages inside your network (`192.168.x.x`, `homeassistant.local` …) TileMark doesn't fetch anything unless an admin allows it in **⚙ Settings → Installation**. Local links can always be saved.
-- **TileMark is not in the sidebar.** Turn on **Show in sidebar** on the Info tab, and check that the add-on is started.
+- **TileMark is not in the sidebar.** Turn on **Show in sidebar** on the Info tab, and check that the app is started.
 - **The direct address asks for a password I don't have.** Set one first in **⚙ Settings → Your account**, from the sidebar.
 - **No device in Home Assistant.** Check that the MQTT integration is set up, and that **⚙ Settings → Home Assistant sensors** says **Connected**.
-- **Something else?** Look at the add-on's **Log** tab, and the questions on the website: <https://sevagjb.github.io/TileMark/faq.html>
+- **Something else?** Look at the app's **Log** tab, and the questions on the website: <https://sevagjb.github.io/TileMark/faq.html>
 
 ## Support
 
 Questions and bug reports: <https://github.com/sevagjb/tilemark/issues>
+
+## License
+
+TileMark is free and open source, under the MIT License: <https://github.com/sevagjb/tilemark/blob/main/LICENSE>

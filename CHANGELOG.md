@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.4 (unreleased)
+## 2.4.4
 
 ### Changed
 - **"App" instead of "add-on".** Home Assistant calls add-ons *apps* since 2026.2. TileMark's Home Assistant page, the guide, the Settings hint for the direct port (English, Nederlands, العربية) and the device model in Home Assistant now say app. Menu paths point to **Settings → Apps → App store**. Web addresses of the guide pages stay the same.

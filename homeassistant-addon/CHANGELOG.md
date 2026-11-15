@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.4.6 (unreleased)
+
+### Changed
+- **An admin's "Check now" checks every account.** It works the same as the weekly check: it checks the links of all accounts, counts as that week's check, and Home Assistant's **Last link check** sensor and **Link check** event follow it. Before, it checked only the admin's own links and Home Assistant kept showing the last weekly check. "Check now" for other accounts still checks only their own links, and Home Assistant doesn't report it, so the sensor and the event always mean that all links were checked.
+
+### Fixed
+- **A connection problem no longer marks your links as broken.** When the machine TileMark runs on can't get online (no internet, or a VPN or firewall swallowing traffic), every link looked unreachable and was marked **Broken**. Now a check first makes sure TileMark can reach the internet; if it can't, the check stops, nothing changes, and **⚙ Settings → Link check** says why. The weekly check tries again later by itself. And when more than half of the links in a check of 10 or more can't be reached, TileMark takes that as a connection problem too and leaves those links as they were. A check that was stopped doesn't count as that week's check and isn't reported to Home Assistant.
+- **"Visit" on the device page in Home Assistant opens TileMark in the sidebar.** In the Home Assistant app it used an old address that Home Assistant no longer knows, so it opened the default dashboard. The link is shown while **Show in sidebar** is on, on the app's Info tab.
+
 ## 2.4.5
 
 ### New

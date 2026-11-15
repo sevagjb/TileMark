@@ -1127,12 +1127,55 @@ def test_mqtt_uses_home_assistant_broker_in_addon(tmp_path, monkeypatch):
 def test_newly_broken_counted(fresh, monkeypatch):
     c = setup_admin(fresh)
     a = c.post("/api/links", json={"url": "https://a.example"}).get_json()["id"]
-    monkeypatch.setattr(fresh, "_probe", lambda url: "broken")
+    monkeypatch.setattr(fresh, "_probe", lambda url: "gone")
     monkeypatch.setattr(fresh.time, "sleep", lambda s: None)
     fresh._check.update(new_broken=0)
     fresh._check_one(a, "https://a.example")
     fresh._check_one(a, "https://a.example")  # already broken: not new again
     assert fresh._check["new_broken"] == 1
+
+
+def _run_check(A, client):
+    assert client.post("/api/linkcheck").status_code == 200
+    assert _wait(lambda: not A._check["running"])
+    return client.get("/api/state").get_json()
+
+
+def test_check_stops_when_offline(fresh, monkeypatch):
+    """Without internet a check changes nothing, doesn't count as the weekly check and says why."""
+    c = setup_admin(fresh)
+    c.post("/api/links", json={"url": "https://a.example"})
+    probed, finished = [], []
+    monkeypatch.setattr(fresh, "_online", lambda: False)
+    monkeypatch.setattr(fresh, "_probe", lambda url: probed.append(url) or "unreachable")
+    monkeypatch.setattr(fresh.mqtt, "check_finished", lambda n, new: finished.append(n))
+    st = _run_check(fresh, c)
+    assert probed == [] and finished == [] and fresh.get_setting("linkcheck_last", "0") == "0"
+    assert st["check"]["problem"] == "offline" and st["check"]["problem_at"] > 0
+    assert not any(l["broken"] for l in st["links"])
+
+
+def test_check_mostly_unreachable_is_a_connection_problem(fresh, monkeypatch):
+    """When most links of a larger check give no answer, they are left as they were; links
+    that answered are still updated. In a small check, unreachable links do count as broken."""
+    c = setup_admin(fresh)
+    ids = [c.post("/api/links", json={"url": f"https://site{i}.example"}).get_json()["id"] for i in range(12)]
+    with fresh.db() as con:
+        con.execute("UPDATE links SET broken=1 WHERE id=?", (ids[0],))  # answers now: no longer broken
+    monkeypatch.setattr(fresh, "_online", lambda: True)
+    monkeypatch.setattr(fresh.time, "sleep", lambda s: None)
+    monkeypatch.setattr(fresh, "_probe", lambda url: "ok" if url == "https://site0.example" else "gone"
+                        if url == "https://site1.example" else "unreachable")
+    st = _run_check(fresh, c)
+    broken = {l["id"]: l["broken"] for l in st["links"]}
+    assert broken[ids[0]] == 0 and broken[ids[1]] == 1 and not any(broken[i] for i in ids[2:])
+    assert st["check"]["problem"] == "unreachable" and st["check"]["problem_n"] == 10
+    # a small check: two links, one unreachable, is marked broken as before
+    with fresh.db() as con:
+        con.execute("DELETE FROM links WHERE id NOT IN (?, ?)", (ids[0], ids[2]))
+    st = _run_check(fresh, c)
+    broken = {l["id"]: l["broken"] for l in st["links"]}
+    assert broken == {ids[0]: 0, ids[2]: 1} and st["check"]["problem"] == ""
 
 
 def test_restore_keeps_installation_settings(fresh):
@@ -1251,11 +1294,44 @@ def test_mqtt_client_ids_differ(fresh):
 
 
 def test_mqtt_addon_name_and_link(tmp_path, monkeypatch):
+    """"Visit" opens the app's sidebar page (/<slug>); without the sidebar page there is no link."""
     A = load_app(tmp_path, addon=True)
-    monkeypatch.setattr(A, "supervisor_slug", lambda: "abcd1234_tilemark")
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "t")
+    info = {"slug": "abcd1234_tilemark", "ingress_panel": True}
+
+    class R:
+        ok = True
+
+        def json(self):
+            return {"data": dict(info)}
+    monkeypatch.setattr(A.requests, "get", lambda *a, **k: R())
     dev = A.MqttBridge().device()
-    assert dev["name"] == "TileMark (Home Assistant)" and dev["configuration_url"] == "homeassistant://hassio/ingress/abcd1234_tilemark"
+    assert dev["name"] == "TileMark (Home Assistant)" and dev["configuration_url"] == "homeassistant://abcd1234_tilemark"
     assert dev["model"] == "Home Assistant app"
+    info["ingress_panel"] = False  # "Show in sidebar" off
+    assert "configuration_url" not in A.MqttBridge().device()
+
+
+def test_check_now_admin_checks_everyone(two, monkeypatch):
+    """An admin's "Check now" is a check of every account: it resets the weekly timer and goes to
+    Home Assistant. A normal account's "Check now" checks only its own links."""
+    A, admin, bob, *_ = two
+    checked, finished = [], []
+    monkeypatch.setattr(A, "_online", lambda: True)
+    monkeypatch.setattr(A, "_check_one", lambda link_id, url, unreachable=None: checked.append(link_id))
+    monkeypatch.setattr(A.mqtt, "check_finished", lambda n, new: finished.append(n))
+
+    def wait_done():
+        assert _wait(lambda: not A._check["running"])
+
+    assert bob.post("/api/linkcheck").status_code == 200
+    wait_done()
+    assert len(checked) == 1 and finished == [] and A.get_setting("linkcheck_last", "0") == "0"
+    checked.clear()
+    assert admin.post("/api/linkcheck").status_code == 200
+    wait_done()
+    assert len(checked) == 2 and finished == [2] and int(A.get_setting("linkcheck_last", "0")) > 0
+    assert admin.get("/api/state").get_json()["check"]["last"] == int(A.get_setting("linkcheck_last"))
 
 
 # ------------------------------------------------------------------- docs

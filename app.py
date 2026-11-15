@@ -715,12 +715,36 @@ def _safe_fetch(link_id):
 # on two tries, or the site answered "not found" (404) or "gone" (410). Login walls,
 # bot blocks, server errors and addresses TileMark may not fetch are NOT counted,
 # to avoid false alarms.
-_check = {"running": False, "done": 0, "total": 0, "uid": None, "new_broken": 0}
+#
+# "Could not be reached" can also be TileMark's own connection failing (no internet,
+# a VPN or firewall swallowing traffic). So a check first makes sure TileMark can reach
+# the internet at all, and stops without changing anything when it can't. As a second
+# guard, when most links of a larger check can't be reached, that is taken as a
+# connection problem too and those links are left as they were.
+_check = {"running": False, "done": 0, "total": 0, "uid": None, "new_broken": 0,
+          "problem": "", "problem_at": 0, "problem_n": 0, "problem_uid": None}
 _check_lock = threading.Lock()
 CHECK_EVERY = 7 * 24 * 3600
+ONLINE_TEST = ("https://www.google.com/generate_204", "https://www.cloudflare.com/cdn-cgi/trace",
+               "https://www.wikipedia.org/")
+UNREACHABLE_MIN = 10       # the second guard looks at checks of at least this many links ...
+UNREACHABLE_SHARE = 0.5    # ... where more than this share could not be reached
+
+
+def _online():
+    """True when TileMark can open at least one well-known site over HTTPS. Any answer
+    counts, even an error page: it shows the connection itself works."""
+    for url in ONLINE_TEST:
+        try:
+            safe_get(url, UA, timeout=10).close()
+            return True
+        except (requests.exceptions.RequestException, Blocked):
+            continue
+    return False
 
 
 def _probe(url):
+    """ok, gone (404/410), unreachable (no answer at all) or unknown (anything else)."""
     try:
         r = safe_get(url, UA, timeout=15)
         code = r.status_code
@@ -728,32 +752,50 @@ def _probe(url):
     except Blocked:
         return "unknown"
     except requests.exceptions.RequestException:
-        return "broken"
-    return "broken" if code in (404, 410) else "ok" if code < 400 else "unknown"
+        return "unreachable"
+    return "gone" if code in (404, 410) else "ok" if code < 400 else "unknown"
 
 
-def _check_one(link_id, url):
+def _mark(link_id, broken):
+    """Store the outcome for one link; True when it is newly broken."""
+    with db() as c:
+        if broken is None:
+            c.execute("UPDATE links SET checked_at=? WHERE id=?", (int(time.time()), link_id))
+            return False
+        was = c.execute("SELECT broken FROM links WHERE id=?", (link_id,)).fetchone()
+        c.execute("UPDATE links SET broken=?, checked_at=? WHERE id=?", (1 if broken else 0, int(time.time()), link_id))
+        return bool(broken) and was is not None and not was["broken"]
+
+
+def _check_one(link_id, url, unreachable=None):
+    """Check one link: a failure is tried again after a pause. With a list for
+    `unreachable`, a link that gives no answer twice is put on that list for the end
+    of the check instead of being marked broken right away."""
     result = _probe(url)
-    if result == "broken":
+    if result in ("gone", "unreachable"):
         time.sleep(8)
         result = _probe(url)
     newly = False
-    with db() as c:
-        if result == "unknown":
-            c.execute("UPDATE links SET checked_at=? WHERE id=?", (int(time.time()), link_id))
-        else:
-            was = c.execute("SELECT broken FROM links WHERE id=?", (link_id,)).fetchone()
-            newly = result == "broken" and was is not None and not was["broken"]
-            c.execute("UPDATE links SET broken=?, checked_at=? WHERE id=?",
-                      (1 if result == "broken" else 0, int(time.time()), link_id))
+    if result == "unreachable" and unreachable is not None:
+        with _check_lock:
+            unreachable.append(link_id)
+    else:
+        newly = _mark(link_id, None if result == "unknown" else result in ("gone", "unreachable"))
     with _check_lock:
         _check["done"] += 1
         _check["new_broken"] += 1 if newly else 0
 
 
+def _problem(kind, uid, n=0):
+    with _check_lock:
+        _check.update(problem=kind, problem_at=int(time.time()), problem_n=n, problem_uid=uid)
+
+
 def run_link_check(uid=None):
-    """Check links in the background: one user's (the "Check now" button) or everyone's
-    (the weekly run, uid None). False if a check is already running."""
+    """Check links in the background: one user's ("Check now" of a normal account) or
+    everyone's (the weekly run and an admin's "Check now", uid None). Only a check of
+    everyone counts as the installation's check: it resets the weekly timer and goes to
+    Home Assistant. False if a check is already running."""
     with _check_lock:
         if _check["running"]:
             return False
@@ -761,14 +803,31 @@ def run_link_check(uid=None):
 
     def work():
         try:
+            if not _online():
+                # nothing is changed and the weekly timer isn't reset: the scheduler tries again later
+                app.logger.warning("link check skipped: TileMark cannot reach the internet")
+                _problem("offline", uid)
+                return
             with db() as c:
                 rows = c.execute("SELECT id, url FROM links" + (" WHERE user_id=?" if uid else ""),
                                  (uid,) if uid else ()).fetchall()
             with _check_lock:
                 _check["total"] = len(rows)
+            unreachable = []
             with ThreadPoolExecutor(max_workers=4) as ex:
                 for r in rows:
-                    ex.submit(_check_one, r["id"], r["url"])
+                    ex.submit(_check_one, r["id"], r["url"], unreachable)
+            if len(rows) >= UNREACHABLE_MIN and len(unreachable) > UNREACHABLE_SHARE * len(rows):
+                app.logger.warning("link check: %d of %d links unreachable, taken as a connection problem",
+                                   len(unreachable), len(rows))
+                for link_id in unreachable:
+                    _mark(link_id, None)  # left as they were
+                _problem("unreachable", uid, len(unreachable))
+            else:
+                newly = sum(_mark(link_id, True) for link_id in unreachable)
+                with _check_lock:
+                    _check["new_broken"] += newly
+                _problem("", uid)
             now = str(int(time.time()))
             if uid:
                 set_user_setting(uid, "linkcheck_last", now)
@@ -776,7 +835,7 @@ def run_link_check(uid=None):
                 set_setting("linkcheck_last", now)
                 with _check_lock:
                     checked, new_broken = _check["total"], _check["new_broken"]
-                mqtt.check_finished(checked, new_broken)  # the weekly check of every account
+                mqtt.check_finished(checked, new_broken)  # a check of every account (weekly or an admin's)
         except Exception:
             app.logger.exception("link check failed")
         finally:
@@ -882,8 +941,8 @@ def set_user_setting(uid, key, value):
 # ------------------------------------------------------- Home Assistant via MQTT
 # With MQTT on, TileMark appears in Home Assistant as a device "TileMark" (MQTT
 # discovery, no YAML): sensors for the number of links and broken links (all
-# accounts together; counts only, never links), the time of the last weekly check,
-# and an event entity that fires when the weekly check finishes, for automations
+# accounts together; counts only, never links), the time of the last check of every
+# account (weekly, or an admin's "Check now"), and an event entity that fires when it finishes, for automations
 # such as a notification. As an add-on, Home Assistant's own broker is used when no
 # broker is filled in (the add-on asks the Supervisor for it).
 def supervisor_mqtt():
@@ -898,17 +957,22 @@ def supervisor_mqtt():
         return None
 
 
-def supervisor_slug():
-    """The add-on's own slug (for example abcd1234_tilemark), for the link back from Home Assistant."""
+def supervisor_panel():
+    """The address of the app's sidebar page in Home Assistant (/abcd1234_tilemark), for the
+    link back from the device page; empty when the app isn't shown in the sidebar."""
     token = os.environ.get("SUPERVISOR_TOKEN")
     if not (HA_ADDON and token):
         return ""
     try:
         r = requests.get("http://supervisor/addons/self/info", headers={"Authorization": f"Bearer {token}"}, timeout=5)
         data = r.json().get("data") if r.ok else None
-        return str(data.get("slug") or "") if isinstance(data, dict) else ""
     except (requests.RequestException, ValueError):
         return ""
+    if not isinstance(data, dict) or not data.get("slug") or not data.get("ingress_panel"):
+        return ""
+    # Home Assistant registers the sidebar page under the app's slug. The older
+    # /hassio/ingress/<slug> route no longer exists and lands on the default dashboard.
+    return f"homeassistant://{data['slug']}"
 
 
 class MqttBridge:
@@ -921,7 +985,7 @@ class MqttBridge:
         self.last_payload = None
         self.wake = threading.Event()
         self._sup = (0, None)
-        self._slug = None
+        self._panel = (0, "")
         # announcing (on connect, in paho's thread) and taking away (on disconnect) never
         # run at the same time: otherwise a late "online" or state could land on topics
         # that were just cleared, leaving stale entities in Home Assistant
@@ -944,9 +1008,10 @@ class MqttBridge:
     def link(self):
         """Where this TileMark is opened: Home Assistant shows it as "Visit" on the device page."""
         if HA_ADDON:
-            if self._slug is None:
-                self._slug = supervisor_slug()
-            return f"homeassistant://hassio/ingress/{self._slug}" if self._slug else ""
+            # asked again every 10 minutes: "Show in sidebar" can be switched on the app's page
+            if time.time() - self._panel[0] > 600:
+                self._panel = (time.time(), supervisor_panel())
+            return self._panel[1]
         return get_setting("mqtt_url", "")
 
     def default_name(self):
@@ -1908,7 +1973,10 @@ def state():
         check = dict(_check)
     if not (check["uid"] == uid or (check["uid"] is None and g.user["is_admin"])):
         check.update(done=0, total=0)  # someone else's check: only say that one is running
-    check.pop("uid")
+    if not (check["problem_uid"] == uid or (check["problem_uid"] is None and g.user["is_admin"])):
+        check.update(problem="", problem_at=0, problem_n=0)  # a problem with someone else's check
+    for key in ("uid", "problem_uid"):
+        check.pop(key)
     check.update(enabled=get_setting("linkcheck", "on") == "on",
                  last=max(int(get_setting("linkcheck_last", "0")), int(get_user_setting(uid, "linkcheck_last", "0"))))
     out = dict(groups=groups, links=links, check=check, prefs=_prefs(uid), version=APP_VERSION,
@@ -1957,7 +2025,10 @@ def save_settings():
 
 @app.post("/api/linkcheck")
 def start_link_check():
-    if not run_link_check(me()):
+    """"Check now". For an admin it checks every account, the same as the weekly run, so
+    Home Assistant's "Last link check" and "Link check" event always mean all links were
+    checked. Other accounts check only their own links, which Home Assistant doesn't report."""
+    if not run_link_check(None if g.user["is_admin"] else me()):
         return jsonify(error="A check is already running."), 409
     return jsonify(ok=True)
 

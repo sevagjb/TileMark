@@ -69,7 +69,7 @@ Reordering works inside one group, not in mixed lists like **All links**, **Favo
 They lead to the same page; TileMark ignores `www`, `https`, tracking parameters and redirects when comparing. See [Duplicates](import-export.md#duplicates). To save it anyway, use **Import** and tick it in the review.
 
 **A working link is marked Broken.**
-The site was unreachable twice during the last check. The label clears by itself when the next check (or **↻**) reaches it. See [Broken links](broken-links.md).
+The site was unreachable twice during the last check. The label clears by itself when the next check (or **↻**) reaches it. If many working links were marked at once, TileMark's own connection was probably the problem (a VPN route or firewall on the machine it runs on); since 2.4.6 TileMark notices that and leaves the links alone. See [When TileMark itself can't get online](broken-links.md#when-tilemark-itself-cant-get-online).
 
 ## Home Assistant
 

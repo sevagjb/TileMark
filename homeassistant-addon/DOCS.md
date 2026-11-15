@@ -104,7 +104,7 @@ Links you already have are **never added twice and never thrown away silently**.
 
 **Once a week**, TileMark checks every link in the background. A link that no longer works gets a red **Broken** label and appears in **Broken links** in the left column. When a later check reaches it again, the label disappears by itself. Pages behind a sign-in and sites that are briefly down are not counted.
 
-**⚙ Settings → Link check → Check now** checks your links straight away.
+**⚙ Settings → Link check → Check now** checks your links straight away. For an admin it checks the links of every account, the same as the weekly check.
 
 ## Settings
 
@@ -144,10 +144,10 @@ If Home Assistant has an MQTT broker (for example the **Mosquitto broker** app w
 | --- | --- |
 | **Links** | The number of links, all accounts together. |
 | **Broken links** | How many links the last check couldn't reach. |
-| **Last link check** | When the weekly check last ran. |
+| **Last link check** | When all links were last checked: by the weekly check, or by an admin's **Check now**. |
 | **Last backup** | When the newest daily backup of the whole installation was made. Empty while daily backups are off. |
 | **Backup encryption** | On when the daily backups are encrypted, off when they are not. |
-| **Link check** (event) | Fires when the weekly check finishes, with `checked`, `broken` and `new_broken`. |
+| **Link check** (event) | Fires when a check of all links finishes (weekly, or an admin's **Check now**), with `checked`, `broken` and `new_broken`. |
 
 Only **counts, times and on/off states** are sent; nobody's links or addresses leave TileMark. The device page also has a **Visit** link that opens TileMark in the sidebar.
 

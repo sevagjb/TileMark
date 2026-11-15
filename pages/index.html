@@ -490,7 +490,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="bkNow">Make a backup now</button></div>
   </div></details>
   <details class="sec" data-k="mqtt"><summary><span class="st">Home Assistant sensors</span><span class="sum" id="sum-mqtt"></span></summary><div class="secb">
-    <p class="hint">Shows TileMark in Home Assistant as a device with sensors for the number of links and broken links (all accounts together, counts only) and the time of the last weekly check, plus an event when that check finishes, for a notification. Works through MQTT; Home Assistant needs its MQTT integration.</p>
+    <p class="hint">Shows TileMark in Home Assistant as a device with sensors for the number of links and broken links (all accounts together, counts only) and the time of the last check of all links (the weekly one, or an admin's Check now), plus an event when that check finishes, for a notification. Works through MQTT; Home Assistant needs its MQTT integration.</p>
     <label class="check"><input id="mqOn" type="checkbox"> Send to Home Assistant over MQTT</label>
     <div id="mqForm">
     <label for="mqName">Device name in Home Assistant</label><input id="mqName" type="text" maxlength="80" autocomplete="off">
@@ -972,10 +972,16 @@ function showCheck() {
     $("dbState").textContent = (S.admin.backup_last ? t("Last daily backup: {when} ({n} kept).", { when: fmtDate(S.admin.backup_last, true), n: S.admin.backups }) + " " : t("No daily backup yet.") + " ")
       + t("Each holds every account; to restore one, stop TileMark and unzip it into the data folder.") + (S.admin.addon ? " " + t("Home Assistant's own backups already include TileMark.") : "");
   }
-  setSum("check", c.running ? t("Running…") : n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })).replace(/\.$/, "") : c.last ? t("No broken links.").replace(/\.$/, "") : "");
+  const problem = !c.running && c.problem === "offline"
+      ? t("The check of {when} stopped: TileMark couldn't reach the internet, so no links were changed. Check the network connection of the machine TileMark runs on.", { when: fmtDate(c.problem_at, true) })
+    : !c.running && c.problem === "unreachable"
+      ? t("The check of {when} couldn't reach {n} links. That points to a problem with TileMark's own connection, so those links were left as they were.", { when: fmtDate(c.problem_at, true), n: c.problem_n })
+    : "";
+  setSum("check", c.running ? t("Running…") : problem ? t("Connection problem") : n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })).replace(/\.$/, "") : c.last ? t("No broken links.").replace(/\.$/, "") : "");
   $("ckState").textContent = c.running && !c.total ? t("A check is running.")
     : c.running ? t("Checking… {done} of {total} links done.", { done: c.done, total: c.total })
-    : (c.last ? t("Last check: {when}.", { when: fmtDate(c.last, true) }) + " " + (n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })) : t("No broken links.")) : t("No check has run yet."));
+    : (c.last ? t("Last check: {when}.", { when: fmtDate(c.last, true) }) + " " + (n ? (n === 1 ? t("{n} broken link.", { n }) : t("{n} broken links.", { n })) : t("No broken links.")) : t("No check has run yet."))
+    + (problem ? " " + problem : "");
 }
 $("ckOn").onchange = async e => { try { await api("POST", "api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("dbOn").onchange = async e => { try { await api("POST", "api/settings", { daily_backup: e.target.checked }); load(); } catch (err) { toast(err.message); } };

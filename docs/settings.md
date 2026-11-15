@@ -87,7 +87,7 @@ Details and examples: [Save from anywhere](save-from-anywhere.md).
 | Part | What it does |
 | --- | --- |
 | Status line | When the last check ran, and how many of your links are broken. |
-| **Check now** | Checks your links now, in the background. |
+| **Check now** | Checks your links now, in the background. For an admin: the links of every account, the same as the weekly check. |
 | **Refresh all titles and pictures** | Fetches the title and picture of all your links again. |
 
 More in [Broken links](broken-links.md).

@@ -48,7 +48,7 @@ Each person can always download a backup of their own links. It is encrypted wit
 If Home Assistant has an MQTT broker (for example the **Mosquitto broker** app with the **MQTT** integration), TileMark shows up by itself as a device called **TileMark (Home Assistant)**:
 
 - sensors for the number of **links** and **broken links**, the time of the **last link check** and of the **last backup**, and whether **backup encryption** is on;
-- an **event** when the weekly link check finishes, for a notification;
+- an **event** when a check of all links finishes (weekly, or an admin's **Check now**), for a notification;
 - a **Visit** link on the device page that opens TileMark in the sidebar.
 
 No setup is needed: the app uses Home Assistant's own broker. Details, and an example notification, are in [Home Assistant sensors](home-assistant-sensors.md).

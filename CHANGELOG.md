@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.6 (unreleased)
+## 2.4.6
 
 ### Changed
 - **An admin's "Check now" checks every account.** It works the same as the weekly check: it checks the links of all accounts, counts as that week's check, and Home Assistant's **Last link check** sensor and **Link check** event follow it. Before, it checked only the admin's own links and Home Assistant kept showing the last weekly check. "Check now" for other accounts still checks only their own links, and Home Assistant doesn't report it, so the sensor and the event always mean that all links were checked.

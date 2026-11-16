@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.5.0 (unreleased)
+## 2.5.0
 
 ### New
 - **German (Deutsch).** The whole interface is now also in German: pick **Deutsch** in **⚙ Settings → Appearance → Language**, or let TileMark follow a browser set to German. Dates use the German format.

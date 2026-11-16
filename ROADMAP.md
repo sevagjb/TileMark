@@ -20,6 +20,9 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.6.0
+- [x] One file per language in `pages/lang/`, a language list for the menu, Arabic plural forms, and a guide for translators.
+
 ### 2.5.0
 - [x] German as a fourth interface language, with English shown for any text not translated yet.
 

@@ -1,520 +1,63 @@
-// TileMark interface languages. English is the key; each entry holds [Dutch, Arabic, German].
-// A missing or empty translation falls back to the English text.
+// TileMark interface languages.
+// English is the base language: the English text in the pages is the key, and any text a
+// language file doesn't translate (missing or empty) is shown in English.
+// The translations live in pages/lang/<code>.json, one file per language, and the list of
+// languages in pages/lang/languages.json. The server puts the chosen language in front of
+// this script as TM_I18N_DATA, so only that language is sent and nothing waits to load.
+// How to add a language: docs/translating.md.
 (function () {
 "use strict";
-const LANGS = { en: "English", nl: "Nederlands", ar: "العربية", de: "Deutsch" };
-const COL = { nl: 0, ar: 1, de: 2 };
-const D = {
-"Guide and help":["Handleiding en hulp", "الدليل والمساعدة", "Anleitung und Hilfe"],
-"Show password":["Wachtwoord tonen", "إظهار كلمة المرور", "Passwort anzeigen"],
-"Hide password":["Wachtwoord verbergen", "إخفاء كلمة المرور", "Passwort verbergen"],
-"OK":["OK", "موافق", "OK"],
-"A first encrypted backup is made right away.":["Er wordt meteen een eerste versleutelde back-up gemaakt.", "تُنشأ أول نسخة احتياطية مشفّرة فورًا.", "Es wird sofort eine erste verschlüsselte Sicherung erstellt."],
-"Backups are already encrypted.":["Back-ups zijn al versleuteld.", "النسخ الاحتياطية مشفّرة بالفعل.", "Sicherungen sind bereits verschlüsselt."],
-"Backups are encrypted, but your password doesn't open them yet. Another admin gives you access when they sign in, or enter the recovery key.":["Back-ups zijn versleuteld, maar jouw wachtwoord opent ze nog niet. Een andere beheerder geeft je toegang zodra die zich aanmeldt, of vul de herstelsleutel in.", "النسخ الاحتياطية مشفّرة، لكن كلمة مرورك لا تفتحها بعد. يمنحك مسؤول آخر الوصول عند تسجيل دخوله، أو أدخل مفتاح الاسترداد.", "Sicherungen sind verschlüsselt, aber dein Passwort öffnet sie noch nicht. Ein anderer Admin gibt dir Zugriff, sobald er sich anmeldet, oder gib den Wiederherstellungsschlüssel ein."],
-"Backups are encrypted. They open with an admin's password or the recovery key.":["Back-ups zijn versleuteld. Ze openen met het wachtwoord van een beheerder of met de herstelsleutel.", "النسخ الاحتياطية مشفّرة. تُفتح بكلمة مرور أحد المسؤولين أو بمفتاح الاسترداد.", "Sicherungen sind verschlüsselt. Sie öffnen sich mit dem Passwort eines Admins oder mit dem Wiederherstellungsschlüssel."],
-"Backups are not encrypted.":["Back-ups zijn niet versleuteld.", "النسخ الاحتياطية غير مشفّرة.", "Sicherungen sind nicht verschlüsselt."],
-"Backups of the whole installation are not encrypted. Anyone who gets a copy of a backup file can read it.":["Back-ups van de hele installatie zijn niet versleuteld. Wie een kopie van een back-upbestand krijgt, kan het lezen.", "النسخ الاحتياطية للتثبيت كاملًا غير مشفّرة. يستطيع أي شخص يحصل على نسخة من ملف احتياطي أن يقرأه.", "Sicherungen der gesamten Installation sind nicht verschlüsselt. Wer eine Kopie einer Sicherungsdatei bekommt, kann sie lesen."],
-"Encrypted backup downloaded. It opens with your login password.":["Versleutelde back-up gedownload. Hij opent met je wachtwoord.", "نُزّلت نسخة احتياطية مشفّرة. تُفتح بكلمة مرور حسابك.", "Verschlüsselte Sicherung heruntergeladen. Sie öffnet sich mit deinem Anmeldepasswort."],
-"Encryption is off.":["Versleuteling staat uit.", "التشفير متوقف.", "Verschlüsselung ist aus."],
-"Encryption is on. 1 old backup was deleted.":["Versleuteling staat aan. 1 oude back-up is verwijderd.", "التشفير مفعّل. حُذفت نسخة احتياطية قديمة واحدة.", "Verschlüsselung ist an. 1 alte Sicherung wurde gelöscht."],
-"Encryption is on. {n} old backups were deleted.":["Versleuteling staat aan. {n} oude back-ups zijn verwijderd.", "التشفير مفعّل. حُذفت {n} نسخ احتياطية قديمة.", "Verschlüsselung ist an. {n} alte Sicherungen wurden gelöscht."],
-"Enter your current password to confirm.":["Vul je huidige wachtwoord in om te bevestigen.", "أدخل كلمة مرورك الحالية للتأكيد.", "Gib zur Bestätigung dein aktuelles Passwort ein."],
-"Enter your password once to set up encrypted backups.":["Vul één keer je wachtwoord in om versleutelde back-ups in te stellen.", "أدخل كلمة مرورك مرة واحدة لإعداد النسخ الاحتياطية المشفّرة.", "Gib einmal dein Passwort ein, um verschlüsselte Sicherungen einzurichten."],
-"Enter your password, or the current recovery key:":["Vul je wachtwoord of de huidige herstelsleutel in:", "أدخل كلمة مرورك أو مفتاح الاسترداد الحالي:", "Gib dein Passwort oder den aktuellen Wiederherstellungsschlüssel ein:"],
-"It is encrypted with your login password. The first time, TileMark asks for your password once to set this up.":["Hij wordt versleuteld met je wachtwoord. De eerste keer vraagt TileMark één keer om je wachtwoord om dit in te stellen.", "يُشفَّر بكلمة مرور حسابك. في المرة الأولى يطلب TileMark كلمة مرورك مرة واحدة لإعداد ذلك.", "Sie wird mit deinem Anmeldepasswort verschlüsselt. Beim ersten Mal fragt TileMark einmal nach deinem Passwort, um das einzurichten."],
-"It is encrypted with your login password: only that password opens it. Change your password later, and both the old and the new one keep working for it.":["Hij wordt versleuteld met je wachtwoord: alleen dat wachtwoord opent hem. Verander je later je wachtwoord, dan blijven het oude en het nieuwe er allebei voor werken.", "يُشفَّر بكلمة مرور حسابك: لا تفتحه إلا تلك الكلمة. وإن غيّرت كلمة مرورك لاحقًا، تبقى القديمة والجديدة كلتاهما صالحتين لفتحه.", "Sie wird mit deinem Anmeldepasswort verschlüsselt: Nur dieses Passwort öffnet sie. Änderst du später dein Passwort, funktionieren sowohl das alte als auch das neue dafür."],
-"It opens every encrypted backup of this TileMark when no admin password works.":["Hij opent elke versleutelde back-up van deze TileMark als geen enkel beheerderswachtwoord werkt.", "يفتح كل نسخة احتياطية مشفّرة من TileMark هذا عندما لا تنجح أي كلمة مرور لمسؤول.", "Er öffnet jede verschlüsselte Sicherung dieses TileMark, wenn kein Admin-Passwort funktioniert."],
-"Make a new recovery key? The old one stops working for new backups; backups made before keep opening with the old one.":["Een nieuwe herstelsleutel maken? De oude werkt niet meer voor nieuwe back-ups; eerdere back-ups blijven openen met de oude.", "إنشاء مفتاح استرداد جديد؟ يتوقف القديم عن العمل للنسخ الجديدة، وتبقى النسخ السابقة تُفتح بالقديم.", "Einen neuen Wiederherstellungsschlüssel erstellen? Der alte funktioniert nicht mehr für neue Sicherungen; frühere Sicherungen öffnen sich weiterhin mit dem alten."],
-"Next, TileMark shows a recovery key once. Save it: it opens the backups when no admin password works.":["Daarna toont TileMark één keer een herstelsleutel. Bewaar die: hij opent de back-ups als geen enkel beheerderswachtwoord werkt.", "بعد ذلك يعرض TileMark مفتاح استرداد مرة واحدة. احفظه: فهو يفتح النسخ الاحتياطية عندما لا تنجح أي كلمة مرور لمسؤول.", "Als Nächstes zeigt TileMark einmalig einen Wiederherstellungsschlüssel. Bewahre ihn auf: Er öffnet die Sicherungen, wenn kein Admin-Passwort funktioniert."],
-"Recovery key accepted. Set a TileMark password in Your account to get access with it.":["Herstelsleutel geaccepteerd. Stel een TileMark-wachtwoord in bij Je account om er toegang mee te krijgen.", "قُبل مفتاح الاسترداد. عيّن كلمة مرور TileMark في «حسابك» لتحصل على الوصول بها.", "Wiederherstellungsschlüssel akzeptiert. Lege unter „Dein Konto“ ein TileMark-Passwort fest, um damit Zugriff zu erhalten."],
-"That password or recovery key does not open this backup.":["Dat wachtwoord of die herstelsleutel opent deze back-up niet.", "كلمة المرور أو مفتاح الاسترداد هذا لا يفتح هذه النسخة الاحتياطية.", "Dieses Passwort oder dieser Wiederherstellungsschlüssel öffnet diese Sicherung nicht."],
-"That password or recovery key is not right.":["Dat wachtwoord of die herstelsleutel klopt niet.", "كلمة المرور أو مفتاح الاسترداد غير صحيح.", "Dieses Passwort oder dieser Wiederherstellungsschlüssel ist nicht richtig."],
-"The backup file is damaged.":["Het back-upbestand is beschadigd.", "ملف النسخة الاحتياطية تالف.", "Die Sicherungsdatei ist beschädigt."],
-"This backup is encrypted. Enter your password or the recovery key.":["Deze back-up is versleuteld. Vul je wachtwoord of de herstelsleutel in.", "هذه النسخة الاحتياطية مشفّرة. أدخل كلمة مرورك أو مفتاح الاسترداد.", "Diese Sicherung ist verschlüsselt. Gib dein Passwort oder den Wiederherstellungsschlüssel ein."],
-"This backup is encrypted. Enter your password, or the recovery key:":["Deze back-up is versleuteld. Vul je wachtwoord of de herstelsleutel in:", "هذه النسخة الاحتياطية مشفّرة. أدخل كلمة مرورك أو مفتاح الاسترداد:", "Diese Sicherung ist verschlüsselt. Gib dein Passwort oder den Wiederherstellungsschlüssel ein:"],
-"TileMark recovery key":["TileMark-herstelsleutel", "مفتاح استرداد TileMark", "TileMark-Wiederherstellungsschlüssel"],
-"Turn off encryption? New backups are no longer encrypted. The encrypted ones stay, and still open with a password or the recovery key.":["Versleuteling uitzetten? Nieuwe back-ups worden niet meer versleuteld. De versleutelde blijven bestaan en openen nog steeds met een wachtwoord of de herstelsleutel.", "إيقاف التشفير؟ لن تُشفَّر النسخ الجديدة بعد الآن. تبقى النسخ المشفّرة، وتُفتح كما كانت بكلمة مرور أو بمفتاح الاسترداد.", "Verschlüsselung ausschalten? Neue Sicherungen werden nicht mehr verschlüsselt. Die verschlüsselten bleiben erhalten und öffnen sich weiterhin mit einem Passwort oder dem Wiederherstellungsschlüssel."],
-"Turn on encryption?":["Versleuteling aanzetten?", "تفعيل التشفير؟", "Verschlüsselung einschalten?"],
-"Turning on encryption deletes all {n} existing backups (from {first} to {last}), because they are not encrypted.":["Als je versleuteling aanzet, worden alle {n} bestaande back-ups (van {first} tot {last}) verwijderd, omdat ze niet versleuteld zijn.", "تفعيل التشفير يحذف كل النسخ الاحتياطية الموجودة وعددها {n} (من {first} إلى {last})، لأنها غير مشفّرة.", "Das Einschalten der Verschlüsselung löscht alle {n} vorhandenen Sicherungen (von {first} bis {last}), weil sie nicht verschlüsselt sind."],
-"Turning on encryption deletes the 1 existing backup ({first}), because it is not encrypted.":["Als je versleuteling aanzet, wordt de ene bestaande back-up ({first}) verwijderd, omdat die niet versleuteld is.", "تفعيل التشفير يحذف النسخة الاحتياطية الوحيدة الموجودة ({first})، لأنها غير مشفّرة.", "Das Einschalten der Verschlüsselung löscht die 1 vorhandene Sicherung ({first}), weil sie nicht verschlüsselt ist."],
-"Wrong password. Use your password from the day of the backup, or today's.":["Verkeerd wachtwoord. Gebruik je wachtwoord van de dag van de back-up, of dat van vandaag.", "كلمة مرور خاطئة. استخدم كلمة مرورك في يوم النسخة الاحتياطية، أو كلمة مرورك الحالية.", "Falsches Passwort. Verwende dein Passwort vom Tag der Sicherung oder dein heutiges."],
-"You have access to the encrypted backups again.":["Je hebt weer toegang tot de versleutelde back-ups.", "لديك الآن وصول إلى النسخ الاحتياطية المشفّرة مجددًا.", "Du hast wieder Zugriff auf die verschlüsselten Sicherungen."],
-"Your account has no TileMark password, so the file can't be locked with one. Download it without encryption?":["Je account heeft geen TileMark-wachtwoord, dus het bestand kan er niet mee worden vergrendeld. Zonder versleuteling downloaden?", "ليس لحسابك كلمة مرور TileMark، فلا يمكن قفل الملف بها. هل تريد تنزيله دون تشفير؟", "Dein Konto hat kein TileMark-Passwort, daher kann die Datei nicht damit gesperrt werden. Ohne Verschlüsselung herunterladen?"],
-"Your account has no TileMark password, so the file can't be locked with one. Set a password under More options to encrypt it.":["Je account heeft geen TileMark-wachtwoord, dus het bestand kan er niet mee worden vergrendeld. Stel onder Meer opties een wachtwoord in om het te versleutelen.", "ليس لحسابك كلمة مرور TileMark، فلا يمكن قفل الملف بها. عيّن كلمة مرور ضمن «خيارات أخرى» لتشفيره.", "Dein Konto hat kein TileMark-Passwort, daher kann die Datei nicht damit gesperrt werden. Lege unter „Weitere Optionen“ ein Passwort fest, um sie zu verschlüsseln."],
-"encrypted":["versleuteld", "مشفّرة", "verschlüsselt"],
-"One file with all your links, groups, their order and the thumbnails.":["Eén bestand met al je links, groepen, hun volgorde en de miniaturen.", "ملف واحد فيه كل روابطك ومجموعاتك وترتيبها والصور المصغّرة.", "Eine Datei mit all deinen Links, Gruppen, ihrer Reihenfolge und den Vorschaubildern."],
-"More options":["Meer opties", "خيارات أخرى", "Weitere Optionen"],
-"A different password instead (for example to give the file to someone)":["Een ander wachtwoord (bijvoorbeeld om het bestand aan iemand te geven)", "كلمة مرور أخرى بدلًا منها (مثلًا لإعطاء الملف لشخص ما)", "Stattdessen ein anderes Passwort (zum Beispiel, um die Datei jemandem zu geben)"],
-"No encryption: a plain zip file that anyone can open":["Geen versleuteling: een gewoon zip-bestand dat iedereen kan openen", "بلا تشفير: ملف zip عادي يستطيع أي شخص فتحه", "Keine Verschlüsselung: eine einfache ZIP-Datei, die jeder öffnen kann"],
-"Password: your login password (from the day of the backup, or today's), or the backup's own password":["Wachtwoord: je wachtwoord (van de dag van de back-up, of dat van vandaag), of het eigen wachtwoord van de back-up", "كلمة المرور: كلمة مرور حسابك (في يوم النسخة الاحتياطية أو الحالية)، أو كلمة مرور النسخة الخاصة", "Passwort: dein Anmeldepasswort (vom Tag der Sicherung oder das heutige) oder das eigene Passwort der Sicherung"],
-"Turn on encryption":["Versleuteling aanzetten", "تفعيل التشفير", "Verschlüsselung einschalten"],
-"Turn off encryption":["Versleuteling uitzetten", "إيقاف التشفير", "Verschlüsselung ausschalten"],
-"Recovery key":["Herstelsleutel", "مفتاح الاسترداد", "Wiederherstellungsschlüssel"],
-"Get access again":["Weer toegang krijgen", "استعادة الوصول", "Wieder Zugriff erhalten"],
-"Your recovery key.":["Je herstelsleutel.", "مفتاح الاسترداد الخاص بك.", "Dein Wiederherstellungsschlüssel."],
-"It opens every encrypted backup when no admin password works, for example on a new server or after a forgotten password. Save it somewhere safe now (a password manager, or printed); it is not shown again.":["Hij opent elke versleutelde back-up als geen enkel beheerderswachtwoord werkt, bijvoorbeeld op een nieuwe server of na een vergeten wachtwoord. Bewaar hem nu op een veilige plek (een wachtwoordmanager, of op papier); hij wordt niet opnieuw getoond.", "يفتح كل نسخة احتياطية مشفّرة عندما لا تنجح أي كلمة مرور لمسؤول، مثلًا على خادم جديد أو بعد نسيان كلمة مرور. احفظه الآن في مكان آمن (مدير كلمات مرور، أو مطبوعًا)؛ فلن يظهر مرة أخرى.", "Er öffnet jede verschlüsselte Sicherung, wenn kein Admin-Passwort funktioniert, zum Beispiel auf einem neuen Server oder nach einem vergessenen Passwort. Bewahre ihn jetzt sicher auf (in einem Passwortmanager oder ausgedruckt); er wird nicht noch einmal angezeigt."],
-"I have saved it":["Ik heb hem bewaard", "لقد حفظته", "Ich habe ihn gespeichert"],
-"1 link was not added because you already have it.":["1 link is niet toegevoegd omdat je hem al hebt.","لم يُضف رابط واحد لأنه موجود لديك بالفعل.", "1 Link wurde nicht hinzugefügt, weil du ihn schon hast."],
-"Remove {name}?\nTheir 1 link, groups and pictures are deleted too. This cannot be undone.":["{name} verwijderen?\nDe link, groepen en afbeeldingen van deze persoon worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.","إزالة {name}؟\nسيُحذف أيضًا رابطه ومجموعاته وصوره. لا يمكن التراجع عن ذلك.", "{name} entfernen?\nDer Link, die Gruppen und Bilder dieser Person werden ebenfalls gelöscht. Das kann nicht rückgängig gemacht werden."],
-"Imported {n} link.":["{n} link geïmporteerd.","استُورد {n} رابط.", "{n} Link importiert."],
-"Backup and restore":["Back-up en terugzetten", "النسخ الاحتياطي والاستعادة", "Sicherung und Wiederherstellung"],
-"People":["Personen", "الأشخاص", "Personen"],
-"Installation":["Installatie", "التثبيت", "Installation"],
-"Restore the whole installation":["De hele installatie terugzetten", "استعادة التثبيت كاملًا", "Die gesamte Installation wiederherstellen"],
-"Home Assistant sensors":["Home Assistant-sensoren", "مستشعرات Home Assistant", "Home Assistant-Sensoren"],
-"API key active":["API-sleutel actief", "مفتاح API مفعّل", "API-Schlüssel aktiv"],
-"On":["Aan", "مفعّل", "An"],
-"Off":["Uit", "متوقف", "Aus"],
-"{n} device":["{n} apparaat", "{n} جهاز", "{n} Gerät"],
-"{n} devices":["{n} apparaten", "{n} أجهزة", "{n} Geräte"],
-"{n} person":["{n} persoon", "{n} شخص", "{n} Person"],
-"{n} people":["{n} personen", "{n} أشخاص", "{n} Personen"],
-"Weekly check":["Wekelijkse controle", "فحص أسبوعي", "Wöchentliche Prüfung"],
-"Daily backups":["Dagelijkse back-ups", "نسخ احتياطية يومية", "Tägliche Sicherungen"],
-"Running…":["Bezig…", "جارٍ…", "Läuft…"],
-"{n} backup":["{n} back-up", "{n} نسخة احتياطية", "{n} Sicherung"],
-"{n} backups":["{n} back-ups", "{n} نسخ احتياطية", "{n} Sicherungen"],
-"Connected":["Verbonden", "متصل", "Verbunden"],
-"Not connected":["Niet verbonden", "غير متصل", "Nicht verbunden"],
-"Connecting…":["Bezig met verbinden…", "جارٍ الاتصال…", "Verbinde…"],
-"In Home Assistant: Settings → Devices → {name}.":["In Home Assistant: Instellingen → Apparaten → {name}.", "في Home Assistant: الإعدادات ← الأجهزة ← {name}.", "In Home Assistant: Einstellungen → Geräte → {name}."],
-"Device name in Home Assistant":["Apparaatnaam in Home Assistant", "اسم الجهاز في Home Assistant", "Gerätename in Home Assistant"],
-"Device ID: {id}":["Apparaat-ID: {id}", "معرّف الجهاز: {id}", "Geräte-ID: {id}"],
-"New ID":["Nieuwe ID", "معرّف جديد", "Neue ID"],
-"Two TileMarks with the same ID (for example after copying the database) show up in Home Assistant as one device. Give one of them a new ID.":["Twee TileMarks met dezelfde ID (bijvoorbeeld na het kopiëren van de database) verschijnen in Home Assistant als één apparaat. Geef een van beide een nieuwe ID.", "يظهر جهازا TileMark لهما المعرّف نفسه (مثلًا بعد نسخ قاعدة البيانات) في Home Assistant كجهاز واحد. أعطِ أحدهما معرّفًا جديدًا.", "Zwei TileMarks mit derselben ID (zum Beispiel nach dem Kopieren der Datenbank) erscheinen in Home Assistant als ein Gerät. Gib einem von ihnen eine neue ID."],
-"Give this TileMark a new device ID? Its entities in Home Assistant are replaced by new ones; automations that use them need the new entities.":["Deze TileMark een nieuwe apparaat-ID geven? De entiteiten in Home Assistant worden vervangen door nieuwe; automatiseringen die ze gebruiken, hebben de nieuwe entiteiten nodig.", "إعطاء TileMark هذا معرّف جهاز جديدًا؟ ستُستبدل كياناته في Home Assistant بكيانات جديدة، وستحتاج الأتمتة التي تستخدمها إلى الكيانات الجديدة.", "Diesem TileMark eine neue Geräte-ID geben? Seine Entitäten in Home Assistant werden durch neue ersetzt; Automatisierungen, die sie verwenden, brauchen die neuen Entitäten."],
-"New ID set.":["Nieuwe ID ingesteld.", "تم تعيين معرّف جديد.", "Neue ID festgelegt."],
-"Signed in through Home Assistant as {name} (admin).":["Aangemeld via Home Assistant als {name} (beheerder).", "مسجّل الدخول عبر Home Assistant باسم {name} (مسؤول).", "Über Home Assistant angemeldet als {name} (Admin)."],
-"Signed in through Home Assistant as {name}.":["Aangemeld via Home Assistant als {name}.", "مسجّل الدخول عبر Home Assistant باسم {name}.", "Über Home Assistant angemeldet als {name}."],
-"Signed in as {name} (admin).":["Aangemeld als {name} (beheerder).", "مسجّل الدخول باسم {name} (مسؤول).", "Angemeldet als {name} (Admin)."],
-"Signed in as {name}.":["Aangemeld als {name}.", "مسجّل الدخول باسم {name}.", "Angemeldet als {name}."],
-"already saved as “{title}” in {group}":["al opgeslagen als “{title}” in {group}", "محفوظ بالفعل باسم «{title}» في {group}", "bereits gespeichert als „{title}“ in {group}"],
-"already saved as “{title}”":["al opgeslagen als “{title}”", "محفوظ بالفعل باسم «{title}»", "bereits gespeichert als „{title}“"],
-"Browser":["Browser", "متصفح", "Browser"],
-"{browser} on {system}":["{browser} op {system}", "{browser} على {system}", "{browser} unter {system}"],
-"Paste a link and press Enter":["Plak een link en druk op Enter", "الصق رابطًا واضغط Enter", "Link einfügen und Enter drücken"],
-"Link to add":["Link om toe te voegen", "الرابط المراد إضافته", "Hinzuzufügender Link"],
-"Group":["Groep", "المجموعة", "Gruppe"],
-"Add":["Toevoegen", "إضافة", "Hinzufügen"],
-"Search":["Zoeken", "بحث", "Suchen"],
-"Search links":["Links zoeken", "البحث في الروابط", "Links durchsuchen"],
-"Import":["Importeren", "استيراد", "Importieren"],
-"Import and export":["Importeren en exporteren", "استيراد وتصدير", "Import und Export"],
-"Export":["Exporteren", "تصدير", "Exportieren"],
-"Settings":["Instellingen", "الإعدادات", "Einstellungen"],
-"Groups":["Groepen", "المجموعات", "Gruppen"],
-"0 selected":["0 geselecteerd", "0 محدد", "0 ausgewählt"],
-"Move selected links to a group":["Geselecteerde links naar een groep verplaatsen", "نقل الروابط المحددة إلى مجموعة", "Ausgewählte Links in eine Gruppe verschieben"],
-"Refresh":["Vernieuwen", "تحديث", "Aktualisieren"],
-"Delete":["Verwijderen", "حذف", "Löschen"],
-"Select all":["Alles selecteren", "تحديد الكل", "Alle auswählen"],
-"Done":["Klaar", "تم", "Fertig"],
-"+ New group":["+ Nieuwe groep", "+ مجموعة جديدة", "+ Neue Gruppe"],
-"Collapse all":["Alles inklappen", "طي الكل", "Alle einklappen"],
-"Expand all":["Alles uitklappen", "توسيع الكل", "Alle ausklappen"],
-"Sort links":["Links sorteren", "ترتيب الروابط", "Links sortieren"],
-"My order":["Mijn volgorde", "ترتيبي", "Meine Reihenfolge"],
-"Newest first":["Nieuwste eerst", "الأحدث أولًا", "Neueste zuerst"],
-"Oldest first":["Oudste eerst", "الأقدم أولًا", "Älteste zuerst"],
-"Name":["Naam", "الاسم", "Name"],
-"Site":["Site", "الموقع", "Website"],
-"Fetch titles and pictures again for the links shown here":["Titels en afbeeldingen opnieuw ophalen voor de links die hier staan", "إعادة جلب العناوين والصور للروابط المعروضة هنا", "Titel und Bilder für die hier angezeigten Links neu abrufen"],
-"Refresh these links":["Deze links vernieuwen", "تحديث هذه الروابط", "Diese Links aktualisieren"],
-"Open all in tabs":["Alles openen in tabbladen", "فتح الكل في علامات تبويب", "Alle in Tabs öffnen"],
-"Links that lead to the same page":["Links die naar dezelfde pagina leiden", "روابط تؤدي إلى الصفحة نفسها", "Links, die zur selben Seite führen"],
-"Duplicates":["Dubbele links", "التكرارات", "Duplikate"],
-"Select":["Selecteren", "تحديد", "Auswählen"],
-"Edit link":["Link bewerken", "تعديل الرابط", "Link bearbeiten"],
-"Address":["Adres", "العنوان", "Adresse"],
-"Title":["Titel", "العنوان الظاهر", "Titel"],
-"(leave empty to use the page title)":["(leeg laten om de titel van de pagina te gebruiken)", "(اتركه فارغًا لاستخدام عنوان الصفحة)", "(leer lassen, um den Seitentitel zu verwenden)"],
-"Note":["Notitie", "ملاحظة", "Notiz"],
-"Picture":["Afbeelding", "الصورة", "Bild"],
-"Choose your own picture, or paste one with Ctrl+V while this window is open.":["Kies je eigen afbeelding, of plak er een met Ctrl+V terwijl dit venster open is.", "اختر صورة خاصة بك، أو الصق صورة باستخدام Ctrl+V أثناء فتح هذه النافذة.", "Wähle ein eigenes Bild oder füge eines mit Strg+V ein, während dieses Fenster offen ist."],
-"Use the site's picture again":["De afbeelding van de site weer gebruiken", "استخدام صورة الموقع مجددًا", "Wieder das Bild der Website verwenden"],
-"Favourite (keep at the top of its group)":["Favoriet (bovenaan in de groep houden)", "مفضّل (يبقى في أعلى مجموعته)", "Favorit (oben in seiner Gruppe halten)"],
-"Cancel":["Annuleren", "إلغاء", "Abbrechen"],
-"Save":["Opslaan", "حفظ", "Speichern"],
-"New group":["Nieuwe groep", "مجموعة جديدة", "Neue Gruppe"],
-"Colour":["Kleur", "اللون", "Farbe"],
-"Place in the list":["Plaats in de lijst", "الموضع في القائمة", "Position in der Liste"],
-"Delete group":["Groep verwijderen", "حذف المجموعة", "Gruppe löschen"],
-"TileMark file (.json)":["TileMark-bestand (.json)", "ملف TileMark ‏(.json)", "TileMark-Datei (.json)"],
-"Everything: groups and colours, order, notes, favourites, dates and your own pictures. Import it here or in another TileMark.":["Alles: groepen en kleuren, volgorde, notities, favorieten, datums en je eigen afbeeldingen. Importeer het hier of in een andere TileMark.", "كل شيء: المجموعات وألوانها، والترتيب، والملاحظات، والمفضلة، والتواريخ، وصورك الخاصة. استورده هنا أو في TileMark آخر.", "Alles: Gruppen und Farben, Reihenfolge, Notizen, Favoriten, Datumsangaben und deine eigenen Bilder. Importiere sie hier oder in einem anderen TileMark."],
-"Bookmarks file (.html)":["Bladwijzerbestand (.html)", "ملف إشارات مرجعية ‏(.html)", "Lesezeichendatei (.html)"],
-"Addresses, titles and groups as folders, for importing into Edge, Chrome or Firefox.":["Adressen, titels en groepen als mappen, om te importeren in Edge, Chrome of Firefox.", "العناوين والأسماء والمجموعات كمجلدات، للاستيراد في Edge أو Chrome أو Firefox.", "Adressen, Titel und Gruppen als Ordner, zum Importieren in Edge, Chrome oder Firefox."],
-"Download":["Downloaden", "تنزيل", "Herunterladen"],
-"Duplicates in this import":["Dubbele links in deze import", "التكرارات في هذا الاستيراد", "Duplikate in diesem Import"],
-"Download as TileMark file":["Downloaden als TileMark-bestand", "تنزيل كملف TileMark", "Als TileMark-Datei herunterladen"],
-"Download as bookmarks file":["Downloaden als bladwijzerbestand", "تنزيل كملف إشارات مرجعية", "Als Lesezeichendatei herunterladen"],
-"Tick a link to keep it as a separate link anyway (not possible for identical addresses). The others are not saved.":["Vink een link aan om hem toch als aparte link te bewaren (niet mogelijk bij precies hetzelfde adres). De andere worden niet opgeslagen.", "حدّد رابطًا للاحتفاظ به كرابط منفصل رغم ذلك (غير ممكن للعناوين المتطابقة). أما البقية فلن تُحفظ.", "Hake einen Link an, um ihn trotzdem als eigenen Link zu behalten (bei identischen Adressen nicht möglich). Die anderen werden nicht gespeichert."],
-"Discard all":["Alles weggooien", "تجاهل الكل", "Alle verwerfen"],
-"Keep ticked, discard the rest":["Aangevinkte bewaren, de rest weggooien", "الاحتفاظ بالمحدد وتجاهل الباقي", "Angehakte behalten, Rest verwerfen"],
-"Links that lead to the same page: the same address apart from":["Links die naar dezelfde pagina leiden: hetzelfde adres, op", "روابط تؤدي إلى الصفحة نفسها: العنوان نفسه باستثناء", "Links, die zur selben Seite führen: dieselbe Adresse bis auf"],
-", a trailing slash or tracking parameters, or an address that redirects to one you already have. For each set, choose the one to keep.":[", een schuine streep aan het eind of trackingparameters na, of een adres dat doorverwijst naar een link die je al hebt. Kies per groepje welke je bewaart.", "، أو شرطة مائلة في النهاية، أو معاملات التتبع، أو عنوان يُعيد التوجيه إلى رابط لديك بالفعل. اختر من كل مجموعة الرابط الذي تريد الاحتفاظ به.", ", einen Schrägstrich am Ende oder Tracking-Parameter, oder eine Adresse, die auf eine bereits vorhandene weiterleitet. Wähle für jede Gruppe den Link, den du behalten willst."],
-"Download all as TileMark file":["Alles downloaden als TileMark-bestand", "تنزيل الكل كملف TileMark", "Alle als TileMark-Datei herunterladen"],
-"Download all as bookmarks file":["Alles downloaden als bladwijzerbestand", "تنزيل الكل كملف إشارات مرجعية", "Alle als Lesezeichendatei herunterladen"],
-"Import links":["Links importeren", "استيراد الروابط", "Links importieren"],
-"Paste links, one per line":["Plak links, één per regel", "الصق الروابط، رابطًا في كل سطر", "Links einfügen, einer pro Zeile"],
-"Or choose a file":["Of kies een bestand", "أو اختر ملفًا", "Oder eine Datei wählen"],
-"A TileMark file brings everything back (groups, colours, notes, favourites, own pictures). A bookmarks/favorites export from Edge, Chrome or Firefox works too: folders become groups. So does a plain text file with links. Links you already have are listed for you to review; nothing is dropped without being shown.":["Een TileMark-bestand zet alles terug (groepen, kleuren, notities, favorieten, eigen afbeeldingen). Een export van bladwijzers/favorieten uit Edge, Chrome of Firefox werkt ook: mappen worden groepen. Een gewoon tekstbestand met links ook. Links die je al hebt krijg je te zien om te beoordelen; er verdwijnt niets zonder dat je het ziet.", "ملف TileMark يعيد كل شيء (المجموعات والألوان والملاحظات والمفضلة والصور الخاصة). ويعمل أيضًا تصدير الإشارات المرجعية/المفضلة من Edge أو Chrome أو Firefox، إذ تصبح المجلدات مجموعات. وكذلك ملف نصي عادي فيه روابط. الروابط الموجودة لديك تُعرض عليك للمراجعة، ولا يُحذف شيء دون أن تراه.", "Eine TileMark-Datei stellt alles wieder her (Gruppen, Farben, Notizen, Favoriten, eigene Bilder). Ein Lesezeichen-/Favoriten-Export aus Edge, Chrome oder Firefox funktioniert auch: Ordner werden zu Gruppen. Ebenso eine einfache Textdatei mit Links. Links, die du schon hast, werden dir zur Prüfung aufgelistet; nichts wird verworfen, ohne dass es angezeigt wird."],
-"Put everything in":["Alles plaatsen in", "وضع الكل في", "Alles ablegen in"],
-"Layout":["Indeling", "التخطيط", "Layout"],
-"Side panel":["Zijpaneel", "لوحة جانبية", "Seitenleiste"],
-"Groups in a column on the left; click one to list its links beside it.":["Groepen in een kolom aan de zijkant; klik op een groep om de links ernaast te zien.", "المجموعات في عمود جانبي؛ انقر على مجموعة لعرض روابطها بجانبها.", "Gruppen in einer Spalte links; klicke auf eine, um ihre Links daneben aufzulisten."],
-"Sections":["Secties", "أقسام", "Abschnitte"],
-"All groups on one page as collapsible sections with large cards.":["Alle groepen op één pagina als inklapbare secties met grote kaarten.", "كل المجموعات في صفحة واحدة كأقسام قابلة للطي مع بطاقات كبيرة.", "Alle Gruppen auf einer Seite als einklappbare Abschnitte mit großen Karten."],
-"Appearance":["Weergave", "المظهر", "Darstellung"],
-"Follow my device":["Mijn apparaat volgen", "اتباع جهازي", "Wie mein Gerät"],
-"Light":["Licht", "فاتح", "Hell"],
-"Dark":["Donker", "داكن", "Dunkel"],
-"Cards":["Kaarten", "البطاقات", "Karten"],
-"Picture size":["Afbeeldingsgrootte", "حجم الصورة", "Bildgröße"],
-"Small":["Klein", "صغير", "Klein"],
-"Medium":["Middel", "متوسط", "Mittel"],
-"Large":["Groot", "كبير", "Groß"],
-"Clicking a link opens it":["Een link openen", "النقر على رابط يفتحه", "Ein Klick auf einen Link öffnet ihn"],
-"In a new tab":["In een nieuw tabblad", "في علامة تبويب جديدة", "In einem neuen Tab"],
-"In this tab":["In dit tabblad", "في علامة التبويب هذه", "In diesem Tab"],
-"New links go to":["Nieuwe links gaan naar", "الروابط الجديدة تذهب إلى", "Neue Links kommen in"],
-"Layout, appearance and these card choices are saved with your account, so all your devices look the same.":["Indeling, weergave en deze kaartkeuzes worden bij je account bewaard, dus al je apparaten zien er hetzelfde uit.", "يُحفظ التخطيط والمظهر وخيارات البطاقات هذه مع حسابك، فتبدو كل أجهزتك متشابهة.", "Layout, Darstellung und diese Kartenoptionen werden mit deinem Konto gespeichert, damit alle deine Geräte gleich aussehen."],
-"Keyboard:":["Toetsenbord:", "لوحة المفاتيح:", "Tastatur:"],
-"search,":["zoeken,", "بحث،", "suchen,"],
-"add a link,":["link toevoegen,", "إضافة رابط،", "einen Link hinzufügen,"],
-"clear the search or leave a field.":["zoekopdracht wissen of een veld verlaten.", "مسح البحث أو مغادرة الحقل.", "die Suche leeren oder ein Feld verlassen."],
-"Your account":["Je account", "حسابك", "Dein Konto"],
-"Username":["Gebruikersnaam", "اسم المستخدم", "Benutzername"],
-"New password (leave empty to keep the current one)":["Nieuw wachtwoord (leeg laten om het huidige te houden)", "كلمة مرور جديدة (اتركها فارغة للإبقاء على الحالية)", "Neues Passwort (leer lassen, um das aktuelle zu behalten)"],
-"Current password":["Huidig wachtwoord", "كلمة المرور الحالية", "Aktuelles Passwort"],
-"Save account":["Account opslaan", "حفظ الحساب", "Konto speichern"],
-"Sign out":["Afmelden", "تسجيل الخروج", "Abmelden"],
-"Two-factor sign-in":["Tweestapsaanmelding", "تسجيل الدخول بخطوتين", "Zwei-Faktor-Anmeldung"],
-"Scan this with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …), then enter the 6-digit code it shows.":["Scan dit met een authenticator-app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …) en vul de 6-cijferige code in die de app toont.", "امسح هذا الرمز بتطبيق مصادقة (Google Authenticator أو Microsoft Authenticator أو 1Password أو Aegis …)، ثم أدخل الرمز المكوّن من 6 أرقام الذي يظهر فيه.", "Scanne das mit einer Authenticator-App (Google Authenticator, Microsoft Authenticator, 1Password, Aegis …) und gib dann den 6-stelligen Code ein, den sie anzeigt."],
-"Can't scan? Enter this key in the app:":["Lukt scannen niet? Vul deze sleutel in de app in:", "لا يمكنك المسح؟ أدخل هذا المفتاح في التطبيق:", "Scannen klappt nicht? Gib diesen Schlüssel in der App ein:"],
-"Code from the app":["Code uit de app", "الرمز من التطبيق", "Code aus der App"],
-"Confirm and turn on":["Bevestigen en aanzetten", "تأكيد وتفعيل", "Bestätigen und einschalten"],
-"Recovery codes.":["Herstelcodes.", "رموز الاسترداد.", "Wiederherstellungscodes."],
-"Each one signs you in once if your phone is not at hand. Save them somewhere safe now; they are not shown again.":["Met elke code kun je één keer inloggen als je telefoon niet bij de hand is. Bewaar ze nu op een veilige plek; ze worden niet opnieuw getoond.", "كل رمز يتيح لك تسجيل الدخول مرة واحدة إن لم يكن هاتفك في متناولك. احفظها الآن في مكان آمن؛ فلن تظهر مرة أخرى.", "Jeder meldet dich einmal an, wenn dein Handy nicht zur Hand ist. Bewahre sie jetzt sicher auf; sie werden nicht noch einmal angezeigt."],
-"I have saved them":["Ik heb ze bewaard", "لقد حفظتها", "Ich habe sie gespeichert"],
-"Turn on":["Aanzetten", "تفعيل", "Einschalten"],
-"New recovery codes":["Nieuwe herstelcodes", "رموز استرداد جديدة", "Neue Wiederherstellungscodes"],
-"Turn off":["Uitzetten", "إيقاف", "Ausschalten"],
-"Signed-in devices":["Aangemelde apparaten", "الأجهزة المسجّل دخولها", "Angemeldete Geräte"],
-"Sign out all other devices":["Alle andere apparaten afmelden", "تسجيل الخروج من كل الأجهزة الأخرى", "Alle anderen Geräte abmelden"],
-"People (admin)":["Personen (beheerder)", "الأشخاص (المسؤول)", "Personen (Admin)"],
-"Everyone has their own links, groups, API key and backups. Nobody, the admin included, can see someone else's links.":["Iedereen heeft eigen links, groepen, API-sleutel en back-ups. Niemand, ook de beheerder niet, kan de links van een ander zien.", "لكل شخص روابطه ومجموعاته ومفتاح API ونسخه الاحتياطية. لا يستطيع أحد، ولا المسؤول نفسه، رؤية روابط شخص آخر.", "Jede Person hat eigene Links, Gruppen, einen eigenen API-Schlüssel und eigene Sicherungen. Niemand, auch nicht der Admin, kann die Links anderer sehen."],
-"Add a person: username":["Persoon toevoegen: gebruikersnaam", "إضافة شخص: اسم المستخدم", "Person hinzufügen: Benutzername"],
-"Their first password (at least 8 characters)":["Eerste wachtwoord (minstens 8 tekens)", "كلمة المرور الأولى (8 أحرف على الأقل)", "Ihr erstes Passwort (mindestens 8 Zeichen)"],
-"Also an admin":["Ook beheerder", "مسؤول أيضًا", "Auch Admin"],
-"Add person":["Persoon toevoegen", "إضافة الشخص", "Person hinzufügen"],
-"Installation (admin)":["Installatie (beheerder)", "التثبيت (المسؤول)", "Installation (Admin)"],
-"Check everyone's links automatically once a week":["Ieders links één keer per week automatisch controleren", "فحص روابط الجميع تلقائيًا مرة كل أسبوع", "Die Links aller Personen einmal pro Woche automatisch prüfen"],
-"Keep a daily backup of the whole installation in the data folder (last 7 days)":["Elke dag een back-up van de hele installatie in de datamap bewaren (laatste 7 dagen)", "الاحتفاظ بنسخة احتياطية يومية من التثبيت كاملًا في مجلد البيانات (آخر 7 أيام)", "Eine tägliche Sicherung der gesamten Installation im Datenordner aufbewahren (letzte 7 Tage)"],
-"Fetch titles and pictures for local network addresses (192.168.x.x, nas.local, …)":["Titels en afbeeldingen ophalen voor adressen in het lokale netwerk (192.168.x.x, nas.local, …)", "جلب العناوين والصور لعناوين الشبكة المحلية (192.168.x.x وnas.local و…)", "Titel und Bilder für Adressen im lokalen Netzwerk abrufen (192.168.x.x, nas.local, …)"],
-"Off by default. When on, anyone with an account can make TileMark open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.":["Standaard uit. Als dit aan staat, kan iedereen met een account TileMark pagina's binnen je netwerk laten openen. Zet het alleen aan als je iedereen met een account vertrouwt. Lokale links kun je altijd opslaan; zonder deze optie tonen ze alleen hun adres.", "معطّل افتراضيًا. عند تفعيله يستطيع كل من لديه حساب أن يجعل TileMark يفتح صفحات داخل شبكتك. فعّله فقط إن كنت تثق بكل من لديه حساب. يمكن دائمًا حفظ الروابط المحلية؛ ودون هذا الخيار يظهر عنوانها فقط.", "Standardmäßig aus. Wenn an, kann jeder mit einem Konto TileMark Seiten in deinem Netzwerk öffnen lassen. Schalte es nur ein, wenn du allen mit einem Konto vertraust. Lokale Links können immer gespeichert werden; ohne diese Option zeigen sie nur ihre Adresse."],
-"Restore the whole installation (admin)":["De hele installatie terugzetten (beheerder)", "استعادة التثبيت كاملًا (المسؤول)", "Die gesamte Installation wiederherstellen (Admin)"],
-"Daily backups hold every account. Restoring one puts the whole installation back to that day; everyone signs in again afterwards. A safety copy of the current state is made first and listed here as \"before restore\", so a restore can be undone.":["Dagelijkse back-ups bevatten alle accounts. Als je er een terugzet, gaat de hele installatie terug naar die dag; daarna meldt iedereen zich opnieuw aan. Eerst wordt een reservekopie van de huidige toestand gemaakt, hier vermeld als \"vóór terugzetten\", zodat je het terugzetten ongedaan kunt maken.", "تحتوي النسخ الاحتياطية اليومية على كل الحسابات. استعادة إحداها تعيد التثبيت كاملًا إلى ذلك اليوم، ثم يسجّل الجميع الدخول من جديد. تُنشأ أولًا نسخة أمان من الحالة الراهنة وتظهر هنا باسم \"قبل الاستعادة\"، حتى يمكن التراجع عن الاستعادة.", "Tägliche Sicherungen enthalten alle Konten. Das Wiederherstellen einer Sicherung setzt die gesamte Installation auf diesen Tag zurück; danach melden sich alle erneut an. Zuerst wird eine Sicherheitskopie des aktuellen Zustands erstellt und hier als „Vor der Wiederherstellung“ aufgeführt, damit sich eine Wiederherstellung rückgängig machen lässt."],
-"Make a backup now":["Nu een back-up maken", "إنشاء نسخة احتياطية الآن", "Jetzt eine Sicherung erstellen"],
-"Home Assistant sensors (admin)":["Home Assistant-sensoren (beheerder)", "مستشعرات Home Assistant (المسؤول)", "Home Assistant-Sensoren (Admin)"],
-"Shows TileMark in Home Assistant as a device with sensors for the number of links and broken links (all accounts together, counts only) and the time of the last check of all links (the weekly one, or an admin's Check now), plus an event when that check finishes, for a notification. Works through MQTT; Home Assistant needs its MQTT integration.":["Toont TileMark in Home Assistant als apparaat met sensoren voor het aantal links en kapotte links (alle accounts samen, alleen aantallen) en het tijdstip van de laatste controle van alle links (de wekelijkse, of Nu controleren door een beheerder), plus een gebeurtenis als die controle klaar is, voor een melding. Werkt via MQTT; Home Assistant heeft de MQTT-integratie nodig.", "يُظهر TileMark في Home Assistant كجهاز فيه مستشعرات لعدد الروابط والروابط المعطّلة (لكل الحسابات معًا، أعداد فقط) ووقت آخر فحص لكل الروابط (الفحص الأسبوعي، أو «افحص الآن» من قِبل المسؤول)، إضافة إلى حدث عند انتهاء ذلك الفحص لإرسال إشعار. يعمل عبر MQTT، ويحتاج Home Assistant إلى تكامل MQTT.", "Zeigt TileMark in Home Assistant als Gerät mit Sensoren für die Anzahl der Links und der defekten Links (alle Konten zusammen, nur Zahlen) und den Zeitpunkt der letzten Prüfung aller Links (der wöchentlichen oder „Jetzt prüfen“ durch einen Admin), dazu ein Ereignis, wenn diese Prüfung fertig ist, für eine Benachrichtigung. Funktioniert über MQTT; Home Assistant braucht seine MQTT-Integration."],
-"Send to Home Assistant over MQTT":["Via MQTT naar Home Assistant sturen", "الإرسال إلى Home Assistant عبر MQTT", "Über MQTT an Home Assistant senden"],
-"Leave the broker empty to use Home Assistant's own MQTT broker.":["Laat de broker leeg om de MQTT-broker van Home Assistant zelf te gebruiken.", "اترك الوسيط فارغًا لاستخدام وسيط MQTT الخاص بـ Home Assistant.", "Lass den Broker leer, um den eigenen MQTT-Broker von Home Assistant zu verwenden."],
-"Broker (host name or address)":["Broker (hostnaam of adres)", "الوسيط (اسم المضيف أو العنوان)", "Broker (Hostname oder Adresse)"],
-"Port":["Poort", "المنفذ", "Port"],
-"Password":["Wachtwoord", "كلمة المرور", "Passwort"],
-"Encrypted connection (TLS)":["Versleutelde verbinding (TLS)", "اتصال مشفّر (TLS)", "Verschlüsselte Verbindung (TLS)"],
-"Discovery prefix":["Discovery-voorvoegsel", "بادئة الاكتشاف", "Discovery-Präfix"],
-"Save and connect":["Opslaan en verbinden", "حفظ واتصال", "Speichern und verbinden"],
-"Save from anywhere":["Overal vandaan opslaan", "الحفظ من أي مكان", "Von überall speichern"],
-"Browser button:":["Browserknop:", "زر المتصفح:", "Browser-Schaltfläche:"],
-"drag this to your favorites bar, then click it on any page to save that page.":["sleep deze naar je favorietenbalk en klik er op een willekeurige pagina op om die pagina op te slaan.", "اسحبه إلى شريط المفضلة، ثم انقر عليه في أي صفحة لحفظها.", "zieh sie in deine Favoritenleiste und klicke sie dann auf einer beliebigen Seite an, um diese Seite zu speichern."],
-"🔖 Save to TileMark":["🔖 Opslaan in TileMark", "🔖 حفظ في TileMark", "🔖 In TileMark speichern"],
-"API key":["API-sleutel", "مفتاح API", "API-Schlüssel"],
-"for scripts and phone shortcuts. It can only add links and read group names.":["voor scripts en snelkoppelingen op je telefoon. Hij kan alleen links toevoegen en groepsnamen lezen.", "للبرامج النصية واختصارات الهاتف. يمكنه فقط إضافة روابط وقراءة أسماء المجموعات.", "für Skripte und Handy-Kurzbefehle. Er kann nur Links hinzufügen und Gruppennamen lesen."],
-"Copy it now; it is shown only this once. Send it as the header":["Kopieer hem nu; hij wordt maar één keer getoond. Stuur hem mee als de header", "انسخه الآن؛ فلن يظهر إلا هذه المرة. أرسله في الترويسة", "Kopiere ihn jetzt; er wird nur dieses eine Mal angezeigt. Sende ihn als Header"],
-"with a POST to":["met een POST naar", "مع طلب POST إلى", "mit einem POST an"],
-"Create API key":["API-sleutel maken", "إنشاء مفتاح API", "API-Schlüssel erstellen"],
-"Remove API key":["API-sleutel verwijderen", "حذف مفتاح API", "API-Schlüssel entfernen"],
-"Link check":["Linkcontrole", "فحص الروابط", "Link-Prüfung"],
-"Finds links that no longer work and lists them under \"Broken links\". A link counts as broken when its address cannot be reached twice in a row, or the site says the page is gone.":["Zoekt links die niet meer werken en zet ze onder \"Kapotte links\". Een link telt als kapot als het adres twee keer achter elkaar niet bereikbaar is, of als de site zegt dat de pagina weg is.", "يبحث عن الروابط التي لم تعد تعمل ويعرضها تحت \"روابط معطّلة\". يُعدّ الرابط معطّلًا إذا تعذّر الوصول إلى عنوانه مرتين متتاليتين، أو إذا أفاد الموقع بأن الصفحة لم تعد موجودة.", "Findet Links, die nicht mehr funktionieren, und listet sie unter „Defekte Links“ auf. Ein Link gilt als defekt, wenn seine Adresse zweimal hintereinander nicht erreichbar ist oder die Website meldet, dass die Seite nicht mehr existiert."],
-"Check now":["Nu controleren", "افحص الآن", "Jetzt prüfen"],
-"Refresh all titles and pictures":["Alle titels en afbeeldingen vernieuwen", "تحديث كل العناوين والصور", "Alle Titel und Bilder aktualisieren"],
-"Backup":["Back-up", "النسخ الاحتياطي", "Sicherung"],
-"One file with all your links, groups, their order and the thumbnails. Give it a password to encrypt it.":["Eén bestand met al je links, groepen, hun volgorde en de miniaturen. Geef het een wachtwoord om het te versleutelen.", "ملف واحد فيه كل روابطك ومجموعاتك وترتيبها والصور المصغّرة. ضع له كلمة مرور لتشفيره.", "Eine Datei mit all deinen Links, Gruppen, ihrer Reihenfolge und den Vorschaubildern. Gib ihr ein Passwort, um sie zu verschlüsseln."],
-"Backup password (optional, but recommended)":["Wachtwoord voor de back-up (optioneel, maar aangeraden)", "كلمة مرور النسخة الاحتياطية (اختيارية لكن يُنصح بها)", "Sicherungspasswort (optional, aber empfohlen)"],
-"Download backup":["Back-up downloaden", "تنزيل النسخة الاحتياطية", "Sicherung herunterladen"],
-"Restore":["Terugzetten", "استعادة", "Wiederherstellen"],
-"Replaces all your current links and groups with the ones from a backup file (older backups work too). Your account and other people's links stay as they are.":["Vervangt al je huidige links en groepen door die uit een back-upbestand (oudere back-ups werken ook). Je account en de links van anderen blijven zoals ze zijn.", "يستبدل كل روابطك ومجموعاتك الحالية بتلك الموجودة في ملف نسخة احتياطية (تعمل النسخ الأقدم أيضًا). يبقى حسابك وروابط الآخرين كما هي.", "Ersetzt alle deine aktuellen Links und Gruppen durch die aus einer Sicherungsdatei (ältere Sicherungen funktionieren auch). Dein Konto und die Links anderer Personen bleiben unverändert."],
-"Password of that backup (if it has one)":["Wachtwoord van die back-up (als die er een heeft)", "كلمة مرور تلك النسخة (إن وُجدت)", "Passwort dieser Sicherung (falls sie eines hat)"],
-"Restore from backup":["Terugzetten uit back-up", "الاستعادة من نسخة احتياطية", "Aus Sicherung wiederherstellen"],
-"Sign in - TileMark":["Aanmelden - TileMark", "تسجيل الدخول - TileMark", "Anmelden - TileMark"],
-"Sign in to see your links.":["Meld je aan om je links te zien.", "سجّل الدخول لرؤية روابطك.", "Melde dich an, um deine Links zu sehen."],
-"Setup code":["Installatiecode", "رمز الإعداد", "Einrichtungscode"],
-"Printed in the container log:":["Staat in het containerlogboek:", "مطبوع في سجل الحاوية:", "Steht im Container-Log:"],
-", or the log of the stack in Dockge.":[", of het logboek van de stack in Dockge.", "، أو سجل الحزمة في Dockge.", ", oder im Log des Stacks in Dockge."],
-"Code from your authenticator app":["Code uit je authenticator-app", "الرمز من تطبيق المصادقة", "Code aus deiner Authenticator-App"],
-"No phone at hand? Enter one of your recovery codes instead.":["Telefoon niet bij de hand? Vul dan een van je herstelcodes in.", "ليس هاتفك في متناولك؟ أدخل أحد رموز الاسترداد بدلًا منه.", "Kein Handy zur Hand? Gib stattdessen einen deiner Wiederherstellungscodes ein."],
-"Repeat the password":["Herhaal het wachtwoord", "أعد كتابة كلمة المرور", "Passwort wiederholen"],
-"Keep me signed in on this device for 30 days":["Op dit apparaat 30 dagen aangemeld blijven", "إبقائي مسجّلًا على هذا الجهاز 30 يومًا", "Auf diesem Gerät 30 Tage angemeldet bleiben"],
-"Sign in":["Aanmelden", "تسجيل الدخول", "Anmelden"],
-"Save to TileMark":["Opslaan in TileMark", "حفظ في TileMark", "In TileMark speichern"],
-"Sign in to TileMark to save this link.":["Meld je aan bij TileMark om deze link op te slaan.", "سجّل الدخول إلى TileMark لحفظ هذا الرابط.", "Melde dich bei TileMark an, um diesen Link zu speichern."],
-"Note (optional)":["Notitie (optioneel)", "ملاحظة (اختيارية)", "Notiz (optional)"],
-"No web address was passed to this window.":["Er is geen webadres aan dit venster doorgegeven.", "لم يُمرَّر أي عنوان ويب إلى هذه النافذة.", "An dieses Fenster wurde keine Webadresse übergeben."],
-"Open TileMark":["TileMark openen", "فتح TileMark", "TileMark öffnen"],
-"Broken links":["Kapotte links", "روابط معطّلة", "Defekte Links"],
-"Favourites":["Favorieten", "المفضلة", "Favoriten"],
-"Recently added":["Onlangs toegevoegd", "أُضيفت مؤخرًا", "Kürzlich hinzugefügt"],
-"Recently opened":["Onlangs geopend", "فُتحت مؤخرًا", "Kürzlich geöffnet"],
-"All links":["Alle links", "كل الروابط", "Alle Links"],
-"Language":["Taal", "اللغة", "Sprache"],
-"Follow my browser":["Mijn browser volgen", "اتباع المتصفح", "Wie mein Browser"],
-"Please sign in.":["Meld je aan.", "يُرجى تسجيل الدخول.", "Bitte melde dich an."],
-"Something went wrong ({code}).":["Er ging iets mis ({code}).", "حدث خطأ ما ({code}).", "Etwas ist schiefgelaufen ({code})."],
-"Edit group":["Groep bewerken", "تعديل المجموعة", "Gruppe bearbeiten"],
-"Open {n} tabs?":["{n} tabbladen openen?", "فتح {n} علامات تبويب؟", "{n} Tabs öffnen?"],
-"Your browser blocked {n} tabs. Allow pop-ups for this page to open them all.":["Je browser heeft {n} tabbladen geblokkeerd. Sta pop-ups toe voor deze pagina om ze allemaal te openen.", "حظر متصفحك {n} علامات تبويب. اسمح بالنوافذ المنبثقة لهذه الصفحة لفتحها كلها.", "Dein Browser hat {n} Tabs blockiert. Erlaube Pop-ups für diese Seite, um alle zu öffnen."],
-"Could not share.":["Delen lukte niet.", "تعذّرت المشاركة.", "Teilen nicht möglich."],
-"Link copied. Paste it wherever you want to share it.":["Link gekopieerd. Plak hem waar je hem wilt delen.", "نُسخ الرابط. الصقه حيث تريد مشاركته.", "Link kopiert. Füge ihn dort ein, wo du ihn teilen möchtest."],
-"Broken":["Kapot", "معطّل", "Defekt"],
-"This address could not be reached at the last check, or the page no longer exists.":["Dit adres was bij de laatste controle niet bereikbaar, of de pagina bestaat niet meer.", "تعذّر الوصول إلى هذا العنوان في آخر فحص، أو أن الصفحة لم تعد موجودة.", "Diese Adresse war bei der letzten Prüfung nicht erreichbar, oder die Seite existiert nicht mehr."],
-"Remove from favourites":["Uit favorieten halen", "إزالة من المفضلة", "Aus Favoriten entfernen"],
-"Add to favourites":["Aan favorieten toevoegen", "إضافة إلى المفضلة", "Zu Favoriten hinzufügen"],
-"Share":["Delen", "مشاركة", "Teilen"],
-"Edit":["Bewerken", "تعديل", "Bearbeiten"],
-"Refresh thumbnail":["Miniatuur vernieuwen", "تحديث الصورة المصغّرة", "Vorschaubild aktualisieren"],
-"Favourite":["Favoriet", "مفضّل", "Favorit"],
-"Expand":["Uitklappen", "توسيع", "Ausklappen"],
-"Collapse":["Inklappen", "طي", "Einklappen"],
-"Open all":["Alles openen", "فتح الكل", "Alle öffnen"],
-"Open all links of this group in tabs":["Alle links van deze groep openen in tabbladen", "فتح كل روابط هذه المجموعة في علامات تبويب", "Alle Links dieser Gruppe in Tabs öffnen"],
-"Ungrouped":["Zonder groep", "بلا مجموعة", "Ohne Gruppe"],
-"{n} link":["{n} link", "{n} رابط", "{n} Link"],
-"{n} links":["{n} links", "{n} روابط", "{n} Links"],
-"No links yet":["Nog geen links", "لا توجد روابط بعد", "Noch keine Links"],
-"Paste a link above, or use Import to bring in your bookmarks all at once.":["Plak hierboven een link, of gebruik Importeren om al je bladwijzers in één keer binnen te halen.", "الصق رابطًا في الأعلى، أو استخدم الاستيراد لجلب كل إشاراتك المرجعية دفعة واحدة.", "Füge oben einen Link ein oder hole mit „Importieren“ alle deine Lesezeichen auf einmal herein."],
-"{n} selected":["{n} geselecteerd", "{n} محدد", "{n} ausgewählt"],
-"Move to…":["Verplaatsen naar…", "نقل إلى…", "Verschieben nach…"],
-"No group":["Geen groep", "بلا مجموعة", "Keine Gruppe"],
-"Search results":["Zoekresultaten", "نتائج البحث", "Suchergebnisse"],
-"Nothing here":["Niets hier", "لا شيء هنا", "Hier ist nichts"],
-"No link matches your search.":["Geen link komt overeen met je zoekopdracht.", "لا يوجد رابط يطابق بحثك.", "Kein Link passt zu deiner Suche."],
-"No broken links.":["Geen kapotte links.", "لا توجد روابط معطّلة.", "Keine defekten Links."],
-"No favourites yet. Use the ☆ on a card.":["Nog geen favorieten. Gebruik de ☆ op een kaart.", "لا توجد مفضلة بعد. استخدم ☆ على البطاقة.", "Noch keine Favoriten. Verwende den ☆ auf einer Karte."],
-"Links you open will be listed here.":["Links die je opent, verschijnen hier.", "ستظهر هنا الروابط التي تفتحها.", "Links, die du öffnest, werden hier aufgelistet."],
-"This group is empty. Paste a link above, or drag a card onto the group.":["Deze groep is leeg. Plak hierboven een link, of sleep een kaart naar de groep.", "هذه المجموعة فارغة. الصق رابطًا في الأعلى، أو اسحب بطاقة إلى المجموعة.", "Diese Gruppe ist leer. Füge oben einen Link ein oder zieh eine Karte auf die Gruppe."],
-"Delete this link?":["Deze link verwijderen?", "حذف هذا الرابط؟", "Diesen Link löschen?"],
-"Picture pasted. Press Save to use it.":["Afbeelding geplakt. Druk op Opslaan om hem te gebruiken.", "تم لصق الصورة. اضغط حفظ لاستخدامها.", "Bild eingefügt. Drücke „Speichern“, um es zu verwenden."],
-"First":["Eerste", "الأولى", "Zuerst"],
-"First in the list":["Eerste in de lijst", "الأولى في القائمة", "Ganz oben in der Liste"],
-"After":["Na", "بعد", "Nach"],
-"Choose any colour":["Kies een willekeurige kleur", "اختر أي لون", "Beliebige Farbe wählen"],
-"Other colour…":["Andere kleur…", "لون آخر…", "Andere Farbe…"],
-"Colour {c}":["Kleur {c}", "اللون {c}", "Farbe {c}"],
-"Give the group a name.":["Geef de groep een naam.", "أعطِ المجموعة اسمًا.", "Gib der Gruppe einen Namen."],
-"Delete the group “{name}”?\nIts links are kept and become ungrouped.":["De groep “{name}” verwijderen?\nDe links blijven bewaard en komen zonder groep te staan.", "حذف المجموعة «{name}»؟\nتبقى روابطها وتصبح بلا مجموعة.", "Die Gruppe „{name}“ löschen?\nIhre Links bleiben erhalten und sind dann ohne Gruppe."],
-"Last daily backup: {when} ({n} kept).":["Laatste dagelijkse back-up: {when} ({n} bewaard).", "آخر نسخة احتياطية يومية: {when} (يُحتفظ بـ {n}).", "Letzte tägliche Sicherung: {when} ({n} aufbewahrt)."],
-"No daily backup yet.":["Nog geen dagelijkse back-up.", "لا توجد نسخة احتياطية يومية بعد.", "Noch keine tägliche Sicherung."],
-"Each holds every account; to restore one, stop TileMark and unzip it into the data folder.":["Elke back-up bevat alle accounts; om er een terug te zetten, stop je TileMark en pak je hem uit in de datamap.", "كل نسخة تحتوي على كل الحسابات؛ لاستعادة إحداها أوقف TileMark وفكّ ضغطها في مجلد البيانات.", "Jede enthält alle Konten; um eine wiederherzustellen, stoppe TileMark und entpacke sie in den Datenordner."],
-"Home Assistant's own backups already include TileMark.":["De back-ups van Home Assistant zelf bevatten TileMark al.", "النسخ الاحتياطية الخاصة بـ Home Assistant تتضمن TileMark أصلًا.", "Die eigenen Sicherungen von Home Assistant enthalten TileMark bereits."],
-"A check is running.":["Er loopt een controle.", "يجري فحص الآن.", "Eine Prüfung läuft."],
-"Checking… {done} of {total} links done.":["Bezig met controleren… {done} van {total} links klaar.", "جارٍ الفحص… اكتمل {done} من {total} رابط.", "Prüfe… {done} von {total} Links erledigt."],
-"Connection problem":["Verbindingsprobleem", "مشكلة في الاتصال", "Verbindungsproblem"],
-"The check of {when} stopped: TileMark couldn't reach the internet, so no links were changed. Check the network connection of the machine TileMark runs on.":["De controle van {when} is gestopt: TileMark kon het internet niet bereiken, dus er zijn geen links gewijzigd. Controleer de netwerkverbinding van de machine waarop TileMark draait.", "توقّف فحص {when}: لم يتمكّن TileMark من الوصول إلى الإنترنت، لذلك لم يتغيّر أي رابط. تحقّق من اتصال الشبكة للجهاز الذي يعمل عليه TileMark.", "Die Prüfung vom {when} wurde abgebrochen: TileMark konnte das Internet nicht erreichen, daher wurden keine Links geändert. Prüfe die Netzwerkverbindung des Rechners, auf dem TileMark läuft."],
-"The check of {when} couldn't reach {n} links. That points to a problem with TileMark's own connection, so those links were left as they were.":["De controle van {when} kon {n} links niet bereiken. Dat wijst op een probleem met de verbinding van TileMark zelf, dus die links zijn gelaten zoals ze waren.", "لم يتمكّن فحص {when} من الوصول إلى {n} من الروابط. هذا يدل على مشكلة في اتصال TileMark نفسه، لذلك تُركت تلك الروابط كما كانت.", "Die Prüfung vom {when} konnte {n} Links nicht erreichen. Das deutet auf ein Problem mit der eigenen Verbindung von TileMark hin, daher wurden diese Links unverändert gelassen."],
-"Last check: {when}.":["Laatste controle: {when}.", "آخر فحص: {when}.", "Letzte Prüfung: {when}."],
-"{n} broken link.":["{n} kapotte link.", "{n} رابط معطّل.", "{n} defekter Link."],
-"{n} broken links.":["{n} kapotte links.", "{n} روابط معطّلة.", "{n} defekte Links."],
-"No check has run yet.":["Er is nog geen controle gedaan.", "لم يُجرَ أي فحص بعد.", "Es wurde noch keine Prüfung ausgeführt."],
-"Allow TileMark to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make TileMark reach devices on your network.":["TileMark toestaan adressen binnen je netwerk te openen om titels en afbeeldingen op te halen?\n\nIedereen met een account kan TileMark dan apparaten in je netwerk laten benaderen.", "السماح لـ TileMark بفتح عناوين داخل شبكتك لجلب العناوين والصور؟\n\nعندها يستطيع كل من لديه حساب أن يجعل TileMark يصل إلى أجهزة في شبكتك.", "TileMark erlauben, Adressen in deinem Netzwerk zu öffnen, um Titel und Bilder abzurufen?\n\nJeder mit einem Konto kann TileMark dann Geräte in deinem Netzwerk erreichen lassen."],
-"Local addresses will be fetched. Use ↻ to refresh existing local links.":["Lokale adressen worden opgehaald. Gebruik ↻ om bestaande lokale links te vernieuwen.", "ستُجلب العناوين المحلية. استخدم ↻ لتحديث الروابط المحلية الموجودة.", "Lokale Adressen werden abgerufen. Verwende ↻, um vorhandene lokale Links zu aktualisieren."],
-"Local addresses will no longer be fetched.":["Lokale adressen worden niet meer opgehaald.", "لن تُجلب العناوين المحلية بعد الآن.", "Lokale Adressen werden nicht mehr abgerufen."],
-"Check started. You can close this window; it continues in the background.":["Controle gestart. Je kunt dit venster sluiten; hij gaat op de achtergrond door.", "بدأ الفحص. يمكنك إغلاق هذه النافذة؛ سيستمر في الخلفية.", "Prüfung gestartet. Du kannst dieses Fenster schließen; sie läuft im Hintergrund weiter."],
-"Fetch titles and pictures again for {n} links? This can take a few minutes.":["Titels en afbeeldingen opnieuw ophalen voor {n} links? Dit kan een paar minuten duren.", "إعادة جلب العناوين والصور لـ {n} رابط؟ قد يستغرق ذلك بضع دقائق.", "Titel und Bilder für {n} Links neu abrufen? Das kann einige Minuten dauern."],
-"Refreshing {n} link shown here.":["{n} link hier wordt vernieuwd.", "جارٍ تحديث {n} رابط معروض هنا.", "{n} hier angezeigter Link wird aktualisiert."],
-"Refreshing {n} links shown here.":["{n} links hier worden vernieuwd.", "جارٍ تحديث {n} روابط معروضة هنا.", "{n} hier angezeigte Links werden aktualisiert."],
-"Refreshing {n} link.":["{n} link wordt vernieuwd.", "جارٍ تحديث {n} رابط.", "{n} Link wird aktualisiert."],
-"Refreshing {n} links.":["{n} links worden vernieuwd.", "جارٍ تحديث {n} روابط.", "{n} Links werden aktualisiert."],
-"Moved {n} link.":["{n} link verplaatst.", "نُقل {n} رابط.", "{n} Link verschoben."],
-"Moved {n} links.":["{n} links verplaatst.", "نُقلت {n} روابط.", "{n} Links verschoben."],
-"Delete {n} link?":["{n} link verwijderen?", "حذف {n} رابط؟", "{n} Link löschen?"],
-"Delete {n} links?":["{n} links verwijderen?", "حذف {n} روابط؟", "{n} Links löschen?"],
-"Set a password here only if you also want to sign in on TileMark's own port.":["Stel hier alleen een wachtwoord in als je je ook wilt aanmelden via de eigen poort van TileMark.", "عيّن كلمة مرور هنا فقط إن أردت أيضًا تسجيل الدخول عبر منفذ TileMark الخاص.", "Lege hier nur dann ein Passwort fest, wenn du dich auch über den eigenen Port von TileMark anmelden willst."],
-"Replace API key":["API-sleutel vervangen", "استبدال مفتاح API", "API-Schlüssel ersetzen"],
-"Phone:":["Telefoon:", "الهاتف:", "Handy:"],
-"open {address} in the phone's browser and choose “Install app” or “Add to Home screen”. On Android, TileMark then appears in the Share menu of other apps.":["open {address} in de browser van je telefoon en kies “App installeren” of “Toevoegen aan startscherm”. Op Android verschijnt TileMark dan in het deelmenu van andere apps.", "افتح {address} في متصفح الهاتف واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية». على Android يظهر TileMark بعدها في قائمة المشاركة في التطبيقات الأخرى.", "öffne {address} im Browser des Handys und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“. Unter Android erscheint TileMark dann im Teilen-Menü anderer Apps."],
-"installing TileMark as an app and sharing to it needs the HTTPS address. Open TileMark through HTTPS to see the steps.":["om TileMark als app te installeren en ernaar te delen is het HTTPS-adres nodig. Open TileMark via HTTPS om de stappen te zien.", "يتطلب تثبيت TileMark كتطبيق والمشاركة إليه عنوان HTTPS. افتح TileMark عبر HTTPS لرؤية الخطوات.", "um TileMark als App zu installieren und Inhalte damit zu teilen, braucht es die HTTPS-Adresse. Öffne TileMark über HTTPS, um die Schritte zu sehen."],
-"Inside Home Assistant:":["Binnen Home Assistant:", "داخل Home Assistant:", "Innerhalb von Home Assistant:"],
-"the browser button and the phone app need TileMark's own address. Turn on the port in Home Assistant under Settings → Apps → TileMark → Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well.":["de browserknop en de telefoon-app hebben het eigen adres van TileMark nodig. Zet de poort aan in Home Assistant onder Instellingen → Apps → TileMark → Configuratie → Netwerk, open http://<jouw-home-assistant>:<die poort>, meld je daar aan (stel hierboven eerst een wachtwoord in) en stel ze vanaf die pagina in. De API-sleutel werkt ook via die poort.", "يحتاج زر المتصفح وتطبيق الهاتف إلى عنوان TileMark الخاص. فعّل المنفذ في Home Assistant من الإعدادات ← التطبيقات ← TileMark ← التكوين ← الشبكة، وافتح http://<your-home-assistant>:<that port>، وسجّل الدخول هناك (عيّن كلمة مرور في الأعلى أولًا)، ثم اضبطهما من تلك الصفحة. يعمل مفتاح API عبر ذلك المنفذ أيضًا.", "die Browser-Schaltfläche und die Handy-App brauchen die eigene Adresse von TileMark. Schalte den Port in Home Assistant unter Einstellungen → Apps → TileMark → Konfiguration → Netzwerk ein, öffne http://<dein-home-assistant>:<dieser Port>, melde dich dort an (lege vorher oben ein Passwort fest) und richte sie auf dieser Seite ein. Der API-Schlüssel funktioniert ebenfalls über diesen Port."],
-"Drag this button to your favorites bar; don't click it here.":["Sleep deze knop naar je favorietenbalk; klik er hier niet op.", "اسحب هذا الزر إلى شريط المفضلة؛ لا تنقر عليه هنا.", "Zieh diese Schaltfläche in deine Favoritenleiste; klicke sie hier nicht an."],
-"Replace the API key? The current key stops working.":["De API-sleutel vervangen? De huidige sleutel werkt dan niet meer.", "استبدال مفتاح API؟ سيتوقف المفتاح الحالي عن العمل.", "API-Schlüssel ersetzen? Der aktuelle Schlüssel funktioniert dann nicht mehr."],
-"Remove the API key?":["De API-sleutel verwijderen?", "حذف مفتاح API؟", "API-Schlüssel entfernen?"],
-"API key removed.":["API-sleutel verwijderd.", "حُذف مفتاح API.", "API-Schlüssel entfernt."],
-"Enter your current password to save changes.":["Vul je huidige wachtwoord in om wijzigingen op te slaan.", "أدخل كلمة مرورك الحالية لحفظ التغييرات.", "Gib dein aktuelles Passwort ein, um Änderungen zu speichern."],
-"Account saved. Your other devices have been signed out.":["Account opgeslagen. Je andere apparaten zijn afgemeld.", "حُفظ الحساب. سُجّل الخروج من أجهزتك الأخرى.", "Konto gespeichert. Deine anderen Geräte wurden abgemeldet."],
-"Account saved.":["Account opgeslagen.", "حُفظ الحساب.", "Konto gespeichert."],
-"admin":["beheerder", "مسؤول", "Admin"],
-"you":["jij", "أنت", "du"],
-"New password":["Nieuw wachtwoord", "كلمة مرور جديدة", "Neues Passwort"],
-"New password for {name} (at least 8 characters).\nThey are signed out on all their devices.":["Nieuw wachtwoord voor {name} (minstens 8 tekens).\nDie persoon wordt op alle apparaten afgemeld.", "كلمة مرور جديدة لـ {name} (8 أحرف على الأقل).\nسيُسجَّل خروجه من كل أجهزته.", "Neues Passwort für {name} (mindestens 8 Zeichen).\nDie Person wird auf allen ihren Geräten abgemeldet."],
-"Password changed for {name}.":["Wachtwoord gewijzigd voor {name}.", "تم تغيير كلمة المرور لـ {name}.", "Passwort für {name} geändert."],
-"Remove admin":["Beheerder af", "إزالة صلاحية المسؤول", "Admin entfernen"],
-"Make admin":["Beheerder maken", "جعله مسؤولًا", "Zum Admin machen"],
-"Turn off 2FA":["2FA uitzetten", "إيقاف التحقق بخطوتين", "2FA ausschalten"],
-"Turn off two-factor sign-in for {name}? Use this when they lost their phone; they can turn it on again.":["Tweestapsaanmelding uitzetten voor {name}? Gebruik dit als die persoon de telefoon kwijt is; het kan daarna weer aangezet worden.", "إيقاف تسجيل الدخول بخطوتين لـ {name}؟ استخدم هذا عند فقدان هاتفه؛ ويمكنه تفعيله مجددًا.", "Zwei-Faktor-Anmeldung für {name} ausschalten? Verwende das, wenn die Person ihr Handy verloren hat; sie kann sie wieder einschalten."],
-"Two-factor sign-in is off for {name}.":["Tweestapsaanmelding staat uit voor {name}.", "تسجيل الدخول بخطوتين متوقف لـ {name}.", "Die Zwei-Faktor-Anmeldung ist für {name} aus."],
-"Remove":["Verwijderen", "إزالة", "Entfernen"],
-"Remove {name}?\nTheir {n} links, groups and pictures are deleted too. This cannot be undone.":["{name} verwijderen?\nDe {n} links, groepen en afbeeldingen van deze persoon worden ook verwijderd. Dit kan niet ongedaan worden gemaakt.", "إزالة {name}؟\nستُحذف أيضًا روابطه ({n}) ومجموعاته وصوره. لا يمكن التراجع عن ذلك.", "{name} entfernen?\nDie {n} Links, Gruppen und Bilder dieser Person werden ebenfalls gelöscht. Das kann nicht rückgängig gemacht werden."],
-"{name} removed.":["{name} verwijderd.", "أُزيل {name}.", "{name} entfernt."],
-"{name} can now sign in.":["{name} kan zich nu aanmelden.", "يمكن لـ {name} الآن تسجيل الدخول.", "{name} kann sich jetzt anmelden."],
-"The backup could not be made ({code}).":["De back-up kon niet worden gemaakt ({code}).", "تعذّر إنشاء النسخة الاحتياطية ({code}).", "Die Sicherung konnte nicht erstellt werden ({code})."],
-"Encrypted backup downloaded. Keep the password: without it the file cannot be opened.":["Versleutelde back-up gedownload. Bewaar het wachtwoord: zonder kan het bestand niet worden geopend.", "نُزّلت نسخة احتياطية مشفّرة. احتفظ بكلمة المرور: فبدونها لا يمكن فتح الملف.", "Verschlüsselte Sicherung heruntergeladen. Bewahre das Passwort auf: Ohne es lässt sich die Datei nicht öffnen."],
-"Backup downloaded (not encrypted).":["Back-up gedownload (niet versleuteld).", "نُزّلت النسخة الاحتياطية (غير مشفّرة).", "Sicherung heruntergeladen (nicht verschlüsselt)."],
-"Choose a backup file first.":["Kies eerst een back-upbestand.", "اختر ملف نسخة احتياطية أولًا.", "Wähle zuerst eine Sicherungsdatei."],
-"Replace ALL your current links and groups with the contents of this backup?":["AL je huidige links en groepen vervangen door de inhoud van deze back-up?", "استبدال كل روابطك ومجموعاتك الحالية بمحتوى هذه النسخة الاحتياطية؟", "ALLE deine aktuellen Links und Gruppen durch den Inhalt dieser Sicherung ersetzen?"],
-"Restored {links} links in {groups} groups.":["{links} links in {groups} groepen teruggezet.", "استُعيدت {links} روابط في {groups} مجموعات.", "{links} Links in {groups} Gruppen wiederhergestellt."],
-"{n} links were not added because you already have them.":["{n} links zijn niet toegevoegd omdat je ze al hebt.", "لم تُضف {n} روابط لأنها موجودة لديك بالفعل.", "{n} Links wurden nicht hinzugefügt, weil du sie schon hast."],
-"{n} of them have exactly the same address.":["{n} daarvan hebben precies hetzelfde adres.", "{n} منها لها العنوان نفسه تمامًا.", "{n} davon haben genau dieselbe Adresse."],
-"Download them to keep a copy, keep some as separate links, or discard them.":["Download ze om een kopie te houden, bewaar er een paar als aparte links, of gooi ze weg.", "نزّلها للاحتفاظ بنسخة، أو احتفظ ببعضها كروابط منفصلة، أو تجاهلها.", "Lade sie herunter, um eine Kopie zu behalten, behalte einige als eigene Links oder verwirf sie."],
-"Identical address: already saved":["Hetzelfde adres: al opgeslagen", "عنوان مطابق: محفوظ بالفعل", "Identische Adresse: bereits gespeichert"],
-"Keep as a separate link":["Als aparte link bewaren", "الاحتفاظ به كرابط منفصل", "Als eigenen Link behalten"],
-"the same page appears earlier in this import":["dezelfde pagina staat eerder in deze import", "الصفحة نفسها تظهر في موضع سابق من هذا الاستيراد", "dieselbe Seite kommt weiter oben in diesem Import vor"],
-"identical address":["hetzelfde adres", "عنوان مطابق", "identische Adresse"],
-"Kept {n} as separate links; the rest were discarded.":["{n} als aparte links bewaard; de rest is weggegooid.", "احتُفظ بـ {n} كروابط منفصلة؛ وتم تجاهل الباقي.", "{n} als eigene Links behalten; der Rest wurde verworfen."],
-"Duplicates discarded.":["Dubbele links weggegooid.", "تم تجاهل التكرارات.", "Duplikate verworfen."],
-"Duplicates ({n})":["Dubbele links ({n})", "التكرارات ({n})", "Duplikate ({n})"],
-"No duplicates left.":["Geen dubbele links meer.", "لم تعد هناك تكرارات.", "Keine Duplikate mehr."],
-"★ favourite":["★ favoriet", "★ مفضّل", "★ Favorit"],
-"own picture":["eigen afbeelding", "صورة خاصة", "eigenes Bild"],
-"Note:":["Notitie:", "ملاحظة:", "Notiz:"],
-"Take over notes, favourite, own title and picture from the others":["Notities, favoriet, eigen titel en afbeelding van de andere overnemen", "نقل الملاحظات والمفضلة والعنوان والصورة الخاصة من الروابط الأخرى", "Notizen, Favorit, eigenen Titel und eigenes Bild von den anderen übernehmen"],
-"Keep the selected one, remove the others":["De geselecteerde bewaren, de andere verwijderen", "الاحتفاظ بالمحدد وحذف الباقي", "Den ausgewählten behalten, die anderen entfernen"],
-"Removed {n} duplicate.":["{n} dubbele link verwijderd.", "حُذف {n} تكرار.", "{n} Duplikat entfernt."],
-"Removed {n} duplicates.":["{n} dubbele links verwijderd.", "حُذفت {n} تكرارات.", "{n} Duplikate entfernt."],
-"Download this set":["Dit groepje downloaden", "تنزيل هذه المجموعة", "Diese Gruppe herunterladen"],
-"These are different":["Deze zijn verschillend", "هذه مختلفة", "Diese sind verschieden"],
-"just now":["zojuist", "الآن", "gerade eben"],
-"{n} minutes ago":["{n} minuten geleden", "قبل {n} دقيقة", "vor {n} Minuten"],
-"{n} hours ago":["{n} uur geleden", "قبل {n} ساعة", "vor {n} Stunden"],
-"this device":["dit apparaat", "هذا الجهاز", "dieses Gerät"],
-"Active {when}":["Actief {when}", "نشط {when}", "Aktiv {when}"],
-"signed in {date}":["aangemeld op {date}", "سجّل الدخول في {date}", "angemeldet am {date}"],
-"No devices are signed in on TileMark's own address.":["Er zijn geen apparaten aangemeld op het eigen adres van TileMark.", "لا توجد أجهزة مسجّلة الدخول على عنوان TileMark الخاص.", "Über die eigene Adresse von TileMark sind keine Geräte angemeldet."],
-"Sign out all other devices? They will need your password again.":["Alle andere apparaten afmelden? Daar is dan opnieuw je wachtwoord nodig.", "تسجيل الخروج من كل الأجهزة الأخرى؟ ستحتاج إلى كلمة مرورك مجددًا عليها.", "Alle anderen Geräte abmelden? Sie brauchen dann wieder dein Passwort."],
-"Other devices are signed out.":["Andere apparaten zijn afgemeld.", "سُجّل الخروج من الأجهزة الأخرى.", "Andere Geräte sind abgemeldet."],
-"On. After your password, TileMark asks for a code from your authenticator app. {n} recovery codes left.":["Aan. Na je wachtwoord vraagt TileMark om een code uit je authenticator-app. Nog {n} herstelcodes over.", "مفعّل. بعد كلمة المرور يطلب TileMark رمزًا من تطبيق المصادقة. تبقّى {n} من رموز الاسترداد.", "An. Nach deinem Passwort fragt TileMark nach einem Code aus deiner Authenticator-App. Noch {n} Wiederherstellungscodes übrig."],
-"Off. Turn it on to also ask for a code from an authenticator app on your phone after the password.":["Uit. Zet het aan om na het wachtwoord ook om een code uit een authenticator-app op je telefoon te vragen.", "متوقف. فعّله ليُطلب بعد كلمة المرور رمز من تطبيق مصادقة على هاتفك أيضًا.", "Aus. Schalte sie ein, damit nach dem Passwort zusätzlich ein Code aus einer Authenticator-App auf deinem Handy abgefragt wird."],
-"Enter your current password to confirm: {what}":["Vul je huidige wachtwoord in om te bevestigen: {what}", "أدخل كلمة مرورك الحالية للتأكيد: {what}", "Gib zur Bestätigung dein aktuelles Passwort ein: {what}"],
-"TileMark recovery codes for {name}":["TileMark-herstelcodes voor {name}", "رموز استرداد TileMark لـ {name}", "TileMark-Wiederherstellungscodes für {name}"],
-"Each code works once.":["Elke code werkt één keer.", "كل رمز يعمل مرة واحدة.", "Jeder Code funktioniert einmal."],
-"make new recovery codes":["nieuwe herstelcodes maken", "إنشاء رموز استرداد جديدة", "neue Wiederherstellungscodes erstellen"],
-"turn off two-factor sign-in":["tweestapsaanmelding uitzetten", "إيقاف تسجيل الدخول بخطوتين", "Zwei-Faktor-Anmeldung ausschalten"],
-"Two-factor sign-in is off.":["Tweestapsaanmelding staat uit.", "تسجيل الدخول بخطوتين متوقف.", "Die Zwei-Faktor-Anmeldung ist aus."],
-"Before restore, {when}":["Vóór terugzetten, {when}", "قبل الاستعادة، {when}", "Vor der Wiederherstellung, {when}"],
-"safety copy":["reservekopie", "نسخة أمان", "Sicherheitskopie"],
-"made {when}":["gemaakt {when}", "أُنشئت {when}", "erstellt {when}"],
-"This puts EVERY account back to {date}. Links saved since then are gone (a safety copy of now is made first).\n\nType the date {date} to confirm:":["Hiermee gaat ELK account terug naar {date}. Links die sindsdien zijn opgeslagen, verdwijnen (eerst wordt een reservekopie van nu gemaakt).\n\nTyp de datum {date} om te bevestigen:", "سيعيد هذا كل الحسابات إلى {date}. الروابط المحفوظة منذ ذلك الحين ستختفي (تُنشأ أولًا نسخة أمان من الحالة الآن).\n\nاكتب التاريخ {date} للتأكيد:", "Damit wird JEDES Konto auf den {date} zurückgesetzt. Seitdem gespeicherte Links gehen verloren (vorher wird eine Sicherheitskopie des aktuellen Stands erstellt).\n\nGib zur Bestätigung das Datum {date} ein:"],
-"Restored: {links} links in {users} accounts. Everyone signs in again now.":["Teruggezet: {links} links in {users} accounts. Iedereen meldt zich nu opnieuw aan.", "تمت الاستعادة: {links} روابط في {users} حسابات. سيسجّل الجميع الدخول من جديد الآن.", "Wiederhergestellt: {links} Links in {users} Konten. Alle melden sich jetzt erneut an."],
-"No backups yet.":["Nog geen back-ups.", "لا توجد نسخ احتياطية بعد.", "Noch keine Sicherungen."],
-"The first daily backup is made within a day, or use the button below.":["De eerste dagelijkse back-up wordt binnen een dag gemaakt, of gebruik de knop hieronder.", "تُنشأ أول نسخة احتياطية يومية خلال يوم، أو استخدم الزر أدناه.", "Die erste tägliche Sicherung wird innerhalb eines Tages erstellt, oder verwende die Schaltfläche unten."],
-"Daily backups are off; use the button below to make one.":["Dagelijkse back-ups staan uit; gebruik de knop hieronder om er een te maken.", "النسخ الاحتياطية اليومية متوقفة؛ استخدم الزر أدناه لإنشاء واحدة.", "Tägliche Sicherungen sind aus; verwende die Schaltfläche unten, um eine zu erstellen."],
-"Backup made.":["Back-up gemaakt.", "أُنشئت النسخة الاحتياطية.", "Sicherung erstellt."],
-"(unchanged)":["(ongewijzigd)", "(دون تغيير)", "(unverändert)"],
-"(Home Assistant's broker)":["(broker van Home Assistant)", "(وسيط Home Assistant)", "(Broker von Home Assistant)"],
-"Connected to {broker}.":["Verbonden met {broker}.", "متصل بـ {broker}.", "Verbunden mit {broker}."],
-"Connecting to {broker}…":["Verbinden met {broker}…", "جارٍ الاتصال بـ {broker}…", "Verbinde mit {broker}…"],
-"Not connected: {error}":["Niet verbonden: {error}", "غير متصل: {error}", "Nicht verbunden: {error}"],
-"Starting…":["Bezig met starten…", "جارٍ البدء…", "Starte…"],
-"Saved. Connecting…":["Opgeslagen. Bezig met verbinden…", "حُفظ. جارٍ الاتصال…", "Gespeichert. Verbinde…"],
-"Keep folders as groups / no group":["Mappen als groepen houden / geen groep", "الإبقاء على المجلدات كمجموعات / بلا مجموعة", "Ordner als Gruppen beibehalten / keine Gruppe"],
-"Paste some links or choose a file.":["Plak een paar links of kies een bestand.", "الصق بعض الروابط أو اختر ملفًا.", "Füge einige Links ein oder wähle eine Datei."],
-"Imported {n} links.":["{n} links geïmporteerd.", "استُوردت {n} روابط.", "{n} Links importiert."],
-"Skipped {n} that are not web links.":["{n} overgeslagen die geen weblinks zijn.", "تم تخطي {n} لأنها ليست روابط ويب.", "{n} übersprungen, die keine Weblinks sind."],
-"{n} already saved, see the list.":["{n} al opgeslagen, zie de lijst.", "{n} محفوظة بالفعل، راجع القائمة.", "{n} bereits gespeichert, siehe Liste."],
-"Set up - TileMark":["Installeren - TileMark", "الإعداد - TileMark", "Einrichten - TileMark"],
-"Welcome! Create the first account. It becomes the admin, who can add more people later.":["Welkom! Maak het eerste account aan. Dat wordt de beheerder, die later meer personen kan toevoegen.", "مرحبًا! أنشئ الحساب الأول. سيكون هو المسؤول الذي يمكنه إضافة أشخاص آخرين لاحقًا.", "Willkommen! Erstelle das erste Konto. Es wird zum Admin, der später weitere Personen hinzufügen kann."],
-"Password (at least 8 characters)":["Wachtwoord (minstens 8 tekens)", "كلمة المرور (8 أحرف على الأقل)", "Passwort (mindestens 8 Zeichen)"],
-"Create account":["Account aanmaken", "إنشاء الحساب", "Konto erstellen"],
-"The two passwords are not the same.":["De twee wachtwoorden zijn niet gelijk.", "كلمتا المرور غير متطابقتين.", "Die beiden Passwörter stimmen nicht überein."],
-"Continue":["Doorgaan", "متابعة", "Weiter"],
-"Could not sign in.":["Aanmelden lukte niet.", "تعذّر تسجيل الدخول.", "Anmeldung nicht möglich."],
-"Could not reach TileMark.":["TileMark is niet bereikbaar.", "تعذّر الوصول إلى TileMark.", "TileMark ist nicht erreichbar."],
-"Saved.":["Opgeslagen.", "حُفظ.", "Gespeichert."],
-"Could not save.":["Opslaan lukte niet.", "تعذّر الحفظ.", "Speichern nicht möglich."],
-"The port must be a number.":["De poort moet een getal zijn.", "يجب أن يكون المنفذ رقمًا.", "Der Port muss eine Zahl sein."],
-"The port must be between 1 and 65535.":["De poort moet tussen 1 en 65535 liggen.", "يجب أن يكون المنفذ بين 1 و65535.", "Der Port muss zwischen 1 und 65535 liegen."],
-"Only an admin can do this.":["Alleen een beheerder kan dit doen.", "لا يستطيع ذلك إلا المسؤول.", "Nur ein Admin kann das tun."],
-"Not found":["Niet gevonden", "غير موجود", "Nicht gefunden"],
-"TileMark is already set up. Sign in instead.":["TileMark is al ingesteld. Meld je in plaats daarvan aan.", "TileMark مُعدّ بالفعل. سجّل الدخول بدلًا من ذلك.", "TileMark ist bereits eingerichtet. Melde dich stattdessen an."],
-"That setup code is not right. It is shown in the container log (docker logs tilemark, or the log in Dockge).":["Die installatiecode klopt niet. Hij staat in het containerlogboek (docker logs tilemark, of het logboek in Dockge).", "رمز الإعداد هذا غير صحيح. يظهر في سجل الحاوية (docker logs tilemark، أو السجل في Dockge).", "Dieser Einrichtungscode ist nicht richtig. Er steht im Container-Log (docker logs tilemark oder das Log in Dockge)."],
-"Wrong username or password.":["Verkeerde gebruikersnaam of wachtwoord.", "اسم المستخدم أو كلمة المرور غير صحيحة.", "Falscher Benutzername oder falsches Passwort."],
-"That took too long. Enter your password again.":["Dat duurde te lang. Vul je wachtwoord opnieuw in.", "استغرق ذلك وقتًا طويلًا. أدخل كلمة مرورك مجددًا.", "Das hat zu lange gedauert. Gib dein Passwort erneut ein."],
-"Enter your password again.":["Vul je wachtwoord opnieuw in.", "أدخل كلمة مرورك مجددًا.", "Gib dein Passwort erneut ein."],
-"That code is not right.":["Die code klopt niet.", "هذا الرمز غير صحيح.", "Dieser Code ist nicht richtig."],
-"Start again: the QR code has expired.":["Begin opnieuw: de QR-code is verlopen.", "ابدأ من جديد: انتهت صلاحية رمز QR.", "Fang neu an: Der QR-Code ist abgelaufen."],
-"That code is not right. Check that the time on your phone is correct.":["Die code klopt niet. Controleer of de tijd op je telefoon goed staat.", "هذا الرمز غير صحيح. تحقّق من أن الوقت على هاتفك مضبوط.", "Dieser Code ist nicht richtig. Prüfe, ob die Uhrzeit auf deinem Handy stimmt."],
-"The current password is not correct.":["Het huidige wachtwoord klopt niet.", "كلمة المرور الحالية غير صحيحة.", "Das aktuelle Passwort ist nicht richtig."],
-"Two-factor sign-in is not on.":["Tweestapsaanmelding staat niet aan.", "تسجيل الدخول بخطوتين غير مفعّل.", "Die Zwei-Faktor-Anmeldung ist nicht eingeschaltet."],
-"That username is already taken.":["Die gebruikersnaam is al in gebruik.", "اسم المستخدم هذا مستخدم بالفعل.", "Dieser Benutzername ist bereits vergeben."],
-"The password needs at least 8 characters.":["Het wachtwoord moet minstens 8 tekens hebben.", "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.", "Das Passwort braucht mindestens 8 Zeichen."],
-"TileMark needs at least one admin.":["TileMark heeft minstens één beheerder nodig.", "يحتاج TileMark إلى مسؤول واحد على الأقل.", "TileMark braucht mindestens einen Admin."],
-"You cannot remove your own account.":["Je kunt je eigen account niet verwijderen.", "لا يمكنك حذف حسابك الخاص.", "Du kannst dein eigenes Konto nicht entfernen."],
-"A check is already running.":["Er loopt al een controle.", "يجري فحص بالفعل.", "Es läuft bereits eine Prüfung."],
-"That file is not a usable picture (it may be too small or not an image).":["Dat bestand is geen bruikbare afbeelding (misschien te klein of geen afbeelding).", "هذا الملف ليس صورة صالحة (قد يكون صغيرًا جدًا أو ليس صورة).", "Diese Datei ist kein brauchbares Bild (vielleicht ist sie zu klein oder kein Bild)."],
-"That does not look like a web link.":["Dat lijkt geen weblink.", "لا يبدو هذا رابط ويب.", "Das sieht nicht nach einem Weblink aus."],
-"This link is already saved.":["Deze link is al opgeslagen.", "هذا الرابط محفوظ بالفعل.", "Dieser Link ist bereits gespeichert."],
-"Nothing selected.":["Niets geselecteerd.", "لم يُحدَّد شيء.", "Nichts ausgewählt."],
-"That group no longer exists.":["Die groep bestaat niet meer.", "تلك المجموعة لم تعد موجودة.", "Diese Gruppe existiert nicht mehr."],
-"Nothing to do.":["Niets te doen.", "لا شيء لفعله.", "Nichts zu tun."],
-"This page is already saved.":["Deze pagina is al opgeslagen.", "هذه الصفحة محفوظة بالفعل.", "Diese Seite ist bereits gespeichert."],
-"A group with that name already exists.":["Er bestaat al een groep met die naam.", "توجد مجموعة بهذا الاسم بالفعل.", "Eine Gruppe mit diesem Namen existiert bereits."],
-"Those links were not found.":["Die links zijn niet gevonden.", "لم يُعثر على تلك الروابط.", "Diese Links wurden nicht gefunden."],
-"That backup was not found.":["Die back-up is niet gevonden.", "لم يُعثر على تلك النسخة الاحتياطية.", "Diese Sicherung wurde nicht gefunden."],
-"Choose a backup file.":["Kies een back-upbestand.", "اختر ملف نسخة احتياطية.", "Wähle eine Sicherungsdatei."],
-"Choose a username (at most 60 characters).":["Kies een gebruikersnaam (hoogstens 60 tekens).", "اختر اسم مستخدم (60 حرفًا على الأكثر).", "Wähle einen Benutzernamen (höchstens 60 Zeichen)."],
-"This backup is protected. Enter its password.":["Deze back-up is beveiligd. Vul het wachtwoord in.", "هذه النسخة الاحتياطية محمية. أدخل كلمة مرورها.", "Diese Sicherung ist geschützt. Gib ihr Passwort ein."],
-"Wrong password, or the backup file is damaged.":["Verkeerd wachtwoord, of het back-upbestand is beschadigd.", "كلمة مرور خاطئة، أو أن ملف النسخة الاحتياطية تالف.", "Falsches Passwort, oder die Sicherungsdatei ist beschädigt."],
-"The backup's database is too large.":["De database in de back-up is te groot.", "قاعدة بيانات النسخة الاحتياطية كبيرة جدًا.", "Die Datenbank der Sicherung ist zu groß."],
-"This is not a TileMark backup file.":["Dit is geen TileMark-back-upbestand.", "هذا ليس ملف نسخة احتياطية من TileMark.", "Das ist keine TileMark-Sicherungsdatei."],
-"The backup's database cannot be read.":["De database in de back-up kan niet worden gelezen.", "تتعذّر قراءة قاعدة بيانات النسخة الاحتياطية.", "Die Datenbank der Sicherung kann nicht gelesen werden."],
-"That file is not a TileMark backup.":["Dat bestand is geen TileMark-back-up.", "هذا الملف ليس نسخة احتياطية من TileMark.", "Diese Datei ist keine TileMark-Sicherung."],
-"The backup's database is damaged or has no accounts.":["De database in de back-up is beschadigd of bevat geen accounts.", "قاعدة بيانات النسخة الاحتياطية تالفة أو لا تحتوي على حسابات.", "Die Datenbank der Sicherung ist beschädigt oder enthält keine Konten."],
-"No broker set.":["Geen broker ingesteld.", "لم يُعيَّن وسيط.", "Kein Broker festgelegt."],
-"No broker set and Home Assistant has no MQTT broker.":["Geen broker ingesteld en Home Assistant heeft geen MQTT-broker.", "لم يُعيَّن وسيط وليس لدى Home Assistant وسيط MQTT.", "Kein Broker festgelegt, und Home Assistant hat keinen MQTT-Broker."],
-"The page reloads in the chosen language. Saved with your account.":["De pagina wordt opnieuw geladen in de gekozen taal. Bewaard bij je account.", "تُعاد تحميل الصفحة باللغة المختارة. يُحفظ مع حسابك.", "Die Seite wird in der gewählten Sprache neu geladen. Wird mit deinem Konto gespeichert."]
-};
-// Server messages with a variable part.
+const data = self.TM_I18N_DATA || {};
+const LIST = data.languages || [{ code: "en", name: "English" }];
+const INFO = LIST.find(l => l.code === data.lang) || LIST[0];
+const lang = INFO.code;
+const D = data.dict || {};
+const plural = (() => { try { return new Intl.PluralRules(INFO.locale || lang); } catch (e) { return null; } })();
+
+// Server messages with a variable part: the regex finds the parts, the English template is
+// the key in the language files.
 const PATTERNS = [
-[/^This page is already saved in "(.+)": (.+)$/,"Deze pagina is al opgeslagen in \"$1\": $2","هذه الصفحة محفوظة بالفعل في «$1»: $2","Diese Seite ist bereits gespeichert in „$1“: $2"],
-[/^This page is already saved: (.+)$/,"Deze pagina is al opgeslagen: $1","هذه الصفحة محفوظة بالفعل: $1","Diese Seite ist bereits gespeichert: $1"],
-[/^Too many attempts\. Try again in (\d+) seconds\.$/,"Te veel pogingen. Probeer het over $1 seconden opnieuw.","محاولات كثيرة جدًا. أعد المحاولة بعد $1 ثانية.","Zu viele Versuche. Versuche es in $1 Sekunden erneut."],
-[/^To confirm, type the date of the backup: (.+)$/,"Typ ter bevestiging de datum van de back-up: $1","للتأكيد، اكتب تاريخ النسخة الاحتياطية: $1","Gib zur Bestätigung das Datum der Sicherung ein: $1"],
-[/^Broker refused the connection: (.+)$/,"De broker weigerde de verbinding: $1","رفض الوسيط الاتصال: $1","Der Broker hat die Verbindung abgelehnt: $1"],
-[/^Connection lost \((.+)\); retrying\.$/,"Verbinding verbroken ($1); opnieuw proberen.","انقطع الاتصال ($1)؛ جارٍ إعادة المحاولة.","Verbindung unterbrochen ($1); neuer Versuch läuft."]
+  [/^This page is already saved in "(.+)": (.+)$/, 'This page is already saved in "{group}": {title}', ["group", "title"]],
+  [/^This page is already saved: (.+)$/, "This page is already saved: {title}", ["title"]],
+  [/^Too many attempts\. Try again in (\d+) seconds\.$/, "Too many attempts. Try again in {n} seconds.", ["n"]],
+  [/^To confirm, type the date of the backup: (.+)$/, "To confirm, type the date of the backup: {date}", ["date"]],
+  [/^Broker refused the connection: (.+)$/, "Broker refused the connection: {error}", ["error"]],
+  [/^Connection lost \((.+)\); retrying\.$/, "Connection lost ({error}); retrying.", ["error"]]
 ];
-function pick() {
-  let s = "";
-  try { s = localStorage.getItem("tm.lang") || ""; } catch (e) {}
-  if (LANGS[s]) return s;
-  for (const l of (navigator.languages || [navigator.language || "en"])) {
-    const two = String(l).slice(0, 2).toLowerCase();
-    if (LANGS[two]) return two;
+
+// A translation is a text, or for texts with a count an object with the language's plural
+// forms (zero, one, two, few, many, other), chosen by the number in {n}.
+function lookup(key, v) {
+  const e = D[key];
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const n = v && v.n !== undefined && v.n !== "" ? Number(v.n) : NaN;
+    return (plural && !isNaN(n) && e[plural.select(n)]) || e.other || "";
   }
-  return "en";
+  return "";
 }
-const lang = pick();
+function fill(s, v) {
+  return v ? s.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m)) : s;
+}
 function t(s, v) {
   s = s == null ? "" : String(s);
-  let out = s;
-  if (lang !== "en") {
-    const e = D[s];
-    if (e) out = e[COL[lang]] || s;
-    else for (const p of PATTERNS) if (p[0].test(s)) { if (p[1 + COL[lang]]) out = s.replace(p[0], p[1 + COL[lang]]); break; }
+  if (lang === "en") return fill(s, v);
+  let out = lookup(s, v);
+  if (!out) {
+    for (const [re, key, names] of PATTERNS) {
+      const m = s.match(re);
+      if (!m) continue;
+      const vars = Object.assign({}, v);
+      names.forEach((nm, i) => { vars[nm] = m[i + 1]; });
+      const tr = lookup(key, vars);
+      if (tr) return fill(tr, vars);
+      break;
+    }
+    out = s;  // not translated: show the English
   }
-  if (v) out = out.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m));
-  return out;
+  return fill(out, v);
 }
+
 const ATTRS = ["placeholder", "title", "aria-label"];
 function applyI18n(root) {
   if (lang === "en" || !root) return;
@@ -523,28 +66,51 @@ function applyI18n(root) {
   });
   const nodes = [];
   while (w.nextNode()) nodes.push(w.currentNode);
-  const tr = k => (k && D[k] && D[k][COL[lang]]) || "";  // "" = not translated: leave the English
   for (const n of nodes) {
-    const raw = n.nodeValue, k = raw.trim(), v = tr(k);
+    const raw = n.nodeValue, k = raw.trim(), v = k && lookup(k);
     if (v) n.nodeValue = raw.replace(k, v);
   }
   for (const el of (root.querySelectorAll ? root.querySelectorAll("[placeholder],[title],[aria-label]") : []))
-    for (const a of ATTRS) { const v = tr((el.getAttribute(a) || "").trim()); if (v) el.setAttribute(a, v); }
-  const title = tr(document.title);
+    for (const a of ATTRS) { const v = lookup((el.getAttribute(a) || "").trim()); if (v) el.setAttribute(a, v); }
+  const title = lookup(document.title);
   if (title) document.title = title;
 }
+
+// The chosen language ("" = follow the browser). The server remembers it in a cookie for the
+// sign-in page; once signed in, the account's choice decides.
+const COOKIE = "tm_lang";
+function setLang(l) {
+  try { document.cookie = COOKIE + "=" + encodeURIComponent(l || "") + ";max-age=" + (l ? 31536000 : 0) + ";samesite=lax"; } catch (e) {}
+  try { localStorage.removeItem("tm.lang"); } catch (e) {}  // where 2.5 and earlier kept it
+}
+const pref = data.pref || "";
+(function keepInStep() {
+  let cookie = null;
+  try { const m = document.cookie.match(/(?:^|;\s*)tm_lang=([^;]*)/); cookie = m ? decodeURIComponent(m[1]) : null; } catch (e) { return; }
+  if (data.from === "account") { if ((cookie || "") !== pref) setLang(pref); return; }
+  // Upgrading from 2.5 or earlier: the choice was kept in this browser's storage. Move it to
+  // the cookie and reload once to show it (only if the cookie took, so this can't loop).
+  let old = "";
+  try { old = localStorage.getItem("tm.lang") || ""; } catch (e) {}
+  if (cookie === null && old && old !== lang && LIST.some(l => l.code === old)) {
+    setLang(old);
+    if (document.cookie.indexOf(COOKIE + "=") >= 0) location.reload();
+  }
+})();
+
 window.t = t;
 window.applyI18n = applyI18n;
 window.tmLang = () => lang;
-window.TM_LANGS = LANGS;
-window.setLang = l => { try { l ? localStorage.setItem("tm.lang", l) : localStorage.removeItem("tm.lang"); } catch (e) {} };
-window.storedLang = () => { try { return localStorage.getItem("tm.lang") || ""; } catch (e) { return ""; } };
+window.TM_LANGS = Object.fromEntries(LIST.map(l => [l.code, l.name]));
+window.TM_LANG_LIST = LIST;
+window.setLang = setLang;
+window.storedLang = () => pref;
 window.fmtDate = (ts, time) => {
-  const d = new Date(ts * 1000), loc = { nl: "nl-NL", ar: "ar-u-nu-latn", de: "de-DE" }[lang];
+  const d = new Date(ts * 1000), loc = INFO.locale || undefined;
   return time ? d.toLocaleString(loc) : d.toLocaleDateString(loc);
 };
 document.documentElement.lang = lang;
-document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+document.documentElement.dir = INFO.dir === "rtl" ? "rtl" : "ltr";
 if (document.body) applyI18n(document.body);
 else document.addEventListener("DOMContentLoaded", () => applyI18n(document.body));
 })();

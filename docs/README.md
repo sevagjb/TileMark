@@ -15,5 +15,6 @@ Everything TileMark can do, explained step by step. New here? Start with **Getti
 | [Home Assistant sensors](home-assistant-sensors.md) | Sensors and notifications in Home Assistant through MQTT. |
 | [Settings](settings.md) | Every option in Settings, card by card. |
 | [Questions and troubleshooting](faq.md) | Answers to common questions and problems. |
+| [Translating TileMark](translating.md) | How the languages are organised, and how to add or improve one. |
 
 Also: what changed in each version is in the [changelog](../CHANGELOG.md), and what's coming is in the [roadmap](../ROADMAP.md).

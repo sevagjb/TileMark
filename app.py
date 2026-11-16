@@ -1588,9 +1588,51 @@ def service_worker():
     return send_from_directory(PAGES, "sw.js", mimetype="text/javascript", max_age=0)
 
 
+LANG_DIR = os.path.join(PAGES, "lang")
+
+
+def _languages():
+    """The interface languages, in menu order, from pages/lang/languages.json. English is the
+    base language; every other one has its own pages/lang/<code>.json with the translations."""
+    with open(os.path.join(LANG_DIR, "languages.json"), encoding="utf-8") as f:
+        return json.load(f)
+
+
+LANG_CODES = tuple(l["code"] for l in _languages())
+
+
+def _ui_language():
+    """The language to show: the account's choice once signed in, otherwise the one this
+    browser chose on the sign-in page (cookie), otherwise the browser's own languages.
+    Returns (code, pref, source); pref is the stored choice, "" for "follow my browser"."""
+    pref, source = None, "browser"
+    if g.get("user"):
+        prefs = _prefs(g.user["id"])
+        if "lang" in prefs:
+            pref, source = prefs["lang"], "account"
+    if pref is None and "tm_lang" in request.cookies:
+        pref, source = request.cookies["tm_lang"], "cookie"
+    pref = pref if pref in LANG_CODES else ""
+    code = pref or request.accept_languages.best_match(LANG_CODES) or "en"
+    return code, pref, source
+
+
 @app.get("/i18n.js")
 def i18n_script():
-    return send_from_directory(PAGES, "i18n.js", mimetype="text/javascript", max_age=0)
+    """The translation code with only the chosen language's texts in front of it."""
+    code, pref, source = _ui_language()
+    dictionary = {}
+    if code != "en":
+        with open(os.path.join(LANG_DIR, code + ".json"), encoding="utf-8") as f:
+            dictionary = json.load(f)
+    data = {"lang": code, "pref": pref, "from": source, "languages": _languages(), "dict": dictionary}
+    with open(os.path.join(PAGES, "i18n.js"), encoding="utf-8") as f:
+        code_js = f.read()
+    body = "self.TM_I18N_DATA = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n" + code_js
+    resp = app.response_class(body, mimetype="text/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["Vary"] = "Cookie, Accept-Language"
+    return resp
 
 
 @app.get("/icon-<name>.png")
@@ -1952,7 +1994,7 @@ def thumbs(name):
 
 PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark"),
              "thumb": ("s", "m", "l"), "open": ("new", "same"),
-             "lang": ("", "en", "nl", "ar", "de")}  # "" = follow the browser
+             "lang": ("",) + LANG_CODES}  # "" = follow the browser
 SORT_MODES = ("manual", "newest", "oldest", "name", "site")
 
 

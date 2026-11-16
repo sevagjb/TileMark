@@ -139,6 +139,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | [Home Assistant sensors](docs/home-assistant-sensors.md) | Sensors and notifications over MQTT |
 | [Settings](docs/settings.md) | Every option, card by card |
 | [Questions and troubleshooting](docs/faq.md) | Common questions and fixes |
+| [Translating TileMark](docs/translating.md) | Add a language or improve one |
 
 The same guide, as a website: **<https://sevagjb.github.io/TileMark/>**
 
@@ -155,6 +156,8 @@ pip install -r requirements.txt
 DATA_DIR=./data python app.py                     # http://localhost:8080
 pip install pytest pyyaml "amqtt==0.12.*" && pytest -q
 ```
+
+Translations are in `pages/lang/`, one file per language; see [Translating TileMark](docs/translating.md).
 
 The website is built from `docs/` with `python scripts/build_site.py` (output in `_site/`).
 

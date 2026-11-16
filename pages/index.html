@@ -378,7 +378,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   </div></details>
   <details class="sec" data-k="appearance"><summary><span class="st">Appearance</span><span class="sum" id="sum-appearance"></span></summary><div class="secb">
     <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
-    <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option><option value="en" lang="en">English</option><option value="nl" lang="nl">Nederlands</option><option value="ar" lang="ar" dir="rtl">العربية</option><option value="de" lang="de">Deutsch</option></select>
+    <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option></select>
     <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
   </div></details>
   <details class="sec" data-k="cards"><summary><span class="st">Cards</span><span class="sum" id="sum-cards"></span></summary><div class="secb">
@@ -581,9 +581,6 @@ function takePrefs(p) {
   for (const k of ["thumb", "open", "defgroup"]) if (k in p) cfg[k] = p[k];
   if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} }
   applySettings();
-  // The account's language wins over this browser's; reload once to show it (only if the
-  // choice could be stored, so a browser that blocks storage does not reload forever).
-  if ("lang" in p && p.lang !== storedLang()) { setLang(p.lang); if (storedLang() === p.lang) location.reload(); }
 }
 
 async function load() {
@@ -1043,7 +1040,9 @@ $("settingsBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); sumPrefs(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
   $("setThumb").value = cfg.thumb; $("setThumb").onchange = e => { cfg.thumb = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
-  $("setLang").value = storedLang(); $("setLang").onchange = async e => {
+  const sl = $("setLang");  // the languages come from pages/lang/languages.json
+  if (sl.options.length === 1) for (const l of TM_LANG_LIST) sl.add(Object.assign(new Option(l.name, l.code), { lang: l.code, dir: l.dir || "auto" }));
+  sl.value = storedLang(); sl.onchange = async e => {
     const l = e.target.value;
     try { await api("PUT", "api/prefs", { lang: l }); } catch (err) { toast(err.message); return; }
     setLang(l); location.reload();

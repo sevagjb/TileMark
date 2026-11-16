@@ -20,6 +20,9 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.5.0
+- [x] German as a fourth interface language, with English shown for any text not translated yet.
+
 ### 2.4.0
 - [x] Encrypted backups, unlocked with your login password: personal backups by default, daily backups when an admin turns it on, with a recovery key.
 

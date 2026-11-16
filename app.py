@@ -1952,7 +1952,7 @@ def thumbs(name):
 
 PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark"),
              "thumb": ("s", "m", "l"), "open": ("new", "same"),
-             "lang": ("", "en", "nl", "ar")}  # "" = follow the browser
+             "lang": ("", "en", "nl", "ar", "de")}  # "" = follow the browser
 SORT_MODES = ("manual", "newest", "oldest", "name", "site")
 
 

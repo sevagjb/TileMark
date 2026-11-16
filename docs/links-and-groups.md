@@ -141,7 +141,7 @@ On a phone, tap the magnifier next to the name to open the search field. It clos
 
 ## Light, dark and languages
 
-**⚙ Settings → Appearance** chooses light, dark, or **Follow my device**, and the language: English, Nederlands (Dutch) or العربية (Arabic, shown right to left). By default TileMark follows your browser's language. See [Settings](settings.md#appearance).
+**⚙ Settings → Appearance** chooses light, dark, or **Follow my device**, and the language: English, Nederlands (Dutch), Deutsch (German) or العربية (Arabic, shown right to left). By default TileMark follows your browser's language. See [Settings](settings.md#appearance).
 
 ## On a phone
 

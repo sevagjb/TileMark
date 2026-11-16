@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.6.0 (unreleased)
+## 2.6.0
 
 ### Changed
 - **One file per language.** The translations moved out of the app's code into `pages/lang/`: one file per language (`nl.json`, `de.json`, `ar.json`) and a list of languages (`languages.json`) that the Language menu and the server both follow. English stays the base language. Adding a language is now one new file plus one line, with no code changes; see the new guide page **Translating TileMark**. `scripts/i18n_check.py` starts a new language and shows how far each one is translated.

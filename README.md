@@ -75,7 +75,7 @@
 **Pleasant to use**
 - Two layouts: side panel or large picture sections
 - Light and dark, following your device
-- English, Dutch and Arabic (right to left)
+- English, Dutch, German and Arabic (right to left)
 - Works on phones; installs as an app over HTTPS
 - Keyboard shortcuts: `/` search, `n` add, `Esc` clear
 
@@ -120,7 +120,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 </tr>
 <tr>
 <td><img src="docs/images/settings.webp" alt="Settings as cards"><br><sub><b>Settings</b>: one card per topic, with its status</sub></td>
-<td><img src="docs/images/arabic.webp" alt="TileMark in Arabic"><br><sub><b>Three languages</b>, including Arabic right to left</sub></td>
+<td><img src="docs/images/arabic.webp" alt="TileMark in Arabic"><br><sub><b>Four languages</b>, including Arabic right to left</sub></td>
 </tr>
 </table>
 

@@ -24,7 +24,7 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 | Option | What it does |
 | --- | --- |
 | **Follow my device / Light / Dark** | The colour scheme. *Follow my device* switches with your computer's or phone's dark mode. |
-| **Language** | **Follow my browser** (the default), **English**, **Nederlands** or **العربية**. Arabic is shown right to left. The page reloads in the chosen language. |
+| **Language** | **Follow my browser** (the default), **English**, **Nederlands**, **Deutsch** or **العربية**. Arabic is shown right to left. The page reloads in the chosen language. |
 
 ![TileMark in Arabic](images/arabic.webp)
 

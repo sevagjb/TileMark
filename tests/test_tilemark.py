@@ -1241,12 +1241,15 @@ def test_every_message_has_a_translation():
     missing = sorted(m for m in msgs if m not in keys)
     assert not missing, missing
     body = src[src.index("const D = {"):src.index("};", src.index("const D = {"))]
+    langs = len(re.search(r"const COL = \{([^}]*)\}", src).group(1).split(","))
     for line in body.splitlines():
         m = re.match(r'^("(?:[^"\\]|\\.)*"):(\[.*\]),?$', line)
         if m:
-            k, (nl, ar) = json.loads(m.group(1)), json.loads(m.group(2))
+            k, tr = json.loads(m.group(1)), json.loads(m.group(2))
+            assert len(tr) == langs, k  # one translation per language (nl, ar, de)
             ph = sorted(re.findall(r"\{\w+\}", k))
-            assert sorted(re.findall(r"\{\w+\}", nl)) == ph == sorted(re.findall(r"\{\w+\}", ar)), k
+            for x in tr:
+                assert sorted(re.findall(r"\{\w+\}", x)) == ph, (k, x)
 
 
 # ------------------------------------------------------------------- 2.3.1

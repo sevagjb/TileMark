@@ -115,7 +115,7 @@ Everything is in **⚙ Settings** (top right). Each section is a card: click its
 | Card | What you set there |
 | --- | --- |
 | **Layout** | Side panel or Sections. |
-| **Appearance** | Light, dark or follow your device; language: English, Nederlands or العربية. |
+| **Appearance** | Light, dark or follow your device; language: English, Nederlands, Deutsch or العربية. |
 | **Cards** | Picture size, open links in a new tab or this tab, the group new links go to. |
 | **Your account** | Username and a password, needed only for **TileMark's own address**. |
 | **Signed-in devices** | See and sign out the browsers signed in on TileMark's own address. |

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.0 (unreleased)
+
+### New
+- **German (Deutsch).** The whole interface is now also in German: pick **Deutsch** in **⚙ Settings → Appearance → Language**, or let TileMark follow a browser set to German. Dates use the German format.
+
+### Changed
+- **A missing translation shows the English text.** If a text has no translation yet in the chosen language, TileMark shows it in English instead of leaving it empty. This makes it safe to add more languages step by step.
+
 ## 2.4.6
 
 ### Changed

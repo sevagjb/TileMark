@@ -18,7 +18,7 @@ Yes. The admin adds each person in **⚙ Settings → People**. Everyone gets th
 Yes, in any phone browser. With HTTPS you can also install it as an app, and on Android share links to it from other apps. See [Save from anywhere](save-from-anywhere.md#phone).
 
 **Which languages?**
-English, Dutch, German and Arabic. TileMark follows your browser's language; you can choose another in **⚙ Settings → Appearance**.
+English, Dutch, German and Arabic. Want to add yours? See [Translating TileMark](translating.md). TileMark follows your browser's language; you can choose another in **⚙ Settings → Appearance**.
 
 ## Setting up
 

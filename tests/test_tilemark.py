@@ -1193,11 +1193,12 @@ def test_restore_keeps_installation_settings(fresh):
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _i18n_keys():
-    import re
-    src = open(os.path.join(ROOT, "pages", "i18n.js"), encoding="utf-8").read()
-    body = src[src.index("const D = {"):src.index("};", src.index("const D = {"))]
-    return {json.loads(m.group(1)) for m in re.finditer(r'^("(?:[^"\\]|\\.)*"):\[', body, re.M)}, src
+def _lang_files():
+    """{code: translations} for every language in pages/lang/languages.json except English."""
+    d = os.path.join(ROOT, "pages", "lang")
+    langs = json.load(open(os.path.join(d, "languages.json"), encoding="utf-8"))
+    return {l["code"]: json.load(open(os.path.join(d, l["code"] + ".json"), encoding="utf-8"))
+            for l in langs if l["code"] != "en"}
 
 
 def test_language_pref_is_validated(two):
@@ -1214,14 +1215,14 @@ def test_language_pref_is_validated(two):
 def test_i18n_script_is_open(fresh):
     r = fresh.app.test_client().get("/i18n.js")  # the sign-in page needs it before anyone is signed in
     assert r.status_code == 200 and "javascript" in r.mimetype
-    assert "العربية" in r.get_data(as_text=True)
+    assert "العربية" in r.get_data(as_text=True)  # the language list is always there, for the menu
 
 
 def test_every_message_has_a_translation():
     """Every fixed server error and every t("…") text in the pages is in the dictionary,
     with the same {placeholders} in each language."""
     import ast, re
-    keys, src = _i18n_keys()
+    files = _lang_files()
     tree = ast.parse(open(os.path.join(ROOT, "app.py"), encoding="utf-8").read())
     msgs = set()
     for n in ast.walk(tree):
@@ -1238,18 +1239,20 @@ def test_every_message_has_a_translation():
         msgs |= {json.loads(m) for m in re.findall(r'\bt\(("(?:[^"\\]|\\.)*")', text)}
         for a, b in re.findall(r'\bt\([\w.!]+ \? ("(?:[^"\\]|\\.)*") : ("(?:[^"\\]|\\.)*")', text):  # t(x ? "a" : "b")
             msgs |= {json.loads(a), json.loads(b)}
-    missing = sorted(m for m in msgs if m not in keys)
-    assert not missing, missing
-    body = src[src.index("const D = {"):src.index("};", src.index("const D = {"))]
-    langs = len(re.search(r"const COL = \{([^}]*)\}", src).group(1).split(","))
-    for line in body.splitlines():
-        m = re.match(r'^("(?:[^"\\]|\\.)*"):(\[.*\]),?$', line)
-        if m:
-            k, tr = json.loads(m.group(1)), json.loads(m.group(2))
-            assert len(tr) == langs, k  # one translation per language (nl, ar, de)
-            ph = sorted(re.findall(r"\{\w+\}", k))
-            for x in tr:
-                assert sorted(re.findall(r"\{\w+\}", x)) == ph, (k, x)
+    ph = lambda x: sorted(set(re.findall(r"\{\w+\}", x)))
+    plural_forms = {"zero", "one", "two", "few", "many", "other"}
+    for code, tr in files.items():
+        missing = sorted(m for m in msgs if m not in tr)
+        assert not missing, (code, missing)
+        for k, v in tr.items():
+            if isinstance(v, dict):  # plural forms: "other" is required; one/two/zero may leave out {n}
+                assert "{n}" in k and "other" in v and set(v) <= plural_forms, (code, k)
+                for form, x in v.items():
+                    assert set(ph(x)) <= set(ph(k)), (code, k, form)
+                    assert form in ("zero", "one", "two") or ph(x) == ph(k), (code, k, form)
+            else:
+                assert isinstance(v, str), (code, k)
+                assert v == "" or ph(v) == ph(k), (code, k)  # "" = not translated yet: shown in English
 
 
 # ------------------------------------------------------------------- 2.3.1
@@ -1620,8 +1623,7 @@ def test_phone_top_bar_has_a_search_toggle_and_one_import_export_menu(fresh):
     menu = menu[:menu.index("</span>")]
     assert 'data-go="importBtn">Import<' in menu and 'data-go="exportBtn">Export<' in menu
     assert 'id="importBtn">Import<' in page and 'id="exportBtn">Export<' in page  # computers keep both words
-    i18n = open(os.path.join(os.path.dirname(fresh.__file__), "pages", "i18n.js"), encoding="utf-8").read()
-    assert '"Import and export":' in i18n
+    assert all("Import and export" in tr for tr in _lang_files().values())
 
 
 # ------------------------------------------------------------------- 2.4.5
@@ -1663,3 +1665,50 @@ def test_mqtt_backup_entities(fresh, broker):
                  and got.get(f"homeassistant/binary_sensor/{node}/backup_encryption/config") == "")
     listener.loop_stop()
 
+
+# ------------------------------------------------------------------- 2.6.0
+def _i18n_data(r):
+    body = r.get_data(as_text=True)
+    assert body.startswith("self.TM_I18N_DATA = ")
+    return json.loads(body[len("self.TM_I18N_DATA = "):body.index(";\n")])
+
+
+def test_one_file_per_language():
+    """Every language in languages.json has its own file, and every file is listed."""
+    d = os.path.join(ROOT, "pages", "lang")
+    codes = [l["code"] for l in json.load(open(os.path.join(d, "languages.json"), encoding="utf-8"))]
+    assert codes[0] == "en" and len(set(codes)) == len(codes)
+    assert sorted(f[:-5] for f in os.listdir(d) if f.endswith(".json") and f != "languages.json") == sorted(codes[1:])
+
+
+def test_i18n_sends_only_the_chosen_language(fresh):
+    c = fresh.app.test_client()
+    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "de-DE,de;q=0.9,en;q=0.5"}))
+    assert d["lang"] == "de" and d["pref"] == "" and d["dict"]["Settings"] == "Einstellungen"
+    assert [l["code"] for l in d["languages"]] == ["en", "nl", "de", "ar"]
+    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "fr-FR,fr;q=0.9"}))
+    assert d["lang"] == "en" and d["dict"] == {}  # a language TileMark doesn't have: English
+    c.set_cookie("tm_lang", "ar")  # chosen on the sign-in page
+    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "de"}))
+    assert d["lang"] == "ar" and d["pref"] == "ar" and d["from"] == "cookie"
+    c.set_cookie("tm_lang", "xx")  # unknown: follow the browser
+    assert _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "nl"}))["lang"] == "nl"
+
+
+def test_i18n_follows_the_account(fresh):
+    admin = setup_admin(fresh)
+    admin.set_cookie("tm_lang", "de")
+    assert _i18n_data(admin.get("/i18n.js"))["lang"] == "de"  # account has no choice yet: the cookie
+    admin.put("/api/prefs", json={"lang": "nl"})
+    d = _i18n_data(admin.get("/i18n.js", headers={"Accept-Language": "ar"}))
+    assert d["lang"] == "nl" and d["pref"] == "nl" and d["from"] == "account"
+    admin.put("/api/prefs", json={"lang": ""})  # follow the browser, whatever the cookie says
+    d = _i18n_data(admin.get("/i18n.js", headers={"Accept-Language": "ar"}))
+    assert d["lang"] == "ar" and d["pref"] == "" and d["from"] == "account"
+
+
+def test_arabic_has_all_plural_forms():
+    ar = _lang_files()["ar"]
+    for k in ("{n} link", "{n} links", "{n} minutes ago", "Too many attempts. Try again in {n} seconds."):
+        assert set(ar[k]) == {"zero", "one", "two", "few", "many", "other"}, k
+    assert ar["{n} link"] == ar["{n} links"]  # the code picks either key; Arabic chooses by the number

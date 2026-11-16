@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.6.0 (unreleased)
+
+### Changed
+- **One file per language.** The translations moved out of the app's code into `pages/lang/`: one file per language (`nl.json`, `de.json`, `ar.json`) and a list of languages (`languages.json`) that the Language menu and the server both follow. English stays the base language. Adding a language is now one new file plus one line, with no code changes; see the new guide page **Translating TileMark**. `scripts/i18n_check.py` starts a new language and shows how far each one is translated.
+- **Only the chosen language is sent to the browser**, together with the page's translation code, so more languages don't make TileMark heavier and nothing shows in English first.
+- **The Language menu lists Arabic last:** English, Nederlands, Deutsch, العربية.
+- **The sign-in page remembers the language** chosen on this browser; once you're signed in, your account's choice decides, as before. Choices made in 2.5 or earlier carry over by themselves.
+
+### Fixed
+- **Arabic counts use the right plural forms**: رابط واحد, رابطان, 3 روابط, 11 رابطًا, 100 رابط (also for devices, people, backups, minutes and hours ago, tabs, recovery codes and the "Try again in … seconds" message). Before, Arabic only had the English one-or-more choice.
+
 ## 2.5.0
 
 ### New

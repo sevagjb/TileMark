@@ -1,0 +1,6 @@
+[
+  { "code": "en", "name": "English" },
+  { "code": "nl", "name": "Nederlands", "locale": "nl-NL" },
+  { "code": "de", "name": "Deutsch", "locale": "de-DE" },
+  { "code": "ar", "name": "العربية", "locale": "ar-u-nu-latn", "dir": "rtl" }
+]

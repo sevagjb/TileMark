@@ -32,6 +32,7 @@ PAGES = [
     ("home-assistant-sensors.md", "Home Assistant sensors"),
     ("settings.md", "Settings"),
     ("faq.md", "Questions and troubleshooting"),
+    ("translating.md", "Translating TileMark"),
 ]
 EXTRA = [("CHANGELOG.md", "changelog.md", "Changelog"), ("ROADMAP.md", "roadmap.md", "Roadmap")]  # from the repository root
 

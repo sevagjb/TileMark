@@ -261,7 +261,7 @@ def test_restore_v1_backup_into_user(two, tmp_path):
         z.write(v1 / "tilemark.db", "tilemark.db")
         z.write(v1 / "thumbs" / "1-1.webp", "thumbs/1-1.webp")
     r = bob.post("/api/restore", data={"file": (io.BytesIO(buf.getvalue()), "old.zip")})
-    assert r.get_json() == {"ok": True, "links": 3, "groups": 2}
+    assert r.get_json() == {"ok": True, "links": 3, "groups": 2, "skipped": 0}
     sb = bob.get("/api/state").get_json()
     prox = next(l for l in sb["links"] if l["url"] == "https://proxmox.com")
     assert prox["thumb"] and bob.get("/thumbs/" + prox["thumb"]).status_code == 200
@@ -687,7 +687,7 @@ def test_restore_backup_from_previous_name(two, tmp_path, password):
     make_v1(old)
     data = _old_backup(old, password)
     r = bob.post("/api/restore", data={"file": (io.BytesIO(data), "old.lbk" if password else "old.zip"), "password": password})
-    assert r.get_json() == {"ok": True, "links": 3, "groups": 2}, r.get_json()
+    assert r.get_json() == {"ok": True, "links": 3, "groups": 2, "skipped": 0}, r.get_json()
     prox = next(l for l in bob.get("/api/state").get_json()["links"] if l["url"] == "https://proxmox.com")
     assert prox["note"] == "hypervisor" and bob.get("/thumbs/" + prox["thumb"]).status_code == 200
 
@@ -1712,3 +1712,216 @@ def test_arabic_has_all_plural_forms():
     for k in ("{n} link", "{n} links", "{n} minutes ago", "Too many attempts. Try again in {n} seconds."):
         assert set(ar[k]) == {"zero", "one", "two", "few", "many", "other"}, k
     assert ar["{n} link"] == ar["{n} links"]  # the code picks either key; Arabic chooses by the number
+
+
+# ------------------------------------------------------------ 2.6.1 security
+def _backup_zip(tmp_path, urls):
+    """A plain personal backup file, as anyone could make it by hand."""
+    snap = os.path.join(tmp_path, "made-by-hand.db")
+    con = sqlite3.connect(snap)
+    con.execute("CREATE TABLE groups (id INTEGER, name TEXT, color TEXT, position INTEGER)")
+    con.execute("CREATE TABLE links (id INTEGER, url TEXT, title TEXT, created_at INTEGER, status TEXT)")
+    con.executemany("INSERT INTO links VALUES (?, ?, 'Nice article', 1, 'ok')", list(enumerate(urls, 1)))
+    con.commit()
+    con.close()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.write(snap, "tilemark.db")
+    return buf.getvalue()
+
+
+def test_restore_refuses_non_web_addresses(two, tmp_path):
+    A, admin, bob, *_ = two
+    data = _backup_zip(tmp_path, ["javascript:alert(document.domain)", "JavaScript://%0aalert(1)",
+                                  "data:text/html,<script>alert(1)</script>", "http://192.168.1.10:8080",
+                                  "nas.local:5000", "https://example.org/page"])
+    r = bob.post("/api/restore", data={"file": (io.BytesIO(data), "links.zip")})
+    assert r.status_code == 200 and r.get_json()["links"] == 3 and r.get_json()["skipped"] == 3
+    urls = {l["url"] for l in bob.get("/api/state").get_json()["links"]}
+    assert urls == {"http://192.168.1.10:8080", "http://nas.local:5000", "https://example.org/page"}  # home-lab links stay
+    with A.db() as c:
+        assert {r[0] for r in c.execute("SELECT ukey FROM links WHERE user_id=2")} == \
+            {"192.168.1.10:8080", "nas.local:5000", "example.org/page"}
+
+
+def test_pages_open_only_web_addresses():
+    page = open(os.path.join(ROOT, "pages", "index.html"), encoding="utf-8").read()
+    assert 'href: isWeb(l.url) ? l.url : "#"' in page
+    assert "if (!isWeb(url)) return true;" in page
+    assert "if (!isWeb(l.url)) { e.preventDefault(); return; }" in page
+
+
+def test_backups_hold_no_secrets(fresh, tmp_path):
+    A = fresh
+    admin = setup_admin(A)
+    admin.post("/api/mqtt", json={"password": "broker-secret-pw"})
+    admin.post("/api/totp/setup")  # a half-finished two-factor setup
+    key = A.get_setting("secret_key")
+    path = A.daily_backup()
+    raw = open(path, "rb").read()
+    with zipfile.ZipFile(path) as z:
+        db_bytes = z.read("tilemark.db")
+    assert key.encode() not in db_bytes and b"broker-secret-pw" not in db_bytes  # not even in free space
+    out = os.path.join(tmp_path, "b.db")
+    open(out, "wb").write(db_bytes)
+    con = sqlite3.connect(out)
+    keys = {r[0] for r in con.execute("SELECT key FROM settings")}
+    assert not keys & {"secret_key", "mqtt_pass", "setup_code"}
+    assert con.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
+    assert con.execute("SELECT COUNT(*) FROM user_settings WHERE key='totp_pending'").fetchone()[0] == 0
+    assert con.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1
+    con.close()
+    assert raw  # and the live installation keeps all of it
+    assert A.get_setting("secret_key") == key and A.get_setting("mqtt_pass") == "broker-secret-pw"
+    assert admin.get("/api/state").status_code == 200
+
+
+def test_database_copy_gives_no_usable_cookie(fresh):
+    """Even with the cookie key, the rows in "sessions" can't be turned into a cookie."""
+    A = fresh
+    admin = setup_admin(A)
+    with A.db() as c:
+        s = c.execute("SELECT s.id, s.user_id, u.ver FROM sessions s JOIN users u ON u.id = s.user_id").fetchone()
+    assert len(s["id"]) == 64  # a hash, not the id the browser holds
+    forged = A.app.session_interface.get_signing_serializer(A.app).dumps({"uid": s["user_id"], "sid": s["id"], "ver": s["ver"]})
+    attacker = A.app.test_client()
+    attacker.set_cookie("tilemark", forged)
+    assert attacker.get("/api/state").status_code == 401
+    assert admin.get("/api/state").status_code == 200
+    # the device list still works: this device is marked, and another one can be signed out
+    other = sign_in(A, "admin", "adminpass1")
+    rows = admin.get("/api/sessions").get_json()["sessions"]
+    assert len(rows) == 2 and sum(r["current"] for r in rows) == 1
+    gone = next(r["id"] for r in rows if not r["current"])
+    assert admin.delete(f"/api/sessions/{gone}").status_code == 200
+    assert other.get("/api/state").status_code == 401 and admin.get("/api/state").status_code == 200
+    assert admin.post("/api/logout").status_code == 200 and admin.get("/api/state").status_code == 401
+
+
+def test_upgrade_gives_a_new_cookie_key_once(tmp_path):
+    A = load_app(tmp_path)
+    setup_admin(A)
+    with A.db() as c:  # as an installation before 2.6.1 left it
+        c.execute("DELETE FROM settings WHERE key='cookie_key_v2'")
+        c.execute("UPDATE settings SET value='old-key' WHERE key='secret_key'")
+    A = load_app(tmp_path)
+    key = A.get_setting("secret_key")
+    assert key != "old-key" and A.get_setting("cookie_key_v2") == "1"
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0  # everyone signs in once more
+    A = load_app(tmp_path)
+    assert A.get_setting("secret_key") == key  # only once
+    sign_in(A, "admin", "adminpass1")
+
+
+def test_full_restore_keeps_this_installations_key_and_mqtt_password(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    admin.post("/api/mqtt", json={"password": "broker-secret-pw"})
+    name = os.path.basename(A.daily_backup())
+    key = A.get_setting("secret_key")
+    r = admin.post("/api/backups/restore", json={"name": name, "confirm": name[9:19]})
+    assert r.status_code == 200, r.get_json()
+    assert A.get_setting("secret_key") == key and A.get_setting("mqtt_pass") == "broker-secret-pw"
+    assert A.get_setting("cookie_key_v2") == "1"
+    sign_in(A, "admin", "adminpass1")
+
+
+@pytest.mark.parametrize("headers, refused", [
+    ({"Sec-Fetch-Site": "cross-site"}, True),
+    ({"Sec-Fetch-Site": "same-site"}, True),  # another app on the same machine or domain
+    ({"Sec-Fetch-Site": "same-origin"}, False),
+    ({"Sec-Fetch-Site": "none"}, False),
+    ({"Origin": "http://localhost:9000"}, True),  # an older browser: Origin must match
+    ({"Origin": "null"}, True),
+    ({"Origin": "http://localhost"}, False),
+    ({"Origin": "https://links.example.org", "X-Forwarded-Host": "links.example.org"}, False),  # behind a proxy
+    ({}, False),  # no browser (curl, a Shortcut)
+])
+def test_requests_from_other_sites_are_refused(fresh, headers, refused):
+    admin = setup_admin(fresh)
+    r = admin.post("/api/groups", json={"name": "test"}, headers=headers)
+    assert (r.status_code == 403) == refused, r.get_json()
+    r = admin.post("/api/import", data={"text": "https://example.org"}, headers=headers)  # a plain form post
+    assert (r.status_code == 403) == refused
+    assert admin.get("/api/state", headers=headers).status_code == 200  # reading is always fine
+
+
+def test_sign_in_from_another_site_is_refused(fresh):
+    setup_admin(fresh)
+    c = fresh.app.test_client()
+    r = c.post("/api/login", json={"username": "admin", "password": "adminpass1"}, headers={"Sec-Fetch-Site": "cross-site"})
+    assert r.status_code == 403
+    assert c.get("/api/state").status_code == 401
+
+
+def test_api_key_works_without_browser_headers(two):
+    A, admin, bob, *_ = two
+    key = bob.post("/api/apikey").get_json()["key"]
+    r = A.app.test_client().post("/api/links", data=json.dumps({"url": "https://shortcut.example"}),
+                                 headers={"Authorization": "Bearer " + key})  # no content type, no Origin
+    assert r.status_code == 201
+
+
+def _wrong(A, n, peer, name="admin", xff=None):
+    for i in range(n):
+        h = {"X-Forwarded-For": xff.format(i)} if xff else {}
+        A.app.test_client().post("/api/login", json={"username": name, "password": "wrong"}, headers=h,
+                                 environ_base={"REMOTE_ADDR": peer.format(i)})
+
+
+def test_proxy_lockout_spares_your_own_devices(fresh):
+    A = fresh
+    setup_admin(A)
+    owner = sign_in(A, "admin", "adminpass1")  # has signed in on this browser before
+    owner.post("/api/logout")
+    proxy = {"REMOTE_ADDR": "10.0.0.1"}
+    _wrong(A, 20, "10.0.0.1", xff="203.0.113.{}")  # strangers through the reverse proxy
+    r = owner.post("/api/login", json={"username": "admin", "password": "adminpass1"},
+                   headers={"X-Forwarded-For": "198.51.100.7"}, environ_base=proxy)
+    assert r.status_code == 200, r.get_json()
+    new_device = A.app.test_client()
+    r = new_device.post("/api/login", json={"username": "admin", "password": "adminpass1"},
+                        headers={"X-Forwarded-For": "198.51.100.8"}, environ_base=proxy)
+    assert r.status_code == 429  # a browser that never signed in still waits
+
+
+def test_account_limit_across_addresses(fresh):
+    A = fresh
+    setup_admin(A)
+    owner = sign_in(A, "admin", "adminpass1")
+    owner.post("/api/logout")
+    _wrong(A, 10, "198.51.100.{}")  # ten different addresses, one account
+    r = A.app.test_client().post("/api/login", json={"username": "admin", "password": "adminpass1"},
+                                 environ_base={"REMOTE_ADDR": "198.51.100.99"})
+    assert r.status_code == 429
+    assert owner.post("/api/login", json={"username": "admin", "password": "adminpass1"},
+                      environ_base={"REMOTE_ADDR": "198.51.100.98"}).status_code == 200
+    # another account is not affected, and an unknown name counts like a real one
+    assert A.app.test_client().post("/api/login", json={"username": "nobody", "password": "x"},
+                                    environ_base={"REMOTE_ADDR": "198.51.100.97"}).status_code == 401
+
+
+def test_two_factor_guesses_count_per_account(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    secret, _ = _enable_totp(A, admin)
+    with A.db() as con:
+        con.execute("UPDATE users SET totp_last = totp_last - 5")
+    for i in range(10):  # each guess from its own address, after the (known) password
+        c = A.app.test_client()
+        env = {"REMOTE_ADDR": f"198.51.100.{i}"}
+        assert c.post("/api/login", json={"username": "admin", "password": "adminpass1"}, environ_base=env).get_json() == {"totp": True}
+        wrong = "000000" if _totp_now(A, secret) != "000000" else "111111"
+        assert c.post("/api/login/totp", json={"code": wrong}, environ_base=env).status_code == 401
+    c = A.app.test_client()  # the account now waits, already at the password step
+    r = c.post("/api/login", json={"username": "admin", "password": "adminpass1"}, environ_base={"REMOTE_ADDR": "198.51.100.50"})
+    assert r.status_code == 429
+    # with a guess pending when the limit is reached, the code step waits too
+    with A._fails_lock:
+        A._acct_fails.clear()
+    c = A.app.test_client()
+    env = {"REMOTE_ADDR": "198.51.100.60"}
+    assert c.post("/api/login", json={"username": "admin", "password": "adminpass1"}, environ_base=env).get_json() == {"totp": True}
+    _wrong(A, 10, "198.51.100.7{}")
+    assert c.post("/api/login/totp", json={"code": _totp_now(A, secret)}, environ_base=env).status_code == 429

@@ -29,7 +29,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from bs4 import BeautifulSoup
-from flask import Flask, Response, g, jsonify, redirect, request, send_from_directory, session
+from flask import Flask, Response, after_this_request, g, jsonify, redirect, request, send_from_directory, session
+from itsdangerous import BadSignature, URLSafeSerializer
 from flask.sessions import SecureCookieSessionInterface
 from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
@@ -1365,11 +1366,11 @@ def current_user():
         row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         if not row or not secrets.compare_digest(str(session.get("ver", "")), row["ver"]):
             return None
-        s_row = c.execute("SELECT last_seen FROM sessions WHERE id=? AND user_id=?", (sid, uid)).fetchone()
+        s_row = c.execute("SELECT last_seen FROM sessions WHERE id=? AND user_id=?", (_sid_hash(sid), uid)).fetchone()
         if not s_row:  # signed out from another device
             return None
         if time.time() - s_row["last_seen"] > 300:
-            c.execute("UPDATE sessions SET last_seen=? WHERE id=?", (int(time.time()), sid))
+            c.execute("UPDATE sessions SET last_seen=? WHERE id=?", (int(time.time()), _sid_hash(sid)))
     return row
 
 
@@ -1389,8 +1390,19 @@ def me():
 
 
 # Every sign-in is a row in "sessions", so "Your account" can list the devices that
-# are signed in and sign any of them out. The cookie holds the row's id.
+# are signed in and sign any of them out. The cookie holds a random id; the row holds only
+# its hash, so a copy of the database (a backup, a snapshot) gives nobody a usable cookie.
 SESSION_DAYS = 31
+
+
+def _sid_hash(sid):
+    return hashlib.sha256(str(sid).encode()).hexdigest()
+
+
+def _current_sid_hash():
+    """This browser's session row id, or "" (inside Home Assistant there is none)."""
+    sid = session.get("sid")
+    return _sid_hash(sid) if sid and not via_ingress() else ""
 
 
 def _visitor():
@@ -1402,7 +1414,7 @@ def _sign_in(user):
     with db() as c:
         c.execute("DELETE FROM sessions WHERE last_seen < ?", (now - SESSION_DAYS * 86400,))
         c.execute("INSERT INTO sessions (id, user_id, created_at, last_seen, ua, ip) VALUES (?,?,?,?,?,?)",
-                  (sid, user["id"], now, now, request.headers.get("User-Agent", "")[:250], _visitor()))
+                  (_sid_hash(sid), user["id"], now, now, request.headers.get("User-Agent", "")[:250], _visitor()))
     session.clear()
     session["uid"] = user["id"]
     session["ver"] = user["ver"]
@@ -1480,8 +1492,18 @@ def _recovery_left(user):
 #    last X-Forwarded-For entry (the one the proxy itself adds), otherwise the peer.
 #  - per connecting address: at most 20 wrong tries a minute. This caps anyone who
 #    connects directly and invents X-Forwarded-For values to look like many visitors.
-_fails, _peer_fails, _fails_lock = {}, {}, threading.Lock()
+#  - per account: at most 10 wrong passwords or codes in 15 minutes, from wherever they
+#    come, so guessing one account's password (or its two-factor code, once the password
+#    is known) can't be spread over many addresses.
+# Behind a reverse proxy every visitor arrives from the proxy's address, so the second
+# and third rule could let a stranger lock everyone out. A browser that has signed in to
+# an account before (it holds a signed "known device" cookie for it) is therefore exempt
+# from those two rules for that account: the owner can always sign in from their own
+# devices, while the per-visitor rule still applies to them.
+_fails, _peer_fails, _acct_fails, _fails_lock = {}, {}, {}, threading.Lock()
 PEER_LIMIT, PEER_WINDOW = 20, 60
+ACCOUNT_LIMIT, ACCOUNT_WINDOW = 10, 15 * 60
+KNOWN_COOKIE, KNOWN_DAYS = "tilemark_device", 400
 
 
 def _client():
@@ -1490,20 +1512,31 @@ def _client():
     return peer, f"{peer}|{fwd}" if fwd else peer
 
 
-def _wait_seconds(client):
+def _account_key(username):
+    return str(username or "").strip().lower()[:60]
+
+
+def _wait_seconds(client, account=None, known=False):
     peer, visitor = client
     now = time.time()
     with _fails_lock:
         until = _fails.get(visitor, (0, 0))[1]
         recent = [t for t in _peer_fails.get(peer, []) if now - t < PEER_WINDOW]
         _peer_fails[peer] = recent
+        tries = [t for t in _acct_fails.get(account, []) if now - t < ACCOUNT_WINDOW] if account else []
+        if account:
+            _acct_fails[account] = tries
     wait = int(until - now) + 1 if until > now else 0
+    if known:
+        return wait
     if len(recent) >= PEER_LIMIT:
         wait = max(wait, int(recent[0] + PEER_WINDOW - now) + 1)
+    if len(tries) >= ACCOUNT_LIMIT:
+        wait = max(wait, int(tries[-ACCOUNT_LIMIT] + ACCOUNT_WINDOW - now) + 1)
     return wait
 
 
-def _note_login(client, ok):
+def _note_login(client, ok, account=None):
     peer, visitor = client
     with _fails_lock:
         if ok:
@@ -1513,10 +1546,39 @@ def _note_login(client, ok):
         until = time.time() + min(300, 15 * 2 ** (count - 5)) if count >= 5 else 0
         _fails[visitor] = (count, until)
         _peer_fails.setdefault(peer, []).append(time.time())
-        if len(_fails) > 5000:
-            _fails.clear()
-        if len(_peer_fails) > 5000:
-            _peer_fails.clear()
+        if account:
+            _acct_fails.setdefault(account, []).append(time.time())
+        for store in (_fails, _peer_fails, _acct_fails):
+            if len(store) > 5000:
+                store.clear()
+
+
+def _devices():
+    return URLSafeSerializer(app.secret_key, salt="tilemark-known-device")
+
+
+def _known_device(uid):
+    """True when this browser has signed in to account `uid` before."""
+    try:
+        uids = _devices().loads(request.cookies.get(KNOWN_COOKIE, ""))
+    except BadSignature:
+        return False
+    return isinstance(uids, list) and uid in uids
+
+
+def _remember_device(uid):
+    """Marks this browser as one of the account's own devices (see the throttle above)."""
+    try:
+        old = _devices().loads(request.cookies.get(KNOWN_COOKIE, ""))
+    except BadSignature:
+        old = []
+    uids = [uid] + [i for i in (old if isinstance(old, list) else []) if isinstance(i, int) and i != uid][:4]
+    value, secure = _devices().dumps(uids), app.session_interface.get_cookie_secure(app)
+
+    @after_this_request
+    def _set(resp):
+        resp.set_cookie(KNOWN_COOKIE, value, max_age=KNOWN_DAYS * 86400, httponly=True, samesite="Lax", secure=secure)
+        return resp
 
 
 def _check_new_credentials(username, password, need_password=True):
@@ -1535,8 +1597,41 @@ ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "s
                    "backup_encryption"}
 
 
+# Requests that change something must come from TileMark's own pages (or from a client
+# with no browser, such as a Shortcut with an API key). Without this, another site the
+# browser counts as "the same site" (another app on the same machine on a different port,
+# or a sibling subdomain) could make a signed-in browser add links, restore a backup or
+# change settings, because the sign-in cookie goes along with such requests.
+#  - Browsers say where a request comes from in Sec-Fetch-Site; only "same-origin" (and
+#    "none": typed or bookmarked by the person) is accepted.
+#  - Older browsers without it always send Origin with a request from another site; that
+#    must then name the address the request went to (behind a reverse proxy the address
+#    the proxy reports in X-Forwarded-Host counts too).
+#  - No header at all is not a browser, and has no cookie to misuse; it passes.
+SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
+
+def _foreign_request():
+    if request.method in SAFE_METHODS:
+        return False
+    site = request.headers.get("Sec-Fetch-Site", "").strip().lower()
+    if site:
+        return site not in ("same-origin", "none")
+    origin = request.headers.get("Origin", "").strip()
+    if not origin:
+        return False
+    if origin == "null":
+        return True
+    o = urlsplit(origin)
+    hosts = {request.host.lower()}
+    hosts.update(h.strip().lower() for h in request.headers.get("X-Forwarded-Host", "").split(",") if h.strip())
+    return o.netloc.lower() not in hosts
+
+
 @app.before_request
 def require_login():
+    if _foreign_request():
+        return jsonify(error="This request came from another website and was refused."), 403
     g.user = current_user()
     if request.endpoint in OPEN_ENDPOINTS:
         return None
@@ -1692,6 +1787,7 @@ def api_setup():
             con.execute("ROLLBACK")
         con.close()
     _sign_in(row)
+    _remember_device(row["id"])
     session.permanent = True
     return jsonify(ok=True), 201
 
@@ -1699,14 +1795,15 @@ def api_setup():
 @app.post("/api/login")
 def api_login():
     d = request.get_json(force=True, silent=True) or {}
-    ip = _client()
-    wait = _wait_seconds(ip)
+    ip, name = _client(), str(d.get("username", "")).strip()
+    with db() as c:
+        row = c.execute("SELECT * FROM users WHERE username=?", (name,)).fetchone()
+    account = _account_key(name)
+    wait = _wait_seconds(ip, account, known=bool(row) and _known_device(row["id"]))
     if wait:
         return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
-    with db() as c:
-        row = c.execute("SELECT * FROM users WHERE username=?", (str(d.get("username", "")).strip(),)).fetchone()
     ok = check_password_hash(row["pw_hash"] if row else _DUMMY_HASH, str(d.get("password", ""))) and row is not None
-    _note_login(ip, ok)
+    _note_login(ip, ok, account)
     if not ok:
         return jsonify(error="Wrong username or password."), 401
     keys_on_sign_in(row["id"], str(d.get("password", "")))  # the only moment the password is known
@@ -1716,6 +1813,7 @@ def api_login():
                               "remember": bool(d.get("remember"))}
         return jsonify(totp=True)
     _sign_in(row)
+    _remember_device(row["id"])
     session.permanent = bool(d.get("remember"))  # otherwise the cookie ends with the browser session
     return jsonify(ok=True)
 
@@ -1728,22 +1826,34 @@ def api_login_totp():
         session.pop("pending", None)
         return jsonify(error="That took too long. Enter your password again.", restart=True), 401
     ip = _client()
-    wait = _wait_seconds(ip)
-    if wait:
-        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
     with db() as c:
         row = c.execute("SELECT * FROM users WHERE id=?", (pend["uid"],)).fetchone()
-        if not row or row["ver"] != pend["ver"] or not row["totp_secret"]:
-            session.pop("pending", None)
-            return jsonify(error="Enter your password again.", restart=True), 401
+    if not row or row["ver"] != pend["ver"] or not row["totp_secret"]:
+        session.pop("pending", None)
+        return jsonify(error="Enter your password again.", restart=True), 401
+    account = _account_key(row["username"])
+    wait = _wait_seconds(ip, account, known=_known_device(row["id"]))
+    if wait:
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    con = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
+    con.row_factory = sqlite3.Row
+    try:
+        con.execute("BEGIN IMMEDIATE")  # two requests with the same code: only the first one counts
+        row = con.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
         step = totp_check(row["totp_secret"], d.get("code"), row["totp_last"])
         if step is not None:
-            c.execute("UPDATE users SET totp_last=? WHERE id=?", (step, row["id"]))
-        ok = step is not None or _use_recovery_code(c, row, d.get("code"))
-    _note_login(ip, ok)
+            con.execute("UPDATE users SET totp_last=? WHERE id=?", (step, row["id"]))
+        ok = step is not None or _use_recovery_code(con, row, d.get("code"))
+        con.execute("COMMIT")
+    finally:
+        if con.in_transaction:
+            con.execute("ROLLBACK")
+        con.close()
+    _note_login(ip, ok, account)
     if not ok:
         return jsonify(error="That code is not right."), 401
     _sign_in(row)
+    _remember_device(row["id"])
     session.permanent = bool(pend.get("remember"))
     return jsonify(ok=True)
 
@@ -1752,7 +1862,7 @@ def api_login_totp():
 def api_logout():
     if session.get("sid"):
         with db() as c:
-            c.execute("DELETE FROM sessions WHERE id=?", (session["sid"],))
+            c.execute("DELETE FROM sessions WHERE id=?", (_sid_hash(session["sid"]),))
     session.clear()
     return jsonify(ok=True)
 
@@ -1762,8 +1872,8 @@ def list_sessions():
     with db() as c:
         rows = c.execute("SELECT id, created_at, last_seen, ua, ip FROM sessions WHERE user_id=? ORDER BY last_seen DESC",
                          (me(),)).fetchall()
-    cur = session.get("sid") if not via_ingress() else None
-    return jsonify(sessions=[dict(r) | {"current": r["id"] == cur} for r in rows])
+    cur = _current_sid_hash()
+    return jsonify(sessions=[dict(r) | {"current": bool(cur) and r["id"] == cur} for r in rows])
 
 
 @app.delete("/api/sessions/<sid>")
@@ -1776,7 +1886,7 @@ def end_session(sid):
 @app.post("/api/sessions/others")
 def end_other_sessions():
     """Signs out every other device of this account (this one stays signed in)."""
-    _end_other_sessions(me(), "" if via_ingress() else session.get("sid", ""))
+    _end_other_sessions(me(), _current_sid_hash())
     return jsonify(ok=True)
 
 
@@ -1865,7 +1975,7 @@ def update_account():
         _sign_in(row)
         session.permanent = True
     if pw:  # a new password signs out every other device
-        _end_other_sessions(me(), "" if via_ingress() else session.get("sid", ""))
+        _end_other_sessions(me(), _current_sid_hash())
     return jsonify(ok=True)
 
 
@@ -2833,8 +2943,15 @@ def restore_backup(uid, data, password=""):
                     c.execute("UPDATE groups SET color=?, position=? WHERE id=?",
                               (grp["color"], grp.get("position", grp["id"]), gid))
                 gmap[grp["id"]] = gid
-            restored = 0
+            restored, skipped = 0, 0
             for row in links:
+                # the same check as every other way in: a backup file can be made by anyone,
+                # so a javascript: or other non-web address in it never becomes a link
+                url = normalize_url(row.get("url") if isinstance(row.get("url"), str) else "")
+                if not url:
+                    skipped += 1
+                    continue
+                row.update(url=url, ukey=url_key(url), final_key="")
                 row.setdefault("position", -row["id"])
                 use = [k for k in l_cols if k in row]
                 try:
@@ -2859,7 +2976,7 @@ def restore_backup(uid, data, password=""):
                 shutil.move(path, os.path.join(THUMB_DIR, new_name))
         for name in old_thumbs:
             _remove_thumb(name)
-    return restored, len(gmap)
+    return restored, len(gmap), skipped
 
 
 # Daily copy of the whole installation (all accounts) in data/backups, the last
@@ -2885,7 +3002,7 @@ def list_backups():
 
 
 SAFETY_PREFIX, KEEP_SAFETY = "tilemark-before-restore-", 3
-KEEP_ON_RESTORE = ("node_id", "secret_key", "mqtt_enabled", "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
+KEEP_ON_RESTORE = ("node_id", "secret_key", "cookie_key_v2", "mqtt_enabled", "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
                    "mqtt_prefix", "mqtt_name", "mqtt_url")
 
 
@@ -2920,6 +3037,25 @@ def _full_header():
                        "recovery": get_setting("bk_recovery", "")}).encode("utf-8")
 
 
+# What a backup file never holds: the key that signs sign-in cookies, the list of signed-in
+# devices, the MQTT password, a half-finished two-factor setup and a setup code. With the
+# first two, anyone holding the file could sign in as a user of that day without a password.
+# None of them is needed for a restore: a restore keeps this installation's own key and MQTT
+# settings, and everyone signs in again afterwards. (A new installation made from a copied
+# backup makes its own key at start; an MQTT broker password is entered again there.)
+BACKUP_LEAVE_OUT = ("secret_key", "mqtt_pass", "setup_code")
+
+
+def _strip_secrets(con):
+    """Removes the items above from a database copy, and wipes them from its free space too."""
+    con.execute(f"DELETE FROM settings WHERE key IN ({','.join('?' * len(BACKUP_LEAVE_OUT))})", BACKUP_LEAVE_OUT)
+    if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sessions'").fetchone():
+        con.execute("DELETE FROM sessions")
+    con.execute("DELETE FROM user_settings WHERE key='totp_pending'")
+    con.commit()
+    con.execute("VACUUM")  # deleted rows stay readable in the file until it is rebuilt
+
+
 def _write_full_backup(base):
     """Write a backup of the whole installation: base + ".tmk" when encryption is on, else ".zip"."""
     os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -2932,6 +3068,7 @@ def _write_full_backup(base):
         with dst:
             src.backup(dst)  # consistent copy, even while the app is in use
         src.close()
+        _strip_secrets(dst)
         own = [r[0] for r in dst.execute("SELECT thumb FROM links WHERE custom_thumb=1 AND thumb != ''")]
         dst.close()
         with zipfile.ZipFile(part, "w", zipfile.ZIP_DEFLATED) as z:
@@ -3214,10 +3351,10 @@ def api_restore():
     if not f:
         return jsonify(error="Choose a backup file."), 400
     try:
-        links, groups = restore_backup(me(), f.read(), request.form.get("password", ""))
+        links, groups, skipped = restore_backup(me(), f.read(), request.form.get("password", ""))
     except RestoreError as e:
         return jsonify(error=str(e)), 400
-    return jsonify(ok=True, links=links, groups=groups)
+    return jsonify(ok=True, links=links, groups=groups, skipped=skipped)
 
 
 # -------------------------------------------------------------------- start
@@ -3242,6 +3379,15 @@ def reset_login(username=None):
 init_db()
 if not get_setting("secret_key"):
     set_setting("secret_key", secrets.token_hex(32))
+if get_setting("cookie_key_v2") != "1":
+    # Once, with 2.6.1: a new cookie key and no old sign-ins. Backups made before held the
+    # old key and the devices signed in that day; after this, those copies open nothing.
+    # Everyone signs in once more (inside Home Assistant nothing changes).
+    with db() as _c:
+        _c.execute("DELETE FROM sessions")
+        for _k, _v in (("secret_key", secrets.token_hex(32)), ("cookie_key_v2", "1")):
+            _c.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                       (_k, _v))
 app.secret_key = get_setting("secret_key")
 app.config.update(SESSION_COOKIE_NAME="tilemark", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   PERMANENT_SESSION_LIFETIME=timedelta(days=30))

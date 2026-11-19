@@ -38,6 +38,8 @@ A backup holds your links, groups, colours, order, notes, favourites and picture
 
 This **replaces all your current links and groups** with those in the file. Other people's links are not touched, and neither is your account. It is all or nothing: a wrong password or a damaged file changes nothing.
 
+Only web addresses (`http://` and `https://`, local ones like `http://192.168.1.10:8080` included) are restored, the same as when you add a link. An entry with any other kind of address, such as `javascript:`, is skipped: a backup file can be made by anyone, so only restore files you trust.
+
 You can restore into another TileMark or another account, as long as you know the password. Older files work too, including unencrypted ones and backups from LinkBoard (TileMark's earlier name).
 
 > Just want your links in another format? [Export](import-export.md#export) makes a readable TileMark or bookmarks file instead.
@@ -45,6 +47,8 @@ You can restore into another TileMark or another account, as long as you know th
 ## Daily backups of the whole installation
 
 Every day TileMark copies the whole installation (every account with its links and settings, and the pictures people uploaded themselves) into `data/backups/`. The **last 7** are kept. Fetched pictures are left out to keep the files small; they come back by themselves.
+
+A daily backup never holds the key that signs sign-in cookies, the list of signed-in devices or the MQTT broker password, so a copy of it can't be used to sign in. A restore keeps this installation's own; if you set up a new installation from a copied backup, enter the MQTT password there again.
 
 The admin can switch this off in **⚙ Settings → Installation → Keep a daily backup of the whole installation**. In the Home Assistant app it is off by default, because Home Assistant's own backups already include TileMark.
 

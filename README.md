@@ -64,7 +64,7 @@
 
 **Safe and private**
 - Accounts for everyone in the home, links private per person
-- Two-factor sign-in with any authenticator app
+- Two-factor sign-in with any authenticator app, and passkeys
 - See and sign out your signed-in devices
 - Encrypted backups, unlocked with your login password or a recovery key
 - Never visits addresses inside your network unless you allow it
@@ -75,7 +75,7 @@
 **Pleasant to use**
 - Two layouts: side panel or large picture sections
 - Light and dark, following your device
-- English, Dutch, German and Arabic (right to left)
+- English, Dutch, German, French, Spanish and Arabic (right to left)
 - Works on phones; installs as an app over HTTPS
 - Keyboard shortcuts: `/` search, `n` add, `Esc` clear
 
@@ -120,7 +120,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 </tr>
 <tr>
 <td><img src="docs/images/settings.webp" alt="Settings as cards"><br><sub><b>Settings</b>: one card per topic, with its status</sub></td>
-<td><img src="docs/images/arabic.webp" alt="TileMark in Arabic"><br><sub><b>Four languages</b>, including Arabic right to left</sub></td>
+<td><img src="docs/images/arabic.webp" alt="TileMark in Arabic"><br><sub><b>Six languages</b>, including Arabic right to left</sub></td>
 </tr>
 </table>
 
@@ -134,7 +134,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | [Import and export](docs/import-export.md) | Bookmarks in, files out, duplicates |
 | [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API key |
 | [Broken links](docs/broken-links.md) | The weekly check |
-| [Accounts and security](docs/accounts-and-security.md) | People, two-factor sign-in, devices, passwords |
+| [Accounts and security](docs/accounts-and-security.md) | People, two-factor sign-in, passkeys, devices, passwords, reset |
 | [Backups](docs/backups.md) | Your own, daily, restoring |
 | [Home Assistant sensors](docs/home-assistant-sensors.md) | Sensors and notifications over MQTT |
 | [Settings](docs/settings.md) | Every option, card by card |

@@ -108,6 +108,8 @@ To restore:
 
 Changed your mind? Restore the safety copy, and you're back where you were.
 
+When an admin [resets TileMark](accounts-and-security.md#resetting-tilemark-admin), a copy is kept too, listed as **Before reset**. Set up the new installation, then restore that copy to bring every account back. An encrypted one opens with the password an admin had before the reset, or the recovery key.
+
 A restore keeps how the installation connects to the outside: the [Home Assistant sensors](home-assistant-sensors.md) settings and the device in Home Assistant stay as they are.
 
 ## A complete copy by hand

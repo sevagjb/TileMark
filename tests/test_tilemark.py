@@ -1234,7 +1234,7 @@ def test_every_message_has_a_translation():
                 msgs.add(n.args[0].value)
         if isinstance(n, ast.FunctionDef) and n.name == "_check_new_credentials":
             msgs |= {r.value.value for r in ast.walk(n) if isinstance(r, ast.Return) and isinstance(r.value, ast.Constant) and r.value.value}
-    for page in ("index.html", "login.html", "save.html"):
+    for page in ("index.html", "login.html", "save.html", "passkey.js"):
         text = open(os.path.join(ROOT, "pages", page), encoding="utf-8").read()
         msgs |= {json.loads(m) for m in re.findall(r'\bt\(("(?:[^"\\]|\\.)*")', text)}
         for a, b in re.findall(r'\bt\([\w.!]+ \? ("(?:[^"\\]|\\.)*") : ("(?:[^"\\]|\\.)*")', text):  # t(x ? "a" : "b")
@@ -1685,8 +1685,8 @@ def test_i18n_sends_only_the_chosen_language(fresh):
     c = fresh.app.test_client()
     d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "de-DE,de;q=0.9,en;q=0.5"}))
     assert d["lang"] == "de" and d["pref"] == "" and d["dict"]["Settings"] == "Einstellungen"
-    assert [l["code"] for l in d["languages"]] == ["en", "nl", "de", "ar"]
-    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "fr-FR,fr;q=0.9"}))
+    assert [l["code"] for l in d["languages"]] == ["en", "nl", "de", "fr", "es", "ar"]
+    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "it-IT,it;q=0.9"}))
     assert d["lang"] == "en" and d["dict"] == {}  # a language TileMark doesn't have: English
     c.set_cookie("tm_lang", "ar")  # chosen on the sign-in page
     d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "de"}))
@@ -1925,3 +1925,382 @@ def test_two_factor_guesses_count_per_account(fresh):
     assert c.post("/api/login", json={"username": "admin", "password": "adminpass1"}, environ_base=env).get_json() == {"totp": True}
     _wrong(A, 10, "198.51.100.7{}")
     assert c.post("/api/login/totp", json={"code": _totp_now(A, secret)}, environ_base=env).status_code == 429
+
+
+# ------------------------------------------------------------------- 2.7.0 passkeys
+class SoftAuthenticator:
+    """A passkey device in software: real keys, real signatures, like a phone would send."""
+
+    def __init__(self, rp_id="links.example.org"):
+        from cryptography.hazmat.primitives.asymmetric import ec
+        self.rp_id, self.key, self.cred_id, self.count, self.handle = rp_id, ec.generate_private_key(ec.SECP256R1()), os.urandom(16), 0, None
+
+    @staticmethod
+    def b64(b):
+        import base64
+        return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+
+    @staticmethod
+    def unb64(s):
+        import base64
+        return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+    def _client_data(self, kind, challenge, origin):
+        return json.dumps({"type": kind, "challenge": challenge, "origin": origin, "crossOrigin": False}).encode()
+
+    def _auth_data(self, flags, rp_id=None):
+        import hashlib, struct
+        return hashlib.sha256((rp_id or self.rp_id).encode()).digest() + bytes([flags]) + struct.pack(">I", self.count)
+
+    def create(self, opts, origin):
+        import cbor2, struct
+        assert opts["rp"]["id"] == self.rp_id and opts["authenticatorSelection"]["residentKey"] == "required"
+        self.handle = opts["user"]["id"]
+        nums = self.key.public_key().public_numbers()
+        cose = cbor2.dumps({1: 2, 3: -7, -1: 1, -2: nums.x.to_bytes(32, "big"), -3: nums.y.to_bytes(32, "big")})
+        auth = self._auth_data(0x01 | 0x04 | 0x40) + b"\0" * 16 + struct.pack(">H", len(self.cred_id)) + self.cred_id + cose
+        att = cbor2.dumps({"fmt": "none", "attStmt": {}, "authData": auth})
+        cid = self.b64(self.cred_id)
+        return {"id": cid, "rawId": cid, "type": "public-key", "clientExtensionResults": {},
+                "response": {"clientDataJSON": self.b64(self._client_data("webauthn.create", opts["challenge"], origin)),
+                             "attestationObject": self.b64(att), "transports": ["internal"]}}
+
+    def get(self, opts, origin, rp_id=None, flags=0x05, tamper=False):
+        import hashlib
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
+        if not getattr(self, "synced", False):  # synced passkeys (iCloud, Google) always send counter 0
+            self.count += 1
+        auth, cd = self._auth_data(flags, rp_id), self._client_data("webauthn.get", opts["challenge"], origin)
+        sig = self.key.sign(auth + hashlib.sha256(cd).digest(), ec.ECDSA(hashes.SHA256()))
+        if tamper:
+            sig = sig[:-1] + bytes([sig[-1] ^ 1])
+        cid = self.b64(self.cred_id)
+        return {"id": cid, "rawId": cid, "type": "public-key", "clientExtensionResults": {},
+                "response": {"clientDataJSON": self.b64(cd), "authenticatorData": self.b64(auth),
+                             "signature": self.b64(sig), "userHandle": self.handle}}
+
+
+ORIGIN = "https://links.example.org"
+
+
+def _from(origin=ORIGIN):
+    return {"Origin": origin, "Sec-Fetch-Site": "same-origin"}
+
+
+def add_passkey(c, dev, pw="adminpass1", origin=ORIGIN, name="Phone"):
+    r = c.post("/api/passkeys/options", json={"current_password": pw}, headers=_from(origin))
+    assert r.status_code == 200, r.get_json()
+    r = c.post("/api/passkeys", json={"credential": dev.create(r.get_json(), origin), "name": name}, headers=_from(origin))
+    assert r.status_code == 201, r.get_json()
+
+
+def passkey_sign_in(A, dev, origin=ORIGIN, client=None, peer="127.0.0.1", **kw):
+    c = client or A.app.test_client()
+    env = {"REMOTE_ADDR": peer}
+    opts = c.post("/api/login/passkey/options", headers=_from(origin), environ_base=env)
+    assert opts.status_code == 200, opts.get_json()
+    assert opts.get_json()["userVerification"] == "required" and not opts.get_json().get("allowCredentials")
+    return c, c.post("/api/login/passkey", json={"credential": dev.get(opts.get_json(), origin, **kw), "remember": True},
+                     headers=_from(origin), environ_base=env)
+
+
+def test_passkey_add_and_sign_in(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    dev = SoftAuthenticator()
+    assert admin.post("/api/passkeys/options", json={"current_password": "wrong"}, headers=_from()).status_code == 403
+    add_passkey(admin, dev)
+    keys = admin.get("/api/passkeys").get_json()["passkeys"]
+    assert [(k["name"], k["rp_id"], k["last_used"]) for k in keys] == [("Phone", "links.example.org", 0)]
+    assert admin.get("/api/auth").get_json()["passkeys"] == 1
+    with A.db() as c:
+        handle = c.execute("SELECT pk_handle FROM users").fetchone()[0]
+    assert handle and dev.handle == handle and "admin" not in handle  # a random id, not the username
+    c, r = passkey_sign_in(A, dev)
+    assert r.status_code == 200, r.get_json()
+    assert c.get("/api/state").get_json()["me"]["username"] == "admin"
+    assert A.app.test_client().get("/api/state").status_code == 401
+    k = admin.get("/api/passkeys").get_json()["passkeys"][0]
+    assert k["last_used"] > 0
+    with A.db() as con:
+        assert con.execute("SELECT sign_count FROM passkeys").fetchone()[0] == 1
+    # the same answer again (a replay) is refused: its challenge was used once
+    opts = c.post("/api/login/passkey/options", headers=_from()).get_json()
+    answer = dev.get(opts, ORIGIN)
+    assert c.post("/api/login/passkey", json={"credential": answer}, headers=_from()).status_code == 200
+    assert c.post("/api/login/passkey", json={"credential": answer}, headers=_from()).status_code == 400
+    # an old copy of the session cookie can't bring a used challenge back (with a synced
+    # passkey, whose counter stays 0, nothing else would catch that)
+    dev.synced = True
+    with A.db() as con:
+        con.execute("UPDATE passkeys SET sign_count=0")
+    dev.count = 0
+    opts = c.post("/api/login/passkey/options", headers=_from()).get_json()
+    old_cookie = c.get_cookie("tilemark").value
+    answer = dev.get(opts, ORIGIN)
+    assert c.post("/api/login/passkey", json={"credential": answer}, headers=_from()).status_code == 200
+    c.set_cookie("tilemark", old_cookie)
+    assert c.post("/api/login/passkey", json={"credential": answer}, headers=_from()).status_code == 400
+    # rename, then remove: it can't sign in any more
+    assert admin.patch(f"/api/passkeys/{k['id']}", json={"name": "  iPhone  "}).status_code == 200
+    assert admin.get("/api/passkeys").get_json()["passkeys"][0]["name"] == "iPhone"
+    assert admin.delete(f"/api/passkeys/{k['id']}").status_code == 200
+    _, r = passkey_sign_in(A, dev)
+    assert r.status_code == 401
+
+
+def test_passkey_skips_two_factor_code(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    _enable_totp(A, admin)
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    c, r = passkey_sign_in(A, dev)
+    assert r.get_json() == {"ok": True}  # no {"totp": true}: the device's own unlock is the second factor
+    assert c.get("/api/state").status_code == 200
+
+
+def test_passkey_needs_user_verification_and_a_good_signature(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    assert passkey_sign_in(A, dev, flags=0x01)[1].status_code == 401  # touched, but not unlocked (no face/PIN)
+    assert passkey_sign_in(A, dev, tamper=True)[1].status_code == 401
+    assert passkey_sign_in(A, dev, rp_id="evil.example.org")[1].status_code == 401
+    assert passkey_sign_in(A, dev)[1].status_code == 200
+
+
+def test_passkey_belongs_to_its_address(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    # a phishing copy elsewhere gets nothing it can use: the signed origin and RP ID don't match
+    _, r = passkey_sign_in(A, dev, origin="https://links-example.org.evil.example")
+    assert r.status_code == 401
+
+
+@pytest.mark.parametrize("origin, ok", [
+    ("https://links.example.org", True),
+    ("https://links.example.org:8443", True),
+    ("http://localhost:8080", True),
+    ("http://links.example.org", False),  # plain http
+    ("http://192.168.1.10:8080", False),  # an IP address
+    ("https://192.168.1.10", False),
+    ("https://[fd00::1]", False),
+    ("", False),
+])
+def test_passkeys_only_on_https_with_a_name(fresh, origin, ok):
+    A = fresh
+    admin = setup_admin(A)
+    h = {"Origin": origin, "Sec-Fetch-Site": "same-origin"} if origin else {}
+    r = admin.post("/api/passkeys/options", json={"current_password": "adminpass1"}, headers=h)
+    assert (r.status_code == 200) == ok, r.get_json()
+    assert (A.app.test_client().post("/api/login/passkey/options", headers=h).status_code == 200) == ok
+    if ok:
+        dev = SoftAuthenticator(rp_id=urlsplit_host(origin))
+        add_passkey(admin, dev, origin=origin, name="x")
+        assert passkey_sign_in(A, dev, origin=origin)[1].status_code == 200
+
+
+def urlsplit_host(origin):
+    from urllib.parse import urlsplit
+    return urlsplit(origin).hostname
+
+
+def test_passkeys_not_in_home_assistant_sidebar(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c = A.app.test_client()
+    h = {"X-Remote-User-Id": "abc", "X-Remote-User-Name": "Sevag", **_from()}
+    env = {"REMOTE_ADDR": A.HA_PROXY}
+    r = c.post("/api/passkeys/options", json={}, headers=h, environ_base=env)
+    assert r.status_code == 400
+
+
+def test_passkeys_are_private(two):
+    A, admin, bob, *_ = two
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    kid = admin.get("/api/passkeys").get_json()["passkeys"][0]["id"]
+    assert bob.get("/api/passkeys").get_json()["passkeys"] == []
+    assert bob.patch(f"/api/passkeys/{kid}", json={"name": "x"}).status_code == 404
+    assert bob.delete(f"/api/passkeys/{kid}").status_code == 404
+    # bob can't finish adding a passkey that admin's browser started
+    opts = admin.post("/api/passkeys/options", json={"current_password": "adminpass1"}, headers=_from()).get_json()
+    r = bob.post("/api/passkeys", json={"credential": SoftAuthenticator().create(opts, ORIGIN)}, headers=_from())
+    assert r.status_code == 400
+    # removing the account removes its passkeys
+    uid = next(u["id"] for u in admin.get("/api/users").get_json()["users"] if u["username"] == "bob")
+    bdev = SoftAuthenticator()
+    add_passkey(bob, bdev, pw="userpass11")
+    assert admin.delete(f"/api/users/{uid}").status_code == 200
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM passkeys WHERE user_id=?", (uid,)).fetchone()[0] == 0
+    assert passkey_sign_in(A, bdev)[1].status_code == 401
+
+
+def test_passkey_guesses_count_per_account(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    own = sign_in(A, "admin", "adminpass1")  # a browser that has signed in before
+    own.post("/api/logout")
+    for i in range(10):  # each from its own address
+        _, r = passkey_sign_in(A, dev, tamper=True, peer=f"198.51.100.{i}")
+        assert r.status_code == 401
+    _, r = passkey_sign_in(A, dev, peer="198.51.100.99")
+    assert r.status_code == 429
+    assert passkey_sign_in(A, dev, client=own, peer="198.51.100.98")[1].status_code == 200  # never locked out
+
+
+def test_passkeys_survive_a_full_backup_restore(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    name = os.path.basename(A.daily_backup())
+    assert admin.post("/api/backups/restore", json={"name": name, "confirm": name[9:19]}).status_code == 200
+    assert passkey_sign_in(A, dev)[1].status_code == 200
+
+
+# ------------------------------------------------------------- 2.7.0 delete all my links
+def test_delete_all_my_links(two):
+    A, admin, bob, ga, gb, la, lb = two
+    dev = SoftAuthenticator()
+    add_passkey(bob, dev, pw="userpass11")
+    bob.put("/api/prefs", json={"theme": "dark", "defgroup": gb, "sorts": {str(gb): "name"}})
+    assert bob.post("/api/account/clear", json={"current_password": "wrong"}).status_code == 403
+    r = bob.post("/api/account/clear", json={"current_password": "userpass11"})
+    assert r.get_json() == {"ok": True, "links": 1, "groups": 1}
+    s = bob.get("/api/state").get_json()
+    assert s["links"] == [] and s["groups"] == []
+    assert s["prefs"].get("theme") == "dark" and "defgroup" not in s["prefs"] and "sorts" not in s["prefs"]
+    assert not os.path.exists(os.path.join(A.THUMB_DIR, f"{lb}-b.webp"))
+    assert len(admin.get("/api/state").get_json()["links"]) == 1  # other people's links stay
+    assert os.path.exists(os.path.join(A.THUMB_DIR, f"{la}-a.webp"))
+    assert passkey_sign_in(A, dev)[1].status_code == 200  # the account and its passkeys stay
+
+
+def test_delete_all_my_links_in_ha_sidebar(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c = A.app.test_client()
+    h = {"X-Remote-User-Id": "abc", "X-Remote-User-Name": "Sevag"}
+    env = {"REMOTE_ADDR": A.HA_PROXY}
+    assert c.post("/api/links", json={"url": "https://example.org"}, headers=h, environ_base=env).status_code == 201
+    assert c.post("/api/account/clear", json={}, headers=h, environ_base=env).get_json()["links"] == 1
+
+
+# ------------------------------------------------------------- 2.7.0 reset TileMark
+def _reset(c, **kw):
+    return c.post("/api/reset", json={"confirm": "RESET", "password": "adminpass1", **kw})
+
+
+def test_reset_needs_admin_confirmation_and_password(two):
+    A, admin, bob, *_ = two
+    assert _reset(bob, password="userpass11").status_code == 403  # admins only
+    assert _reset(admin, confirm="reset").status_code == 400
+    assert _reset(admin, password="wrong").status_code == 403
+    assert len(admin.get("/api/state").get_json()["links"]) == 1  # nothing happened
+
+
+def test_reset_needs_the_two_factor_code(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    secret, recovery = _enable_totp(A, admin)
+    assert _reset(admin).status_code == 403
+    assert _reset(admin, code="000000" if _totp_now(A, secret) != "000000" else "111111").status_code == 403
+    assert _reset(admin, code=recovery[0]).status_code == 200
+
+
+def test_reset_makes_a_new_installation(two):
+    A, admin, bob, ga, gb, la, lb = two
+    dev = SoftAuthenticator()
+    add_passkey(admin, dev)
+    key = A.get_setting("secret_key")
+    A.set_setting("mqtt_host", "broker.lan")
+    r = _reset(admin)
+    assert r.status_code == 200 and r.get_json()["safety"].startswith("tilemark-before-reset-")
+    assert admin.get("/api/state").status_code == 401 and bob.get("/api/state").status_code == 401
+    assert A.setup_needed() and A.get_setting("secret_key") != key and A.get_setting("setup_code")
+    assert A.get_setting("mqtt_host") is None and A.get_setting("cookie_key_v2") == "1"
+    with A.db() as c:
+        for table in ("links", "groups", "users", "passkeys", "sessions", "user_settings", "bk_grants"):
+            assert c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0, table
+    assert os.listdir(A.THUMB_DIR) == []
+    assert passkey_sign_in(A, dev)[1].status_code == 401
+    # the first-start screen works again, and the copy brings everything back
+    new = setup_admin(A, "newadmin", "newadmin123")
+    backups = new.get("/api/backups").get_json()["backups"]
+    copy = next(b for b in backups if b["kind"] == "reset")
+    r = new.post("/api/backups/restore", json={"name": copy["name"], "confirm": copy["date"]})
+    assert r.status_code == 200 and r.get_json()["users"] == 2
+    old = sign_in(A, "admin", "adminpass1")
+    assert len(old.get("/api/state").get_json()["links"]) == 1
+
+
+def test_reset_can_delete_every_backup(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    A.daily_backup()
+    assert A.all_backups()
+    r = _reset(admin, delete_backups=True)
+    assert r.status_code == 200 and r.get_json()["safety"] is None
+    assert A.all_backups() == []
+
+
+def test_reset_with_encrypted_backups_keeps_an_encrypted_copy(fresh):
+    A = fresh
+    admin = setup_admin(A)
+    admin.post("/api/backups/encryption", json={"action": "on", "password": "adminpass1"})
+    r = _reset(admin)
+    copy = next(b for b in A.all_backups() if b["kind"] == "reset")
+    assert copy["encrypted"] and copy["name"] == r.get_json()["safety"]
+    new = setup_admin(A, "newadmin", "newadmin123")
+    r = new.post("/api/backups/restore", json={"name": copy["name"], "confirm": copy["date"], "secret": "adminpass1"})
+    assert r.status_code == 200, r.get_json()  # the old admin's password still opens it
+
+
+def test_reset_in_home_assistant_sidebar(tmp_path):
+    A = load_app(tmp_path, addon=True)
+    c = A.app.test_client()
+    h = {"X-Remote-User-Id": "abc", "X-Remote-User-Name": "Sevag"}
+    env = {"REMOTE_ADDR": A.HA_PROXY}
+    assert c.get("/api/auth", headers=h, environ_base=env).get_json()["is_admin"] is True
+    assert c.post("/api/reset", json={"confirm": "RESET"}, headers=h, environ_base=env).status_code == 200
+    with A.db() as con:
+        assert con.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+    # the next person who opens it from the sidebar becomes the admin of a new installation
+    assert c.get("/api/auth", headers=h, environ_base=env).get_json()["is_admin"] is True
+
+
+def test_reset_removes_the_home_assistant_device(fresh, broker):
+    c = setup_admin(fresh)
+    listener, got = _listen(broker)
+    c.post("/api/mqtt", json={"enabled": True, "host": "127.0.0.1", "port": broker})
+    bridge = fresh.mqtt
+    bridge.cfg = None
+    bridge.step()
+    node = bridge.node()
+    assert _wait(lambda: f"homeassistant/sensor/{node}/links/config" in got)
+    assert _reset(c).status_code == 200
+    assert _wait(lambda: got.get(f"homeassistant/sensor/{node}/links/config") == "" and got.get(f"tilemark/{node}/state") == "")
+    bridge.step()  # MQTT is off again (a Docker install starts with it off)
+    assert bridge.status["state"] == "off"
+    listener.loop_stop()
+
+
+# ------------------------------------------------------------- 2.7.0 French and Spanish
+def test_french_and_spanish_are_complete(fresh):
+    files = _lang_files()
+    assert set(files["fr"]) == set(files["nl"]) == set(files["es"])  # every text, nothing left for later
+    for code in ("fr", "es"):
+        assert all(v for v in files[code].values()), [k for k, v in files[code].items() if not v]
+    c = fresh.app.test_client()
+    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "fr-FR,fr;q=0.9"}))
+    assert d["lang"] == "fr" and d["dict"]["Settings"] == "Paramètres"
+    d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "es-ES,es;q=0.9"}))
+    assert d["lang"] == "es" and d["dict"]["Settings"] == "Ajustes"
+    assert [l["code"] for l in d["languages"]][-1] == "ar"  # Arabic stays last

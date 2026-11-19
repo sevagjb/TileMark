@@ -10,7 +10,7 @@ Everything TileMark can do, explained step by step. New here? Start with **Getti
 | [Import and export](import-export.md) | Browser bookmarks in, files out, and how duplicates are handled. |
 | [Save from anywhere](save-from-anywhere.md) | The browser button, the phone app and the API key. |
 | [Broken links](broken-links.md) | The weekly check and what to do with broken links. |
-| [Accounts and security](accounts-and-security.md) | People, admins, two-factor sign-in, devices, forgotten passwords, local addresses. |
+| [Accounts and security](accounts-and-security.md) | People, admins, two-factor sign-in, passkeys, devices, forgotten passwords, resetting, local addresses. |
 | [Backups](backups.md) | Your own backups, daily backups of the installation, restoring. |
 | [Home Assistant sensors](home-assistant-sensors.md) | Sensors and notifications in Home Assistant through MQTT. |
 | [Settings](settings.md) | Every option in Settings, card by card. |

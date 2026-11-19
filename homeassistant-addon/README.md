@@ -6,7 +6,7 @@ Your web links as picture tiles, in the Home Assistant sidebar. Coloured groups,
 
 - **Save a link** and TileMark adds its title, description and picture.
 - **Import** your browser bookmarks in one go; folders become groups.
-- **Two layouts**, light and dark, in English, Nederlands and العربية.
+- **Two layouts**, light and dark, in English, Nederlands, Deutsch, Français, Español and العربية.
 - **Home Assistant backups** include TileMark; each person can also download their own backup.
 - **MQTT sensors** for the number of links and broken links, and an event for notifications.
 

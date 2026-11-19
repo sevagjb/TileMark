@@ -6,7 +6,7 @@ Everything you can set in TileMark is in **⚙ Settings** (top right). Each sect
 
 Your own choices (layout, appearance, language, cards) are saved **with your account**, so every device you use looks the same. Admin cards are grouped at the bottom under **Installation (admin)**; other people don't see them.
 
-**On this page:** [Layout](#layout) · [Appearance](#appearance) · [Cards](#cards) · [Your account](#your-account) · [Two-factor sign-in](#two-factor-sign-in) · [Signed-in devices](#signed-in-devices) · [Save from anywhere](#save-from-anywhere) · [Link check](#link-check) · [Backup and restore](#backup-and-restore) · [People](#people) · [Installation](#installation) · [Restore the whole installation](#restore-the-whole-installation) · [Home Assistant sensors](#home-assistant-sensors)
+**On this page:** [Layout](#layout) · [Appearance](#appearance) · [Cards](#cards) · [Your account](#your-account) · [Two-factor sign-in](#two-factor-sign-in) · [Passkeys](#passkeys) · [Signed-in devices](#signed-in-devices) · [Save from anywhere](#save-from-anywhere) · [Link check](#link-check) · [Backup and restore](#backup-and-restore) · [People](#people) · [Installation](#installation) · [Restore the whole installation](#restore-the-whole-installation) · [Home Assistant sensors](#home-assistant-sensors) · [Reset TileMark](#reset-tilemark)
 
 ---
 
@@ -24,7 +24,7 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 | Option | What it does |
 | --- | --- |
 | **Follow my device / Light / Dark** | The colour scheme. *Follow my device* switches with your computer's or phone's dark mode. |
-| **Language** | **Follow my browser** (the default), **English**, **Nederlands**, **Deutsch** or **العربية**. Arabic is shown right to left. The page reloads in the chosen language. |
+| **Language** | **Follow my browser** (the default), **English**, **Nederlands**, **Deutsch**, **Français**, **Español** or **العربية**. Arabic is shown right to left. The page reloads in the chosen language. |
 
 ![TileMark in Arabic](images/arabic.webp)
 
@@ -46,6 +46,7 @@ The keyboard shortcuts are listed here too: `/` search, `n` add a link, `Esc` cl
 | **New password** | Leave empty to keep your current one. At least 8 characters. A new password signs out your other devices. |
 | **Current password** | Needed to save any change. |
 | **Save account** | Saves the changes above. |
+| **Delete all my links** | Deletes all your links, groups and pictures; your account, settings and passkeys stay. Asks you to confirm and for your password. **Download backup first** downloads your backup before you do. |
 
 In the [Home Assistant app](home-assistant-add-on.md) you are signed in through Home Assistant; set a password here only if you also want to use TileMark's own address.
 
@@ -60,6 +61,19 @@ Asks for a code from an authenticator app after your password. Shows **On** or *
 | **Turn off** | Switches it off. Asks for your password. |
 
 Step by step, and what to do when you lose your phone: [Accounts and security](accounts-and-security.md#two-factor-sign-in). Not shown in the Home Assistant sidebar.
+
+## Passkeys
+
+Sign in with your phone, computer or security key instead of your password. The card's title shows how many you have.
+
+| Part | What it does |
+| --- | --- |
+| The list | Your passkeys, with when each was added and last used. |
+| **Add a passkey** | Asks for your password, then lets your browser or phone make a passkey, and asks for a name. |
+| **Rename** | Changes a passkey's name. |
+| **Remove** | Stops that passkey working for TileMark. |
+
+Only on TileMark's HTTPS address with a name, not on an IP address or plain http. Step by step: [Accounts and security](accounts-and-security.md#passkeys). Not shown in the Home Assistant sidebar.
 
 ## Signed-in devices
 
@@ -141,7 +155,7 @@ More in [Accounts and security](accounts-and-security.md#adding-people-admin).
 | **New recovery key** | Replaces the recovery key. Asks for your password or the current recovery key. |
 | **Turn off encryption** | New backups are no longer encrypted; the encrypted ones stay readable. |
 | **Recovery key → Get access again** | Shown when your password doesn't open the backups (for example after a password reset). |
-| The list | The daily backups and the safety copies made before a restore, newest first, with 🔒 on encrypted ones. |
+| The list | The daily backups and the safety copies made before a restore or a reset, newest first, with 🔒 on encrypted ones. |
 | **Download** | Downloads that backup. |
 | **Restore** | Puts every account back to that day. Type the date to confirm, and for an encrypted backup your password or the recovery key; a safety copy of now is made first. |
 | **Make a backup now** | Makes a backup straight away. |
@@ -165,3 +179,17 @@ More in [Home Assistant sensors](home-assistant-sensors.md).
 ---
 
 At the bottom of Settings: the version of TileMark you are running, **Sign out** (signs you out on this device; not shown in the Home Assistant sidebar, where Home Assistant's own sign-in applies) and **Done**.
+
+## Reset TileMark
+
+The last card, marked in red. It deletes every account, link, picture and setting, and TileMark starts again as if just installed.
+
+| Part | What it does |
+| --- | --- |
+| **Download my backup first** | Downloads your own backup before you reset. |
+| **Also delete every backup in the data folder** | Off: a copy of everything is kept and listed as **Before reset**, so the reset can be undone. On: no copy is kept and every backup is deleted. |
+| **Type RESET to confirm** | Must be typed exactly, in capital letters. |
+| **Your password**, **code** | Your password, and your two-factor code when that's on. Not asked inside the Home Assistant sidebar. |
+| **Reset TileMark** | Resets after one more confirmation. |
+
+More in [Accounts and security](accounts-and-security.md#resetting-tilemark-admin).

@@ -20,6 +20,14 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.7.0
+- [x] Passkeys: sign in with your phone, computer or security key, without a password.
+- [x] Delete all my links (per account) and Reset TileMark (admin), with a safety copy.
+- [x] French and Spanish as fifth and sixth interface languages.
+
+### 2.6.1
+- [x] Security fixes: safe backup restore, no sign-in secrets in backups, protection against requests from other websites, and lockout protection behind a reverse proxy.
+
 ### 2.6.0
 - [x] One file per language in `pages/lang/`, a language list for the menu, Arabic plural forms, and a guide for translators.
 

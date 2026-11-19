@@ -667,7 +667,13 @@ const dragGroup = (node, g) => { node.draggable = true; node.ondragstart = e => 
 function inFrameOfSameSite() {
   try { return window.top !== window && !!window.top.document.body; } catch { return false; }
 }
+// Only web addresses are ever opened. The server refuses anything else, but a link that
+// still holds a javascript: or other address (from an old database, say) must never run.
+function isWeb(url) {
+  try { return ["http:", "https:"].includes(new URL(url).protocol); } catch { return false; }
+}
 function openTab(url) {
+  if (!isWeb(url)) return true;
   if (inFrameOfSameSite()) {
     const d = window.top.document, a = d.createElement("a");
     a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
@@ -721,7 +727,7 @@ async function shareLink(l) {
 }
 function card(l) {
   const g = group(l.group_id);
-  const a = el("a", { className: "card", href: l.url, target: cfg.open === "same" ? "_top" : "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
+  const a = el("a", { className: "card", href: isWeb(l.url) ? l.url : "#", target: cfg.open === "same" ? "_top" : "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
   if (g) a.style.setProperty("--c", g.color);
   if (selected.has(l.id)) a.classList.add("sel");
   a.append(el("span", { className: "tick", textContent: selected.has(l.id) ? "✓" : "" }));
@@ -747,6 +753,7 @@ function card(l) {
   a.onclick = e => {  // plain click: open a fresh, independent tab
     if (selecting) { e.preventDefault(); selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); return; }
     try { navigator.sendBeacon("api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); setTimeout(render, 0); } catch {}
+    if (!isWeb(l.url)) { e.preventDefault(); return; }
     if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || cfg.open === "same") return;
     if (inFrameOfSameSite()) { e.preventDefault(); openTab(l.url); return; }  // see openTab
     const w = window.open(l.url, "_blank", "noopener,noreferrer");

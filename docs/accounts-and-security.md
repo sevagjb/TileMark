@@ -83,7 +83,17 @@ Use it after signing in on someone else's computer, or if you think someone know
 
 ## Protection against guessing
 
-After **five wrong passwords**, further attempts from that address have to wait: 15 seconds at first, doubling up to 5 minutes. Passwords are stored only as salted hashes, never as plain text.
+- After **five wrong passwords**, further attempts from that address have to wait: 15 seconds at first, doubling up to 5 minutes.
+- One address can make at most **20 wrong attempts a minute**.
+- One account accepts at most **10 wrong passwords or two-factor codes in 15 minutes**, wherever they come from, so guessing can't be spread over many addresses.
+
+**Your own devices are never locked out by someone else.** A browser that has signed in to your account before is exempt from the second and third rule for that account. This matters behind a reverse proxy, where every visitor seems to come from the proxy's address: a stranger's wrong attempts can make a new device wait, but not the phone or computer you always use.
+
+Passwords are stored only as salted hashes, never as plain text. The list of signed-in devices is stored as hashes too, so a copy of the database can't be turned into a sign-in.
+
+## Requests from other websites
+
+Only TileMark's own pages can change anything in TileMark. When another website (also another app on the same server, or on the same domain) tries to make your browser send TileMark a change, TileMark refuses it. Apps without a browser, such as a Shortcut with an [API key](save-from-anywhere.md#api-key), are not affected.
 
 ## Local addresses
 

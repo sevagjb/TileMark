@@ -694,5 +694,6 @@
   },
   "To confirm, type the date of the backup: {date}": "للتأكيد، اكتب تاريخ النسخة الاحتياطية: {date}",
   "Broker refused the connection: {error}": "رفض الوسيط الاتصال: {error}",
-  "Connection lost ({error}); retrying.": "انقطع الاتصال ({error})؛ جارٍ إعادة المحاولة."
+  "Connection lost ({error}); retrying.": "انقطع الاتصال ({error})؛ جارٍ إعادة المحاولة.",
+  "This request came from another website and was refused.": "جاء هذا الطلب من موقع ويب آخر وتم رفضه."
 }

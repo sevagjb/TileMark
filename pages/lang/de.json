@@ -477,5 +477,6 @@
   "Too many attempts. Try again in {n} seconds.": "Zu viele Versuche. Versuche es in {n} Sekunden erneut.",
   "To confirm, type the date of the backup: {date}": "Gib zur Bestätigung das Datum der Sicherung ein: {date}",
   "Broker refused the connection: {error}": "Der Broker hat die Verbindung abgelehnt: {error}",
-  "Connection lost ({error}); retrying.": "Verbindung unterbrochen ({error}); neuer Versuch läuft."
+  "Connection lost ({error}); retrying.": "Verbindung unterbrochen ({error}); neuer Versuch läuft.",
+  "This request came from another website and was refused.": "Diese Anfrage kam von einer anderen Website und wurde abgelehnt."
 }

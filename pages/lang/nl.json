@@ -477,5 +477,6 @@
   "Too many attempts. Try again in {n} seconds.": "Te veel pogingen. Probeer het over {n} seconden opnieuw.",
   "To confirm, type the date of the backup: {date}": "Typ ter bevestiging de datum van de back-up: {date}",
   "Broker refused the connection: {error}": "De broker weigerde de verbinding: {error}",
-  "Connection lost ({error}); retrying.": "Verbinding verbroken ({error}); opnieuw proberen."
+  "Connection lost ({error}); retrying.": "Verbinding verbroken ({error}); opnieuw proberen.",
+  "This request came from another website and was refused.": "Dit verzoek kwam van een andere website en is geweigerd."
 }

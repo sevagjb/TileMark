@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.6.1 (unreleased)
+
+A security update. Updating is recommended for everyone. **After updating, everyone signs in once more** (inside the Home Assistant sidebar nothing changes).
+
+### Fixed
+- **Restoring a backup only brings back web addresses.** A backup file made by hand could hold a `javascript:` address, which every other way of adding a link already refuses. Opening such a link could run someone else's code in TileMark, or inside Home Assistant when TileMark is opened from the sidebar. Restoring now checks every address the same way as adding a link, and skips anything that isn't `http://` or `https://`; local home-lab addresses are restored as before. TileMark's pages also refuse to open anything that isn't a web address.
+- **A copy of a backup can no longer be used to sign in.** Daily backups held the key that signs sign-in cookies and the list of signed-in devices; with both, someone holding the file could sign in as an admin without a password. Backups now leave out that key, the signed-in devices and the MQTT broker password, and the devices are stored only as hashes, so no copy of the database can be turned into a sign-in. TileMark makes a new cookie key once with this update, so backups made before it open nothing either.
+- **Requests from other websites are refused.** Another app on the same server (a different port) or on the same domain could make a signed-in browser add links, restore a backup or change settings in TileMark. Changes are now only accepted from TileMark's own pages. Shortcuts and scripts with an API key work as before.
+- **A stranger can't lock you out behind a reverse proxy.** Behind a proxy, every visitor seems to come from the proxy's address, so 20 wrong passwords from anyone made everyone wait. Browsers that have signed in to an account before are now exempt for that account, so your own devices can always sign in.
+
+### Changed
+- **At most 10 wrong passwords or two-factor codes per account in 15 minutes**, wherever they come from, so guessing one account can't be spread over many addresses. Two sign-ins with the same two-factor code at the same moment can no longer both succeed.
+- After restoring a daily backup in a **new** installation (copied by hand), enter the MQTT broker password again, as it is no longer part of backups.
+
 ## 2.6.0
 
 ### Changed

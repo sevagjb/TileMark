@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.7.0 (unreleased)
+## 2.7.0
 
 ### New
 - **Passkeys.** Sign in with your phone, computer or security key instead of typing your password: its face, fingerprint or PIN unlock proves it's you. Add one in **⚙ Settings → Passkeys** (your current password is asked first), then choose **🔑 Sign in with a passkey** on the sign-in page; no username is needed. A passkey counts as two-factor sign-in on its own, so no authenticator code is asked after it. Your password keeps working. Passkeys work on TileMark's HTTPS address with a name, not on an IP address or plain http (a browser rule); inside the Home Assistant sidebar they aren't used. Wrong passkey attempts count towards the same sign-in limits as wrong passwords.

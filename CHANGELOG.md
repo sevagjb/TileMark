@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.6.1 (unreleased)
+## 2.6.1
 
 A security update. Updating is recommended for everyone. **After updating, everyone signs in once more** (inside the Home Assistant sidebar nothing changes).
 

@@ -32,6 +32,8 @@ In the [Home Assistant app](home-assistant-add-on.md), accounts are made automat
 
 **⚙ Settings → Your account** changes your **username** or **password**. Saving needs your **current password**. A new password signs you out on your other devices.
 
+**Delete all my links**, in the same card, empties your library for a fresh start: all your links, groups and pictures are deleted. Your account, settings and passkeys stay, and other people's links aren't touched. It asks you to confirm and for your current password, and it can't be undone, so press **Download backup first** if you might want them back.
+
 **Sign out** is at the bottom of Settings, whichever card is open.
 
 "**Keep me signed in on this device for 30 days**" on the sign-in page remembers the device. Without it, you're signed out when the browser closes.
@@ -58,6 +60,27 @@ With two-factor sign-in, TileMark asks for a **code from an app on your phone** 
 
 Inside the Home Assistant sidebar no code is asked: Home Assistant's own sign-in protects it there.
 
+## Passkeys
+
+A passkey lets you sign in with your **phone, computer or security key** instead of typing your password. The device's own unlock (face, fingerprint or PIN) proves it's you, so a passkey counts as two-factor sign-in on its own: no authenticator code is asked after it. Your password keeps working too.
+
+**Adding one:**
+
+1. Open TileMark on its **HTTPS address** (see [Where passkeys work](#where-passkeys-work)).
+2. **⚙ Settings → Passkeys → Add a passkey**, and enter your current password.
+3. Your browser or phone asks how to save the passkey (iCloud Keychain, Google Password Manager, Windows Hello, 1Password, a security key …). Confirm with your face, fingerprint or PIN.
+4. Give it a name you'll recognise, such as "iPhone" or "Work laptop".
+
+**Signing in:** on the sign-in page, press **🔑 Sign in with a passkey** and choose it. No username is needed.
+
+In the card, each passkey shows when it was added and last used. **Rename** changes its name; **Remove** stops it working for TileMark (delete it on the device too if you no longer want it there). A passkey saved in iCloud Keychain or Google Password Manager is available on your other devices with the same account as well.
+
+### Where passkeys work
+
+Browsers only allow passkeys on an **HTTPS address with a name**, such as `https://links.example.org`, behind your [reverse proxy](getting-started.md#reaching-tilemark-from-outside-with-https). They **don't work** on an IP address (`http://192.168.1.10:8080`) or on plain `http`; there, the button isn't shown and Settings explains where to go instead.
+
+A passkey belongs to the exact address it was made on. If you reach TileMark through two names, add a passkey on each; if you change the name, add new ones. Inside the Home Assistant sidebar passkeys aren't used, because Home Assistant has signed you in already.
+
 ## Signed-in devices
 
 **⚙ Settings → Signed-in devices** lists every browser signed in to your account, with the browser and system, its address, and when it was last active. **This device** is marked.
@@ -81,11 +104,25 @@ Use it after signing in on someone else's computer, or if you think someone know
 
   With [encrypted backups](backups.md#encrypting-the-daily-backups-admin), a reset password doesn't open them straight away: access comes back when another admin signs in, or with the recovery key.
 
+## Resetting TileMark (admin)
+
+**⚙ Settings → Reset TileMark**, the last card, deletes **everything**: every account with all its links, groups and pictures, and all settings. TileMark starts again as if just installed, and its device disappears from Home Assistant. Use it to hand over a server, or to start completely fresh.
+
+1. Want to keep your own links? Press **Download my backup first**.
+2. Type **RESET** to confirm, and enter your **password** (and your two-factor code, if that's on). Inside the Home Assistant sidebar no password is asked.
+3. Press **Reset TileMark** and confirm once more.
+
+Afterwards the welcome screen asks for a **new setup code** from the container log; in the Home Assistant app, the first person to open TileMark from the sidebar becomes the admin.
+
+A **copy of the whole installation** is kept in the data folder first, listed as **Before reset** under [Restore the whole installation](backups.md#restoring-the-whole-installation-admin). Restoring it brings everything back. Tick **Also delete every backup in the data folder** for a completely clean start: then no copy is kept and the daily backups are deleted too.
+
+Only removing your own links? Use [Delete all my links](#your-account) instead.
+
 ## Protection against guessing
 
 - After **five wrong passwords**, further attempts from that address have to wait: 15 seconds at first, doubling up to 5 minutes.
 - One address can make at most **20 wrong attempts a minute**.
-- One account accepts at most **10 wrong passwords or two-factor codes in 15 minutes**, wherever they come from, so guessing can't be spread over many addresses.
+- One account accepts at most **10 wrong passwords, two-factor codes or passkey attempts in 15 minutes**, wherever they come from, so guessing can't be spread over many addresses.
 
 **Your own devices are never locked out by someone else.** A browser that has signed in to your account before is exempt from the second and third rule for that account. This matters behind a reverse proxy, where every visitor seems to come from the proxy's address: a stranger's wrong attempts can make a new device wait, but not the phone or computer you always use.
 

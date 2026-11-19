@@ -43,7 +43,7 @@ def used_texts():
     """The English text of the pages, the server and the message templates, to spot keys
     that nothing uses any more."""
     out = ""
-    for p in ("app.py", "pages/index.html", "pages/login.html", "pages/save.html", "pages/i18n.js"):
+    for p in ("app.py", "pages/index.html", "pages/login.html", "pages/save.html", "pages/i18n.js", "pages/passkey.js"):
         with open(os.path.join(ROOT, p), encoding="utf-8") as f:
             out += f.read()
     return out

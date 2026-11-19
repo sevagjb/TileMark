@@ -23,7 +23,7 @@ The app has **no options** on the Configuration tab. Everything is set inside Ti
 
 - Every Home Assistant user who opens TileMark gets **their own TileMark account**, with their own links, groups and settings. Nobody, the admin included, can see someone else's links.
 - The **first person** to open TileMark becomes its admin, and so does every **Home Assistant administrator**. Admins see extra cards at the bottom of Settings (people, installation settings, sensors).
-- Home Assistant's own sign-in, and its two-factor if you use it, protects the sidebar page. TileMark's own two-factor sign-in is only used on **TileMark's own address**.
+- Home Assistant's own sign-in, and its two-factor if you use it, protects the sidebar page. TileMark's own two-factor sign-in and passkeys are only used on **TileMark's own address**.
 
 ## Saving links
 
@@ -115,9 +115,9 @@ Everything is in **⚙ Settings** (top right). Each section is a card: click its
 | Card | What you set there |
 | --- | --- |
 | **Layout** | Side panel or Sections. |
-| **Appearance** | Light, dark or follow your device; language: English, Nederlands, Deutsch or العربية. |
+| **Appearance** | Light, dark or follow your device; language: English, Nederlands, Deutsch, Français, Español or العربية. |
 | **Cards** | Picture size, open links in a new tab or this tab, the group new links go to. |
-| **Your account** | Username and a password, needed only for **TileMark's own address**. |
+| **Your account** | Username and a password, needed only for **TileMark's own address**. **Delete all my links** empties your own library. |
 | **Signed-in devices** | See and sign out the browsers signed in on TileMark's own address. |
 | **Save from anywhere** | The browser button, the phone app and the API key. |
 | **Link check** | Check now, and refresh all titles and pictures. |
@@ -126,6 +126,7 @@ Everything is in **⚙ Settings** (top right). Each section is a card: click its
 | **Installation** *(admin)* | The weekly link check, TileMark's own daily backup, fetching local addresses. |
 | **Restore the whole installation** *(admin)* | TileMark's own daily backups: encrypt them, download, restore, make one now. |
 | **Home Assistant sensors** *(admin)* | The MQTT device; see **Sensors and notifications** below. |
+| **Reset TileMark** *(admin)* | Deletes every account, link and setting, so TileMark starts again as if just installed. A copy is kept unless you choose otherwise. |
 
 The version you are running is shown at the bottom of Settings.
 

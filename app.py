@@ -31,6 +31,10 @@ from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from bs4 import BeautifulSoup
 from flask import Flask, Response, after_this_request, g, jsonify, redirect, request, send_from_directory, session
 from itsdangerous import BadSignature, URLSafeSerializer
+import webauthn
+from webauthn.helpers import base64url_to_bytes, bytes_to_base64url, options_to_json
+from webauthn.helpers.structs import (AuthenticatorSelectionCriteria, PublicKeyCredentialDescriptor,
+                                      ResidentKeyRequirement, UserVerificationRequirement)
 from flask.sessions import SecureCookieSessionInterface
 from werkzeug.security import check_password_hash, generate_password_hash
 from PIL import Image
@@ -105,7 +109,8 @@ def init_db():
         ucols = [r["name"] for r in c.execute("PRAGMA table_info(users)")]
         for col, ddl in (("ha_user", "TEXT NOT NULL DEFAULT ''"), ("totp_secret", "TEXT NOT NULL DEFAULT ''"),
                          ("totp_last", "INTEGER NOT NULL DEFAULT 0"), ("recovery", "TEXT NOT NULL DEFAULT ''"),
-                         ("uk_pub", "TEXT NOT NULL DEFAULT ''"), ("uk_priv", "TEXT NOT NULL DEFAULT ''")):
+                         ("uk_pub", "TEXT NOT NULL DEFAULT ''"), ("uk_priv", "TEXT NOT NULL DEFAULT ''"),
+                         ("pk_handle", "TEXT NOT NULL DEFAULT ''")):
             if col not in ucols:
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
         lcols = [r["name"] for r in c.execute("PRAGMA table_info(links)")]
@@ -120,6 +125,15 @@ def init_db():
             last_seen INTEGER NOT NULL,
             ua TEXT NOT NULL DEFAULT '',
             ip TEXT NOT NULL DEFAULT '')""")
+        c.execute("""CREATE TABLE IF NOT EXISTS passkeys (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            public_key TEXT NOT NULL,
+            sign_count INTEGER NOT NULL DEFAULT 0,
+            rp_id TEXT NOT NULL,
+            name TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            last_used INTEGER NOT NULL DEFAULT 0)""")
         c.execute("""CREATE TABLE IF NOT EXISTS bk_grants (
             user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             uk_pub TEXT NOT NULL,
@@ -1000,6 +1014,14 @@ class MqttBridge:
             set_setting("node_id", n)
         return n
 
+    def forget(self):
+        """Takes TileMark's device out of Home Assistant now (for a reset of the installation).
+        After the reset the settings start fresh; the background loop picks them up."""
+        self._disconnect(remove=True)
+        self.cfg = None
+        self.last_payload = None
+        self.status = {"state": "off", "error": "", "broker": "", "source": ""}
+
     def new_node(self):
         """A fresh device ID, for an installation copied from another one (same database, same
         ID: Home Assistant would see the two as one device). The old entities are removed."""
@@ -1589,12 +1611,12 @@ def _check_new_credentials(username, password, need_password=True):
     return None
 
 
-OPEN_ENDPOINTS = {"login_page", "api_login", "api_login_totp", "auth_status", "api_setup", "icon", "save_page", "manifest",
-                  "service_worker", "healthz", "i18n_script"}
+OPEN_ENDPOINTS = {"login_page", "api_login", "api_login_totp", "passkey_login_options", "passkey_login", "auth_status", "api_setup", "icon", "save_page", "manifest",
+                  "service_worker", "healthz", "i18n_script", "passkey_script"}
 KEY_ENDPOINTS = {"create_link", "list_groups"}  # all an API key may do: add links, read group names
 ADMIN_ENDPOINTS = {"list_users", "create_user", "update_user", "delete_user", "save_settings", "list_full_backups",
                    "make_full_backup_now", "download_full_backup", "restore_full_backup_api", "mqtt_settings",
-                   "backup_encryption"}
+                   "backup_encryption", "reset_installation"}
 
 
 # Requests that change something must come from TileMark's own pages (or from a client
@@ -1683,6 +1705,11 @@ def service_worker():
     return send_from_directory(PAGES, "sw.js", mimetype="text/javascript", max_age=0)
 
 
+@app.get("/passkey.js")
+def passkey_script():
+    return send_from_directory(PAGES, "passkey.js", mimetype="text/javascript", max_age=0)
+
+
 LANG_DIR = os.path.join(PAGES, "lang")
 
 
@@ -1744,7 +1771,7 @@ def auth_status():
                    username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
                    has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON,
                    totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0, version=APP_VERSION,
-                   personal_key=bool(u and u["uk_pub"]))
+                   personal_key=bool(u and u["uk_pub"]), passkeys=_passkey_count(u["id"]) if u else 0)
 
 
 @app.post("/api/setup")
@@ -1949,6 +1976,222 @@ def totp_new_recovery():
     return jsonify(ok=True, recovery=codes)
 
 
+# ---------------------------------------------------------------- passkeys
+# Sign in without a password: the phone, computer or security key proves it's you with its
+# own unlock (face, fingerprint or PIN). That counts as two factors at once, so the
+# authenticator-app code isn't asked after a passkey. The password keeps working.
+#
+# Browsers allow passkeys only on an HTTPS address with a name (or http://localhost), never
+# on an IP address or plain http, and a passkey belongs to the exact name it was made on
+# (its "RP ID"): one made on links.example.org doesn't work on another address. Inside the
+# Home Assistant sidebar they aren't offered (Home Assistant has signed the person in).
+#
+# Where a request comes from is taken from the browser's Origin header. The check on
+# requests from other sites (_foreign_request) has already made sure it is this page.
+PASSKEY_TIMEOUT = 180  # seconds to finish a passkey ceremony
+
+
+def _passkey_origin():
+    """(origin, rp_id) of the page asking, or None where browsers don't allow passkeys."""
+    origin = request.headers.get("Origin", "").strip()
+    try:
+        o = urlsplit(origin)
+        host = (o.hostname or "").lower()
+    except ValueError:
+        return None
+    if not host:
+        return None
+    try:
+        ipaddress.ip_address(host)
+        return None
+    except ValueError:
+        pass
+    if o.scheme != "https" and not (o.scheme == "http" and host == "localhost"):
+        return None
+    return origin, host
+
+
+NO_PASSKEY_HERE = "Passkeys only work on TileMark's HTTPS address with a name, not on an IP address or plain http."
+
+
+def _passkey_count(uid):
+    with db() as c:
+        return c.execute("SELECT COUNT(*) FROM passkeys WHERE user_id=?", (uid,)).fetchone()[0]
+
+
+def _user_handle(uid):
+    """The random id a passkey stores for its account (never the username or the row id)."""
+    with db() as c:
+        row = c.execute("SELECT pk_handle FROM users WHERE id=?", (uid,)).fetchone()
+        if row and row["pk_handle"]:
+            return row["pk_handle"]
+        handle = bytes_to_base64url(secrets.token_bytes(16))
+        c.execute("UPDATE users SET pk_handle=? WHERE id=?", (handle, uid))
+        return handle
+
+
+_used_challenges, _used_lock = {}, threading.Lock()
+
+
+def _pending(key):
+    """A passkey ceremony started by this browser, taken out of the session. Each challenge
+    works once: the session lives in the browser's cookie, so the server also remembers the
+    challenges already used until they expire (an old copy of the cookie can't replay one)."""
+    pend = session.pop(key, None) or {}
+    now = time.time()
+    if pend.get("exp", 0) < now or not pend.get("challenge"):
+        return None
+    with _used_lock:
+        for ch in [c for c, exp in _used_challenges.items() if exp < now]:
+            del _used_challenges[ch]
+        if pend["challenge"] in _used_challenges:
+            return None
+        _used_challenges[pend["challenge"]] = pend["exp"]
+    return pend
+
+
+@app.post("/api/passkeys/options")
+def passkey_register_options():
+    """Starts adding a passkey to your account. Needs the current password: a new way into
+    the account must not be addable by whoever finds a signed-in browser."""
+    d = request.get_json(force=True, silent=True) or {}
+    if via_ingress():
+        return jsonify(error="Add passkeys on TileMark's own HTTPS address; inside Home Assistant they are not used."), 400
+    if not check_password_hash(g.user["pw_hash"], str(d.get("current_password", ""))):
+        return jsonify(error="The current password is not correct."), 403
+    where = _passkey_origin()
+    if not where:
+        return jsonify(error=NO_PASSKEY_HERE), 400
+    origin, rp_id = where
+    with db() as c:
+        mine = [r["id"] for r in c.execute("SELECT id FROM passkeys WHERE user_id=? AND rp_id=?", (me(), rp_id))]
+    opts = webauthn.generate_registration_options(
+        rp_id=rp_id, rp_name="TileMark", user_name=g.user["username"], user_display_name=g.user["username"],
+        user_id=base64url_to_bytes(_user_handle(me())), timeout=PASSKEY_TIMEOUT * 1000,
+        exclude_credentials=[PublicKeyCredentialDescriptor(id=base64url_to_bytes(i)) for i in mine],
+        authenticator_selection=AuthenticatorSelectionCriteria(resident_key=ResidentKeyRequirement.REQUIRED,
+                                                               user_verification=UserVerificationRequirement.REQUIRED))
+    session["pk_reg"] = {"challenge": bytes_to_base64url(opts.challenge), "origin": origin, "rp_id": rp_id,
+                         "uid": me(), "exp": int(time.time()) + PASSKEY_TIMEOUT}
+    return Response(options_to_json(opts), mimetype="application/json")
+
+
+@app.post("/api/passkeys")
+def passkey_register():
+    """Finishes adding a passkey: checks what the device sent and stores its public key."""
+    d = request.get_json(force=True, silent=True) or {}
+    pend = _pending("pk_reg")
+    where = _passkey_origin()
+    if not pend or pend.get("uid") != me() or not where or where[0] != pend["origin"]:
+        return jsonify(error="That took too long. Start again."), 400
+    try:
+        v = webauthn.verify_registration_response(
+            credential=d.get("credential"), expected_challenge=base64url_to_bytes(pend["challenge"]),
+            expected_rp_id=pend["rp_id"], expected_origin=pend["origin"], require_user_verification=True)
+    except Exception as e:
+        app.logger.info("passkey registration refused: %s", e)
+        return jsonify(error="The passkey could not be checked. Try again."), 400
+    name = re.sub(r"\s+", " ", str(d.get("name") or "")).strip()[:60] or "Passkey"
+    try:
+        with db() as c:
+            c.execute("INSERT INTO passkeys (id, user_id, public_key, sign_count, rp_id, name, created_at) VALUES (?,?,?,?,?,?,?)",
+                      (bytes_to_base64url(v.credential_id), me(), bytes_to_base64url(v.credential_public_key), v.sign_count,
+                       pend["rp_id"], name, int(time.time())))
+    except sqlite3.IntegrityError:
+        return jsonify(error="This passkey is already added."), 409
+    return jsonify(ok=True), 201
+
+
+@app.get("/api/passkeys")
+def list_passkeys():
+    with db() as c:
+        rows = c.execute("SELECT id, name, rp_id, created_at, last_used FROM passkeys WHERE user_id=? ORDER BY created_at",
+                         (me(),)).fetchall()
+    return jsonify(passkeys=[dict(r) for r in rows])
+
+
+@app.patch("/api/passkeys/<cid>")
+def rename_passkey(cid):
+    d = request.get_json(force=True, silent=True) or {}
+    name = re.sub(r"\s+", " ", str(d.get("name") or "")).strip()[:60]
+    if not name:
+        return jsonify(error="Give the passkey a name."), 400
+    with db() as c:
+        n = c.execute("UPDATE passkeys SET name=? WHERE id=? AND user_id=?", (name, cid, me())).rowcount
+    return (jsonify(ok=True), 200) if n else (jsonify(error="Not found"), 404)
+
+
+@app.delete("/api/passkeys/<cid>")
+def delete_passkey(cid):
+    with db() as c:
+        n = c.execute("DELETE FROM passkeys WHERE id=? AND user_id=?", (cid, me())).rowcount
+    return (jsonify(ok=True), 200) if n else (jsonify(error="Not found"), 404)
+
+
+@app.post("/api/login/passkey/options")
+def passkey_login_options():
+    """Starts signing in with a passkey. No username: the device offers the passkeys it
+    holds for this address, and the one chosen says which account it belongs to."""
+    where = _passkey_origin()
+    if not where:
+        return jsonify(error=NO_PASSKEY_HERE), 400
+    origin, rp_id = where
+    opts = webauthn.generate_authentication_options(rp_id=rp_id, timeout=PASSKEY_TIMEOUT * 1000,
+                                                    user_verification=UserVerificationRequirement.REQUIRED)
+    session["pk_auth"] = {"challenge": bytes_to_base64url(opts.challenge), "origin": origin,
+                          "exp": int(time.time()) + PASSKEY_TIMEOUT}
+    return Response(options_to_json(opts), mimetype="application/json")
+
+
+@app.post("/api/login/passkey")
+def passkey_login():
+    d = request.get_json(force=True, silent=True) or {}
+    pend = _pending("pk_auth")
+    where = _passkey_origin()
+    if not pend or not where or where[0] != pend["origin"]:
+        return jsonify(error="That took too long. Try again."), 400
+    ip = _client()
+    wait = _wait_seconds(ip)
+    if wait:
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    cred = d.get("credential") if isinstance(d.get("credential"), dict) else {}
+    with db() as c:
+        row = c.execute("SELECT p.*, u.username, u.pk_handle FROM passkeys p JOIN users u ON u.id = p.user_id WHERE p.id=?",
+                        (str(cred.get("id", "")),)).fetchone()
+    if not row:
+        _note_login(ip, False)
+        return jsonify(error="This passkey isn't known here. It may have been removed, or it belongs to another TileMark."), 401
+    account = _account_key(row["username"])
+    wait = _wait_seconds(ip, account, known=_known_device(row["user_id"]))
+    if wait:
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    handle = str((cred.get("response") or {}).get("userHandle") or "")
+    host = where[1]
+    try:
+        # the page must be on the passkey's own address (or below it): browsers already
+        # guarantee this, and TileMark checks it as well
+        if host != row["rp_id"] and not host.endswith("." + row["rp_id"]):
+            raise ValueError(f"passkey for {row['rp_id']} used on {host}")
+        if handle and not secrets.compare_digest(handle.rstrip("="), row["pk_handle"]):
+            raise ValueError("user handle does not match")
+        v = webauthn.verify_authentication_response(
+            credential=cred, expected_challenge=base64url_to_bytes(pend["challenge"]), expected_rp_id=row["rp_id"],
+            expected_origin=pend["origin"], credential_public_key=base64url_to_bytes(row["public_key"]),
+            credential_current_sign_count=row["sign_count"], require_user_verification=True)
+    except Exception as e:
+        app.logger.info("passkey sign-in refused: %s", e)
+        _note_login(ip, False, account)
+        return jsonify(error="The passkey could not be checked. Try again."), 401
+    with db() as c:
+        c.execute("UPDATE passkeys SET sign_count=?, last_used=? WHERE id=?", (v.new_sign_count, int(time.time()), row["id"]))
+        user = c.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+    _note_login(ip, True, account)
+    _sign_in(user)
+    _remember_device(user["id"])
+    session.permanent = bool(d.get("remember"))
+    return jsonify(ok=True)
+
+
 @app.post("/api/account")
 def update_account():
     """Change your own username and/or password. Needs the current password, except
@@ -1993,6 +2236,26 @@ def drop_api_key():
     with db() as c:
         c.execute("UPDATE users SET api_key_hash='' WHERE id=?", (me(),))
     return jsonify(ok=True)
+
+
+@app.post("/api/account/clear")
+def clear_my_links():
+    """Deletes all your own links, groups and pictures; the account itself stays. Needs the
+    current password (inside Home Assistant, Home Assistant has signed you in already)."""
+    d = request.get_json(force=True, silent=True) or {}
+    if not _password_or_ha(d):
+        return jsonify(error="The current password is not correct."), 403
+    with db() as c:
+        thumbs = [r["thumb"] for r in c.execute("SELECT thumb FROM links WHERE user_id=? AND thumb != ''", (me(),))]
+        links = c.execute("DELETE FROM links WHERE user_id=?", (me(),)).rowcount
+        groups = c.execute("DELETE FROM groups WHERE user_id=?", (me(),)).rowcount
+    prefs = _prefs(me())  # choices that point at links or groups that are gone
+    for key in ("defgroup", "dupok", "sorts"):
+        prefs.pop(key, None)
+    set_user_setting(me(), "ui", json.dumps(prefs))
+    for name in thumbs:
+        _remove_thumb(name)
+    return jsonify(ok=True, links=links, groups=groups)
 
 
 # ------------------------------------------------------------ admin: users
@@ -3002,6 +3265,7 @@ def list_backups():
 
 
 SAFETY_PREFIX, KEEP_SAFETY = "tilemark-before-restore-", 3
+RESET_PREFIX = "tilemark-before-reset-"  # the copy kept when the installation is reset
 KEEP_ON_RESTORE = ("node_id", "secret_key", "cookie_key_v2", "mqtt_enabled", "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
                    "mqtt_prefix", "mqtt_name", "mqtt_url")
 
@@ -3145,11 +3409,12 @@ def all_backups():
         names = []
     for n in names:
         m = re.fullmatch(r"tilemark-(\d{4}-\d{2}-\d{2})\.(zip|tmk)", n) or re.fullmatch(
-            re.escape(SAFETY_PREFIX) + r"(\d{4}-\d{2}-\d{2})-\d{6}\.(zip|tmk)", n)
+            "(?:" + re.escape(SAFETY_PREFIX) + "|" + re.escape(RESET_PREFIX) + r")(\d{4}-\d{2}-\d{2})-\d{6}\.(zip|tmk)", n)
         if m:
             st = os.stat(os.path.join(BACKUP_DIR, n))
+            kind = "safety" if n.startswith(SAFETY_PREFIX) else "reset" if n.startswith(RESET_PREFIX) else "daily"
             out.append({"name": n, "date": m.group(1), "size": st.st_size, "made_at": int(st.st_mtime),
-                        "kind": "safety" if n.startswith(SAFETY_PREFIX) else "daily", "encrypted": n.endswith(".tmk")})
+                        "kind": kind, "encrypted": n.endswith(".tmk")})
     return sorted(out, key=lambda b: b["made_at"], reverse=True)
 
 
@@ -3325,6 +3590,76 @@ def backup_encryption():
                 return jsonify(ok=True, recovery=recovery, encryption=_encryption_status())
         return jsonify(ok=True, encryption=_encryption_status())
     return jsonify(error="Nothing to do."), 400
+
+
+# ------------------------------------------------------------ reset the installation
+# Admin: everything back to a brand-new TileMark (every account, link, picture and
+# setting), as if just installed: the first-start screen asks for a new setup code (in
+# the log), or in the Home Assistant app the first person to open it becomes the admin.
+# By default a safety copy of everything is kept in data/backups first (encrypted when
+# backups are encrypted), so a mistake can be undone; "delete_backups" removes every
+# backup too, for a truly clean start.
+RESET_KEEP = ("schema", "wall_titles_fixed", "cookie_key_v2")  # facts about the database itself, not settings
+
+
+def wipe_installation(delete_backups=False):
+    mqtt.forget()  # the device leaves Home Assistant while the connection is still there
+    with db() as c:
+        for table in ("links", "groups", "passkeys", "bk_grants", "sessions", "user_settings", "users"):
+            c.execute(f"DELETE FROM {table}")
+        c.execute(f"DELETE FROM settings WHERE key NOT IN ({','.join('?' * len(RESET_KEEP))})", RESET_KEEP)
+        key = secrets.token_hex(32)  # every cookie, and every "known device", stops working
+        c.execute("INSERT INTO settings (key, value) VALUES ('secret_key', ?)", (key,))
+    with db() as c:
+        c.execute("VACUUM")
+    app.secret_key = key
+    for name in os.listdir(THUMB_DIR):
+        _remove_thumb(name)
+    if delete_backups:
+        for b in all_backups():
+            try:
+                os.remove(os.path.join(BACKUP_DIR, b["name"]))
+            except OSError:
+                pass
+    with _fails_lock:
+        for store in (_fails, _peer_fails, _acct_fails):
+            store.clear()
+    with _check_lock:
+        _check.update(problem="", problem_at=0, problem_n=0, problem_uid=None, uid=None)
+    mqtt.reload()
+    print("TileMark was reset to a new installation" + (" (backups deleted too)." if delete_backups else "."), flush=True)
+    print_setup_code()
+
+
+@app.post("/api/reset")
+def reset_installation():
+    d = request.get_json(force=True, silent=True) or {}
+    if str(d.get("confirm", "")).strip() != "RESET":
+        return jsonify(error="To confirm, type RESET in capital letters."), 400
+    if not via_ingress():  # the same proof as signing in: password, and the two-factor code when that is on
+        ip, account = _client(), _account_key(g.user["username"])
+        wait = _wait_seconds(ip, account, known=_known_device(me()))
+        if wait:
+            return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+        ok = check_password_hash(g.user["pw_hash"], str(d.get("password", "")))
+        if ok and g.user["totp_secret"]:
+            with db() as c:
+                step = totp_check(g.user["totp_secret"], d.get("code"), g.user["totp_last"])
+                if step is not None:
+                    c.execute("UPDATE users SET totp_last=? WHERE id=?", (step, me()))
+                ok = step is not None or _use_recovery_code(c, g.user, d.get("code"))
+        _note_login(ip, ok, account)
+        if not ok:
+            return jsonify(error="The password or the code is not right." if g.user["totp_secret"]
+                           else "The current password is not correct."), 403
+    delete_backups = bool(d.get("delete_backups"))
+    safety = None
+    if not delete_backups:
+        safety = os.path.basename(_write_full_backup(RESET_PREFIX + time.strftime("%Y-%m-%d-%H%M%S")))
+    app.logger.warning("installation reset by %s", g.user["username"])
+    wipe_installation(delete_backups)
+    session.clear()
+    return jsonify(ok=True, safety=safety)
 
 
 @app.post("/api/backup")

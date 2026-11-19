@@ -178,6 +178,8 @@ details.sec[open] > summary::after { transform: rotate(-135deg); }
 details.sec > summary:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 details.sec > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 details.sec .st { font-size: 15px; font-weight: 650; color: var(--text); }
+details.sec.danger-zone { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+details.sec.danger-zone .st { color: var(--danger); }
 details.sec .sum { margin-inline-start: auto; color: var(--muted); font-size: 12.5px; text-align: end; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 details.sec .secb { padding: 0 14px 14px; border-top: 1px solid var(--line); background: var(--panel); border-radius: 0 0 12px 12px; }
 details.sec .secb > :first-child { margin-top: 12px; }
@@ -398,6 +400,9 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <div class="row" style="justify-content:flex-start;margin-top:12px">
     <button class="btn primary" type="button" id="auSave">Save account</button>
     </div>
+    <h4 class="sub">Delete all my links</h4>
+    <p class="hint">Deletes all your links, groups and pictures, for a fresh start. Your account, settings and passkeys stay. Download a backup first if you might want them back.</p>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="clBackup">Download backup first</button><button class="btn danger" type="button" id="clGo">Delete all my links</button></div>
   </div></details>
   <details class="sec" data-k="tfa" id="tfBox"><summary><span class="st">Two-factor sign-in</span><span class="sum" id="sum-tfa"></span></summary><div class="secb">
     <p class="hint" id="tfState"></p>
@@ -417,6 +422,12 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <button class="btn primary" type="button" id="tfOn">Turn on</button>
     <button class="btn" type="button" id="tfNewCodes">New recovery codes</button>
     <button class="btn danger" type="button" id="tfOff">Turn off</button></div>
+  </div></details>
+  <details class="sec" data-k="passkeys" id="pkBox"><summary><span class="st">Passkeys</span><span class="sum" id="sum-passkeys"></span></summary><div class="secb">
+    <p class="hint">Sign in with your phone, computer or security key instead of typing your password: its face, fingerprint or PIN unlock proves it's you, and counts as two-factor sign-in on its own. Your password keeps working too.</p>
+    <p class="hint" id="pkWhere" hidden>Passkeys only work on TileMark's HTTPS address with a name (for example https://links.example.org), not on an IP address or plain http. Open TileMark on that address to add one.</p>
+    <div id="pkList"></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn primary" type="button" id="pkAdd">Add a passkey</button></div>
   </div></details>
   <details class="sec" data-k="devices"><summary><span class="st">Signed-in devices</span><span class="sum" id="sum-devices"></span></summary><div class="secb">
     <div id="sessList"></div>
@@ -508,6 +519,17 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <p class="hint" id="mqState"></p>
     <p class="hint" id="mqIdWrap" hidden><span id="mqId"></span> <button class="btn" type="button" id="mqNewId" style="padding:2px 10px;font-size:12.5px">New ID</button><br><span>Two TileMarks with the same ID (for example after copying the database) show up in Home Assistant as one device. Give one of them a new ID.</span></p>
   </div></details>
+  <details class="sec danger-zone" data-k="reset"><summary><span class="st">Reset TileMark</span></summary><div class="secb">
+    <p class="hint"><b>Deletes everything:</b> every account with all its links, groups and pictures, and all settings. TileMark starts again as if just installed, and its device disappears from Home Assistant.</p>
+    <p class="hint" id="rtAfter"></p>
+    <p class="hint">A copy of the whole installation is kept in the data folder first and listed under "Restore the whole installation" (encrypted when backups are encrypted), so a reset can be undone. Want to keep your own links for a new start? Download your backup first.</p>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="rtBackup">Download my backup first</button></div>
+    <label class="check"><input id="rtAll" type="checkbox"> Also delete every backup in the data folder (daily backups and safety copies), for a completely clean start</label>
+    <label for="rtConfirm">Type RESET to confirm</label><input id="rtConfirm" type="text" autocomplete="off" spellcheck="false" placeholder="RESET">
+    <div id="rtPwWrap"><label for="rtPass">Your password</label><input id="rtPass" type="password" autocomplete="current-password"></div>
+    <div id="rtCodeWrap" hidden><label for="rtCode">Code from your authenticator app (or a recovery code)</label><input id="rtCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12" spellcheck="false"></div>
+    <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rtGo">Reset TileMark</button></div>
+  </div></details>
   </div>
   <p class="hint" id="appVersion" style="text-align:end"></p>
   <div class="row"><button class="btn left" type="button" id="auOut">Sign out</button><button class="btn primary" value="close">Done</button></div>
@@ -521,6 +543,7 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 <div id="toast" role="status" popover="manual"></div>
 
 <script src="i18n.js"></script>
+<script src="passkey.js"></script>
 <script>
 const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8793a","#e5534b","#d6589f","#b455c9","#8e6ad8","#5b63d6","#a0714f","#7d8590","#4a5568","#c9a227"];
 const $ = id => document.getElementById(id);
@@ -1073,7 +1096,7 @@ async function refreshAuth() {
   setSum("account", a.username + (a.is_admin ? " · " + t("admin") : ""));
   setSum("save", a.has_key ? t("API key active") : "");
   showBackupHow(a);
-  showTf(a); refreshSessions();
+  showTf(a); refreshSessions(); refreshPasskeys(a); showReset(a);
   if (a.is_admin) { refreshUsers(); refreshBackups(); refreshMqtt(); }
   $("appVersion").textContent = "TileMark " + (a.version || "");
   $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? t("Replace API key") : t("Create API key"); $("keyShow").hidden = true;
@@ -1413,6 +1436,69 @@ $("tfOff").onclick = async () => {
   try { await api("DELETE", "api/totp", { current_password: pw }); toast(t("Two-factor sign-in is off.")); refreshAuth(); } catch (e) { toast(e.message); }
 };
 
+// ---------------------------------------------------------------- passkeys
+async function refreshPasskeys(a) {
+  $("pkBox").hidden = !!a.ha;  // inside Home Assistant, HA's own sign-in applies
+  if (a.ha) return;
+  const here = TMPasskey.canUse();
+  $("pkWhere").hidden = here; $("pkAdd").hidden = !here;
+  let r; try { r = await api("GET", "api/passkeys"); } catch (e) { return; }
+  const n = r.passkeys.length;
+  setSum("passkeys", n ? (n === 1 ? t("{n} passkey", { n }) : t("{n} passkeys", { n })) : t("None"));
+  const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
+  $("pkList").replaceChildren(...r.passkeys.map(p => el("div", { className: "sess" },
+    el("div", {}, el("b", { textContent: p.name }),
+      el("small", { textContent: [p.last_used ? t("last used {when}", { when: ago(p.last_used) }) : t("not used yet"),
+        t("added {date}", { date: fmtDate(p.created_at) }), p.rp_id !== location.hostname ? t("works on {address}", { address: p.rp_id }) : ""].filter(Boolean).join(" · ") })),
+    btn(t("Rename"), async () => {
+      const name = prompt(t("New name for this passkey:"), p.name); if (name === null || !name.trim()) return;
+      try { await api("PATCH", "api/passkeys/" + encodeURIComponent(p.id), { name }); refreshPasskeys(a); } catch (e) { toast(e.message); }
+    }),
+    btn(t("Remove"), async () => {
+      if (!confirm(t("Remove the passkey “{name}”? It can't be used to sign in any more. Also delete it on the device itself if you no longer want it there.", { name: p.name }))) return;
+      try { await api("DELETE", "api/passkeys/" + encodeURIComponent(p.id)); toast(t("Passkey removed.")); refreshAuth(); } catch (e) { toast(e.message); }
+    }, "btn danger"))));
+}
+$("pkAdd").onclick = async () => {
+  const pw = await askSecret(t("Enter your current password to add a passkey:")); if (pw === null) return;
+  try {
+    const credential = await TMPasskey.create(await api("POST", "api/passkeys/options", { current_password: pw }));
+    const name = prompt(t("A name for this passkey, so you can recognise it later:"), device(navigator.userAgent));
+    await api("POST", "api/passkeys", { credential, name: name || "" });
+    toast(t("Passkey added. Next time, choose “Sign in with a passkey” on the sign-in page.")); refreshAuth();
+  } catch (e) { toast(TMPasskey.message(e, t)); }
+};
+
+// ---------------------------------------------------------------- delete all my links, reset TileMark
+$("clBackup").onclick = $("rtBackup").onclick = () => $("bkGo").click();
+$("clGo").onclick = async () => {
+  const n = S.links.length;
+  if (!confirm(t("Delete all your links ({n}) and all your groups? This can't be undone, except with a backup.", { n }))) return;
+  const pw = tfAuth.ha ? "" : await askSecret(t("Enter your current password to confirm: {what}", { what: t("delete all my links") }));
+  if (pw === null) return;
+  try { await api("POST", "api/account/clear", { current_password: pw });
+        toast(t("All your links have been deleted.")); selected.clear(); load(); } catch (e) { toast(e.message); }
+};
+function showReset(a) {
+  $("rtPwWrap").hidden = !!a.ha; $("rtCodeWrap").hidden = !!a.ha || !a.totp;
+  $("rtAfter").textContent = a.addon
+    ? t("Afterwards, the first person to open TileMark from the Home Assistant sidebar becomes the admin.")
+    : t("Afterwards, TileMark asks for a new setup code, which is printed in the container log (docker logs tilemark, or the log in Dockge).");
+  $("rtConfirm").value = $("rtPass").value = $("rtCode").value = ""; $("rtAll").checked = false;
+}
+for (const id of ["rtConfirm", "rtPass", "rtCode"]) $(id).onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("rtGo").click(); } };
+$("rtGo").onclick = async () => {
+  if ($("rtConfirm").value.trim() !== "RESET") { toast(t("To confirm, type RESET in capital letters.")); $("rtConfirm").focus(); return; }
+  if (!$("rtPwWrap").hidden && !$("rtPass").value) { toast(t("Enter your current password.")); $("rtPass").focus(); return; }
+  const all = $("rtAll").checked;
+  if (!confirm(all ? t("Last check: delete EVERY account, link, setting AND every backup? This can't be undone.")
+                   : t("Last check: delete every account, link and setting? A copy is kept in the data folder."))) return;
+  try {
+    await api("POST", "api/reset", { confirm: "RESET", password: $("rtPass").value, code: $("rtCode").value, delete_backups: all });
+    alert(t("TileMark has been reset. It now starts as a new installation.")); location.href = "login";
+  } catch (e) { toast(e.message); }
+};
+
 // ---------------------------------------------------------------- dialogs: a click outside or Esc closes them
 // Except where closing would lose something: the import review (closing it discards the
 // duplicates) and Settings while the recovery codes are on screen (shown only once).
@@ -1433,8 +1519,9 @@ async function refreshBackups() {
   $("bkList").replaceChildren(...(r.backups.length ? r.backups.map(b => {
     const btn = (label, fn, cls = "btn") => { const x = el("button", { className: cls, type: "button", textContent: label }); x.onclick = fn; return x; };
     return el("div", { className: "sess" }, el("div", {},
-      el("b", { textContent: b.kind === "safety" ? t("Before restore, {when}", { when: fmtDate(b.made_at, true) }) : b.date }),
-      b.kind === "safety" ? el("span", { className: "pill", textContent: t("safety copy") }) : "",
+      el("b", { textContent: b.kind === "safety" ? t("Before restore, {when}", { when: fmtDate(b.made_at, true) })
+        : b.kind === "reset" ? t("Before reset, {when}", { when: fmtDate(b.made_at, true) }) : b.date }),
+      b.kind !== "daily" ? el("span", { className: "pill", textContent: t("safety copy") }) : "",
       b.encrypted ? el("span", { className: "pill", textContent: "🔒 " + t("encrypted") }) : "",
       el("small", { textContent: size(b.size) + " · " + t("made {when}", { when: fmtDate(b.made_at, true) }) })),
       btn(t("Download"), () => { location.href = "api/backups/" + encodeURIComponent(b.name); }),

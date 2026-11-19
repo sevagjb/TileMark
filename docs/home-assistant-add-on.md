@@ -22,7 +22,8 @@ There is no setup code and no separate password: Home Assistant has already sign
 
 - Every Home Assistant user who opens TileMark gets **their own TileMark account**, with their own links, groups and settings. Nobody, the admin included, can see someone else's links.
 - The **first person** to open TileMark becomes its admin, and so does every **Home Assistant administrator**.
-- Two-factor sign-in is not asked in the sidebar: Home Assistant's own sign-in, and its two-factor if you use it, already protects it.
+- Two-factor sign-in is not asked in the sidebar, and passkeys aren't used there: Home Assistant's own sign-in, and its two-factor if you use it, already protects it.
+- **⚙ Settings → Reset TileMark** (admin) works in the sidebar too, without a password. Afterwards, the first person to open TileMark from the sidebar becomes the admin of the new installation.
 
 ## TileMark's own address (optional)
 

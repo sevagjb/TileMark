@@ -18,12 +18,18 @@ Yes. The admin adds each person in **⚙ Settings → People**. Everyone gets th
 Yes, in any phone browser. With HTTPS you can also install it as an app, and on Android share links to it from other apps. See [Save from anywhere](save-from-anywhere.md#phone).
 
 **Which languages?**
-English, Dutch, German and Arabic. Want to add yours? See [Translating TileMark](translating.md). TileMark follows your browser's language; you can choose another in **⚙ Settings → Appearance**.
+English, Dutch, German, French, Spanish and Arabic. Want to add yours? See [Translating TileMark](translating.md). TileMark follows your browser's language; you can choose another in **⚙ Settings → Appearance**.
 
 ## Setting up
 
 **Where is the setup code?**
 In the container log: the stack's log in Dockge, or `docker logs tilemark`. Show it again with `docker exec tilemark python app.py setup-code`. In the Home Assistant app there is none: open TileMark from the sidebar.
+
+**Can I sign in without a password?**
+Yes, with a passkey from your phone, computer or security key, on TileMark's HTTPS address. See [Passkeys](accounts-and-security.md#passkeys).
+
+**How do I start over?**
+To empty only your own library: **⚙ Settings → Your account → Delete all my links**. To reset the whole installation (admin): **⚙ Settings → Reset TileMark**. Both are explained in [Accounts and security](accounts-and-security.md#resetting-tilemark-admin).
 
 **I forgot my password.**
 Another admin can set a new one in **People**. If you are the only admin, run `docker exec tilemark python app.py reset-login` on the server. See [Forgot your password?](accounts-and-security.md#forgot-your-password)

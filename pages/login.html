@@ -24,6 +24,8 @@ button { width: 100%; margin-top: 18px; font: inherit; font-weight: 600; color: 
 button:disabled { opacity: .6; cursor: default; }
 .small { font-size: 13px; color: var(--muted); margin: 6px 0 0; } code { font-size: 12.5px; }
 #err { color: var(--danger); font-size: 14px; min-height: 20px; margin: 12px 0 0; }
+button.alt { margin-top: 10px; color: var(--text); background: transparent; border: 1px solid var(--line); font-weight: 500; }
+button.alt:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -41,14 +43,17 @@ button:disabled { opacity: .6; cursor: default; }
   <label class="remember" id="rWrap"><input id="r" type="checkbox" checked> Keep me signed in on this device for 30 days</label>
   <div id="err" role="alert"></div>
   <button id="go" type="submit">Sign in</button>
+  <button id="pk" class="alt" type="button" hidden>🔑 Sign in with a passkey</button>
 </form>
 <script src="i18n.js"></script>
+<script src="passkey.js"></script>
 <script>
 try { const th0 = JSON.parse(localStorage.getItem("tm.settings") || "{}").theme; if (th0 === "light" || th0 === "dark") document.documentElement.dataset.theme = th0; } catch {}
 const $ = id => document.getElementById(id);
 let setup = false, second = false;
+const goOn = () => { const n = new URLSearchParams(location.search).get("next") || ""; location.href = n.startsWith("/save") ? n.slice(1) : "./"; };
 fetch("api/auth").then(r => r.json()).then(a => {
-  if (!a.setup) return;
+  if (!a.setup) { $("pk").hidden = !TMPasskey.canUse(); return; }
   setup = true;  // a new installation: the first account is created here and becomes the admin
   document.title = t("Set up - TileMark");
   $("intro").textContent = t("Welcome! Create the first account. It becomes the admin, who can add more people later.");
@@ -72,7 +77,7 @@ $("f").onsubmit = async e => {
       $("u").required = $("p").required = false; $("intro").textContent = t("Two-factor sign-in");
       $("go").textContent = t("Continue"); $("go").disabled = false; $("t").focus(); return;
     }
-    if (r.ok) { const n = new URLSearchParams(location.search).get("next") || ""; location.href = n.startsWith("/save") ? n.slice(1) : "./"; return; }
+    if (r.ok) { goOn(); return; }
     $("err").textContent = d.error ? t(d.error) : t("Could not sign in.");
     if (second && d.restart) { setTimeout(() => location.reload(), 1500); }
     else if (second) { $("t").value = ""; $("t").focus(); }
@@ -80,6 +85,24 @@ $("f").onsubmit = async e => {
     else if (d.code) $("c").select();
   } catch { $("err").textContent = t("Could not reach TileMark."); }
   $("go").disabled = false;
+};
+// Passkey: no username needed. The device offers the passkeys it holds for this address,
+// and the one chosen tells TileMark which account it is. No authenticator-app code after it:
+// the device's own unlock (face, fingerprint or PIN) already counts as the second factor.
+$("pk").onclick = async () => {
+  $("err").textContent = ""; $("pk").disabled = $("go").disabled = true;
+  try {
+    const o = await fetch("api/login/passkey/options", { method: "POST" });
+    const opts = await o.json().catch(() => ({}));
+    if (!o.ok) throw new Error(opts.error ? t(opts.error) : t("Could not sign in."));
+    const credential = await TMPasskey.get(opts);
+    const r = await fetch("api/login/passkey", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential, remember: $("r").checked }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { goOn(); return; }
+    $("err").textContent = d.error ? t(d.error) : t("Could not sign in.");
+  } catch (e) { $("err").textContent = TMPasskey.message(e, t); }
+  $("pk").disabled = $("go").disabled = false;
 };
 </script>
 </body>

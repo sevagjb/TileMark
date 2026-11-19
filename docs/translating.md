@@ -1,6 +1,6 @@
 # Translating TileMark
 
-TileMark's interface is in **English, Nederlands, Deutsch and العربية**. Adding a language takes one file and one line, with no code changes. A language can also be released half-finished: anything not translated yet is shown in English.
+TileMark's interface is in **English, Nederlands, Deutsch, Français, Español and العربية**. Adding a language takes one file and one line, with no code changes. A language can also be released half-finished: anything not translated yet is shown in English.
 
 ## How the languages are organised
 
@@ -8,6 +8,8 @@ TileMark's interface is in **English, Nederlands, Deutsch and العربية**. 
 pages/lang/languages.json   the list of languages, in the order of the Language menu
 pages/lang/nl.json          Dutch
 pages/lang/de.json          German
+pages/lang/fr.json          French
+pages/lang/es.json          Spanish
 pages/lang/ar.json          Arabic
 ```
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.7.0 (unreleased)
+
+### New
+- **Passkeys.** Sign in with your phone, computer or security key instead of typing your password: its face, fingerprint or PIN unlock proves it's you. Add one in **⚙ Settings → Passkeys** (your current password is asked first), then choose **🔑 Sign in with a passkey** on the sign-in page; no username is needed. A passkey counts as two-factor sign-in on its own, so no authenticator code is asked after it. Your password keeps working. Passkeys work on TileMark's HTTPS address with a name, not on an IP address or plain http (a browser rule); inside the Home Assistant sidebar they aren't used. Wrong passkey attempts count towards the same sign-in limits as wrong passwords.
+- **Delete all my links**, in **⚙ Settings → Your account**: empties your own library (links, groups, pictures) for a fresh start. Your account, settings and passkeys stay. Asks for your password; **Download backup first** is right next to it.
+- **Reset TileMark** (admin), the last card in Settings: deletes every account, link, picture and setting, so TileMark starts again as if just installed, and removes its device from Home Assistant. It asks you to type `RESET`, and for your password and two-factor code. A copy of everything is kept first and listed as **Before reset** under **Restore the whole installation**, so a reset can be undone; tick **Also delete every backup** for a completely clean start.
+- **French (Français) and Spanish (Español).** The whole interface is now also in French and Spanish. The Language menu lists English, Nederlands, Deutsch, Français, Español, العربية.
+
+### Changed
+- The guide explains passkeys, Delete all my links and Reset TileMark (*Accounts and security*, *Settings*, *Backups*, FAQ).
+- One new requirement for building the image: `webauthn` (py_webauthn), for checking passkeys.
+
 ## 2.6.1
 
 A security update. Updating is recommended for everyone. **After updating, everyone signs in once more** (inside the Home Assistant sidebar nothing changes).

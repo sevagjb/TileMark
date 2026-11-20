@@ -20,6 +20,9 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.7.1
+- [x] Hardening: runs as a normal user instead of root, browser security rules (CSP, frames, `nosniff`), upload limits, web picture formats only, NAT64/6to4 addresses checked by their IPv4 address, and honest wording about what an admin can do.
+
 ### 2.7.0
 - [x] Passkeys: sign in with your phone, computer or security key, without a password.
 - [x] Delete all my links (per account) and Reset TileMark (admin), with a safety copy.

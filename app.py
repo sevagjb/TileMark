@@ -1,5 +1,6 @@
 """TileMark - a tiny self-hosted page for your links, with thumbnails and groups."""
 import base64
+import functools
 import hmac
 import html
 import ipaddress
@@ -48,8 +49,30 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
 DB_PATH = os.path.join(DATA_DIR, "tilemark.db")
+
+
+def _cli_as_data_owner():
+    """`docker exec tilemark python app.py reset-login` runs as root, while TileMark itself
+    runs as the user who owns the data folder (see docker-entrypoint.sh). The command first
+    becomes that user, so no database file it touches ends up owned by root."""
+    if os.name != "posix" or os.getuid() != 0 or sys.argv[1:2] not in (["reset-login"], ["setup-code"]):
+        return
+    try:
+        st = os.stat(DATA_DIR)
+    except OSError:
+        return
+    if st.st_uid != 0:
+        os.setgroups([])
+        os.setgid(st.st_gid)
+        os.setuid(st.st_uid)
+
+
+_cli_as_data_owner()
 os.makedirs(THUMB_DIR, exist_ok=True)
 Image.MAX_IMAGE_PIXELS = 50_000_000  # refuse "decompression bomb" pictures early
+# The picture formats websites actually use. Pillow can read dozens more (old, rare formats
+# whose readers are seldom looked at); a fetched or uploaded file is only opened as one of these.
+IMAGE_FORMATS = ("JPEG", "PNG", "WEBP", "GIF", "ICO") + (("AVIF",) if "AVIF" in Image.registered_extensions().values() else ())
 
 UA = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -76,7 +99,12 @@ APP_VERSION = os.environ.get("TILEMARK_VERSION", "dev")  # set when the image is
 
 app = Flask(__name__, static_folder=None)
 PAGES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages")
-app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # backups with many thumbnails can be large
+# How much one request may send. Most need little (a picture for a card is at most 20 MB);
+# an import and a backup to restore may be larger, and get their own limit below.
+MB = 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 25 * MB
+UPLOAD_LIMITS = {"import_links": 100 * MB,  # a bookmarks file or a TileMark file with pictures
+                 "api_restore": 500 * MB}   # a personal backup holds every thumbnail
 class _Sessions(SecureCookieSessionInterface):
     def get_cookie_secure(self, app):
         # https visitors get an https-only cookie, whether they reach the app directly
@@ -433,6 +461,24 @@ class Blocked(Exception):
 
 _guard = threading.local()
 _NET0 = ipaddress.ip_network("0.0.0.0/8")
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _embedded_ipv4(a):
+    """The IPv4 address inside an IPv6 one that only stands for it: ::ffff:a.b.c.d (mapped),
+    64:ff9b::a.b.c.d (NAT64, RFC 6052) and 2002:aabb:ccdd:: (6to4). Such an address is
+    judged by the IPv4 address it leads to, so 64:ff9b::127.0.0.1 counts as loopback and
+    2002:a9fe:a9fe:: as the cloud metadata address, while on an IPv6-only network with
+    NAT64 an ordinary site (64:ff9b::93.184.215.14) is public, as it really is."""
+    if a.version != 6:
+        return a
+    if a.ipv4_mapped:
+        return a.ipv4_mapped
+    if a in _NAT64:
+        return ipaddress.IPv4Address(int(a) & 0xFFFFFFFF)
+    if a.sixtofour:
+        return a.sixtofour
+    return a
 
 
 def _addr_allowed(addr, allow_private):
@@ -440,8 +486,7 @@ def _addr_allowed(addr, allow_private):
         a = ipaddress.ip_address(str(addr).split("%")[0])
     except ValueError:
         return False
-    if a.version == 6 and a.ipv4_mapped:
-        a = a.ipv4_mapped
+    a = _embedded_ipv4(a)
     if a.is_loopback or a.is_link_local or a.is_multicast or a.is_unspecified or a.is_reserved:
         return False
     if a.version == 4 and a in _NET0:
@@ -551,7 +596,7 @@ def _download(url, limit, headers=UA):
 def _save_thumb(link_id, data, kind):
     """Store image bytes as a small thumbnail. Returns the file name or None."""
     try:
-        img = Image.open(io.BytesIO(data))
+        img = Image.open(io.BytesIO(data), formats=IMAGE_FORMATS)
         img.load()
     except Exception:
         return None
@@ -1650,8 +1695,35 @@ def _foreign_request():
     return o.netloc.lower() not in hosts
 
 
+# Big uploads (more than the normal limit) are read into memory to be opened, so only one
+# of them is handled at a time; a second one meanwhile is asked to try again shortly.
+_big_upload = threading.Lock()
+
+
+def one_big_upload(view):
+    @functools.wraps(view)
+    def wrapper(*args, **kwargs):
+        if (request.content_length or 0) <= app.config["MAX_CONTENT_LENGTH"]:
+            return view(*args, **kwargs)
+        if not _big_upload.acquire(blocking=False):
+            return jsonify(error="Another large file is being handled. Try again in a moment."), 429
+        try:
+            return view(*args, **kwargs)
+        finally:
+            _big_upload.release()
+    return wrapper
+
+
+@app.errorhandler(413)
+def too_large(e):
+    limit = request.max_content_length or app.config["MAX_CONTENT_LENGTH"]
+    return jsonify(error=f"This file is too large (at most {limit // MB} MB)."), 413
+
+
 @app.before_request
 def require_login():
+    if request.endpoint in UPLOAD_LIMITS:
+        request.max_content_length = UPLOAD_LIMITS[request.endpoint]
     if _foreign_request():
         return jsonify(error="This request came from another website and was refused."), 403
     g.user = current_user()
@@ -1666,6 +1738,45 @@ def require_login():
     if request.endpoint in ADMIN_ENDPOINTS and not g.user["is_admin"]:
         return jsonify(error="Only an admin can do this."), 403
     return None
+
+
+# Security headers on every answer:
+#  - Content-Security-Policy: scripts only from TileMark itself. The one inline script in
+#    each page is allowed by its hash (worked out once at start, from the files themselves),
+#    so nothing a scraped title or a planted backup might smuggle in can run. Pictures come
+#    from TileMark (thumbnails), a chosen file (blob:) or data: (the QR code); styles may be
+#    inline, as the pages use style attributes. No plugins, no foreign <base>, and forms
+#    only submit to TileMark.
+#  - frame-ancestors 'self' / X-Frame-Options: only TileMark's own address may show it in a
+#    frame. The Home Assistant sidebar counts as that address (ingress runs on Home
+#    Assistant's own address). FRAME_ANCESTORS adds other addresses for anyone who embeds
+#    TileMark on purpose, for example "https://ha.example.com".
+#  - nosniff: a file is only ever read as the type it is sent as.
+def _inline_script_hashes():
+    hashes = set()
+    for page in ("index.html", "login.html", "save.html"):
+        with open(os.path.join(PAGES, page), encoding="utf-8") as f:
+            for body in re.findall(r"<script>(.*?)</script>", f.read(), re.S):
+                hashes.add("'sha256-" + base64.b64encode(hashlib.sha256(body.encode("utf-8")).digest()).decode() + "'")
+    return " ".join(sorted(hashes))
+
+
+_FRAME_EXTRA = " ".join(a for a in os.environ.get("FRAME_ANCESTORS", "").split()
+                        if re.fullmatch(r"https?://[A-Za-z0-9.\-\[\]:*]+", a))
+CSP = ("default-src 'self'; script-src 'self' " + _inline_script_hashes() + "; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; "
+       "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+       + (" " + _FRAME_EXTRA if _FRAME_EXTRA else ""))
+
+
+@app.after_request
+def security_headers(resp):
+    resp.headers.setdefault("Content-Security-Policy", CSP)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    if not _FRAME_EXTRA:  # X-Frame-Options can't name other addresses; the CSP line above does
+        resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    return resp
 
 
 @app.get("/healthz")
@@ -2727,6 +2838,7 @@ def _parse_export(text):
 
 
 @app.post("/api/import")
+@one_big_upload
 def import_links():
     text = request.form.get("text", "")
     f = request.files.get("file")
@@ -3681,6 +3793,7 @@ def api_backup():
 
 
 @app.post("/api/restore")
+@one_big_upload
 def api_restore():
     f = request.files.get("file")
     if not f:

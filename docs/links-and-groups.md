@@ -70,7 +70,7 @@ The **✎** button opens the edit window:
 | **Title** | Your own title. Leave it empty to use the page's own title. |
 | **Group** | Moves the link to another group. |
 | **Note** | Your own note, shown on the card and found by search. |
-| **Picture** | Choose an image file, or **paste** an image with Ctrl+V while the window is open. **Use the site's picture again** goes back to the fetched one. |
+| **Picture** | Choose an image file (JPEG, PNG, WebP, GIF, ICO or AVIF, at most 20 MB), or **paste** an image with Ctrl+V while the window is open. **Use the site's picture again** goes back to the fetched one. |
 | **Favourite** | Keeps the link at the top of its group. |
 | **Delete** | Deletes the link. |
 

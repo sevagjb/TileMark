@@ -21,7 +21,7 @@ The app has **no options** on the Configuration tab. Everything is set inside Ti
 
 ## Accounts
 
-- Every Home Assistant user who opens TileMark gets **their own TileMark account**, with their own links, groups and settings. Nobody, the admin included, can see someone else's links.
+- Every Home Assistant user who opens TileMark gets **their own TileMark account**, with their own links, groups and settings. Other users don't see them. TileMark admins (every Home Assistant administrator is one) are trusted with more; see [What an admin can do](https://sevagjb.github.io/TileMark/accounts-and-security.html#what-an-admin-can-do).
 - The **first person** to open TileMark becomes its admin, and so does every **Home Assistant administrator**. Admins see extra cards at the bottom of Settings (people, installation settings, sensors).
 - Home Assistant's own sign-in, and its two-factor if you use it, protects the sidebar page. TileMark's own two-factor sign-in and passkeys are only used on **TileMark's own address**.
 

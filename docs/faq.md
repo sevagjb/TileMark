@@ -37,6 +37,9 @@ Another admin can set a new one in **People**. If you are the only admin, run `d
 **Are my backups encrypted?**
 Your own backups are, with your login password. The daily backups of the whole installation are encrypted once an admin turns it on in **⚙ Settings → Restore the whole installation**. See [Backups](backups.md).
 
+**Can the admin see my links?**
+Not in TileMark: there is no screen for it. But an admin can set a new password for your account and sign in with it (you would notice, as your old password stops working), and the daily backups hold everyone's links. See [What an admin can do](accounts-and-security.md#what-an-admin-can-do).
+
 **I lost the recovery key.**
 As long as an admin still knows their password, nothing is lost: make a new one with **New recovery key**.
 
@@ -45,6 +48,9 @@ Sign in with one of your recovery codes, or ask an admin to use **People → Tur
 
 **Which version am I running?**
 It is shown under the TileMark name at the top left, and at the bottom of Settings.
+
+**The data folder's files now belong to user 1000.**
+That's expected since 2.7.1: TileMark runs as a normal user instead of root. See [Container user](accounts-and-security.md#container-user).
 
 **How do I update?**
 Dockge: **Update**. Docker: `docker compose pull && docker compose up -d`. Home Assistant: the app's update button. Your data is kept. See [Updating](getting-started.md#updating).
@@ -84,6 +90,9 @@ Home Assistant checks for updates now and then. Force it: **Settings → Apps �
 
 **The browser button or API key doesn't work in Home Assistant.**
 They need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
+
+**TileMark stays empty in a Webpage card on my dashboard.**
+TileMark only lets its own address show it in a frame, so other sites can't trick you into clicking in it. Use the TileMark app's sidebar panel, which works as it is. To embed TileMark's Docker address anyway, add your Home Assistant address to the `FRAME_ANCESTORS` [container option](getting-started.md#container-options).
 
 **I see only one TileMark device, but I run two.**
 They share one device ID. Press **New ID** in one of them. See [Several TileMarks](home-assistant-sensors.md#several-tilemarks-in-one-home-assistant).

@@ -2304,3 +2304,103 @@ def test_french_and_spanish_are_complete(fresh):
     d = _i18n_data(c.get("/i18n.js", headers={"Accept-Language": "es-ES,es;q=0.9"}))
     assert d["lang"] == "es" and d["dict"]["Settings"] == "Ajustes"
     assert [l["code"] for l in d["languages"]][-1] == "ar"  # Arabic stays last
+
+
+# ------------------------------------------------------------- 2.7.1 hardening
+def test_security_headers_on_every_page(fresh):
+    import base64 as _b64
+    import hashlib as _h
+    import re as _re
+    c = fresh.app.test_client()
+    for path in ("/login", "/save", "/healthz", "/api/auth"):
+        r = c.get(path)
+        csp = r.headers["Content-Security-Policy"]
+        assert "frame-ancestors 'self'" in csp and "object-src 'none'" in csp and "base-uri 'self'" in csp
+        assert "'unsafe-inline'" not in csp.split("script-src", 1)[1].split(";", 1)[0]  # no inline scripts by default
+        assert r.headers["X-Content-Type-Options"] == "nosniff"
+        assert r.headers["X-Frame-Options"] == "SAMEORIGIN"
+        assert r.headers["Referrer-Policy"] == "same-origin"
+    # every page's own inline script is allowed by its hash, and nothing else inline is
+    script_src = csp.split("script-src", 1)[1].split(";", 1)[0]
+    for page in ("index.html", "login.html", "save.html"):
+        html_ = open(os.path.join(ROOT, "pages", page), encoding="utf-8").read()
+        assert not _re.search(r"\son[a-z]+=", html_), f"inline event handler in {page}: the CSP blocks it"
+        bodies = _re.findall(r"<script>(.*?)</script>", html_, _re.S)
+        assert bodies and len(_re.findall(r"<script\b", html_)) == len(bodies) + len(_re.findall(r'<script src="', html_))
+        for body in bodies:
+            digest = _b64.b64encode(_h.sha256(body.encode()).digest()).decode()
+            assert f"'sha256-{digest}'" in script_src, page
+
+
+def test_frame_ancestors_setting(tmp_path, monkeypatch):
+    monkeypatch.setenv("FRAME_ANCESTORS", "https://ha.example.com javascript:alert(1) http://192.168.1.5:8123")
+    A = load_app(tmp_path)
+    r = A.app.test_client().get("/login")
+    assert r.headers["Content-Security-Policy"].endswith("frame-ancestors 'self' https://ha.example.com http://192.168.1.5:8123")
+    assert "X-Frame-Options" not in r.headers  # it can't name other addresses, and would overrule the CSP in old browsers
+
+
+def test_upload_limits(fresh):
+    c = setup_admin(fresh)
+    lid = c.post("/api/links", json={"url": "https://example.com/a"}).get_json()["id"]
+    big = io.BytesIO(b"x" * (26 * 1024 * 1024))
+    r = c.post(f"/api/links/{lid}/thumb", data={"file": (big, "big.png")})
+    assert r.status_code == 413 and r.get_json()["error"] == "This file is too large (at most 25 MB)."
+    assert fresh.UPLOAD_LIMITS == {"import_links": 100 * 1024 * 1024, "api_restore": 500 * 1024 * 1024}
+    # an import may be larger than the normal limit
+    text = ("https://example.com/b\n" + "#" * 1000 + "\n") * 30_000  # about 30 MB, one real link
+    r = c.post("/api/import", data={"file": (io.BytesIO(text.encode()), "links.txt")})
+    assert r.status_code == 200, r.get_json()
+    # but only one large upload at a time
+    with fresh._big_upload:
+        r = c.post("/api/import", data={"file": (io.BytesIO(text.encode()), "links.txt")})
+        assert r.status_code == 429
+        small = c.post("/api/import", data={"text": "https://example.com/c"})
+        assert small.status_code == 200  # small ones never wait
+    nl = json.load(open(os.path.join(ROOT, "pages", "lang", "nl.json"), encoding="utf-8"))
+    for key in ("This file is too large (at most {n} MB).", "Another large file is being handled. Try again in a moment."):
+        assert nl.get(key), key
+
+
+@pytest.mark.parametrize("fmt,ok", [("PNG", True), ("JPEG", True), ("WEBP", True), ("GIF", True),
+                                    ("BMP", False), ("TIFF", False), ("PCX", False)])
+def test_only_web_picture_formats(fresh, fmt, ok):
+    from PIL import Image as _Image
+    buf = io.BytesIO()
+    _Image.new("RGB", (200, 150), "red").save(buf, fmt)
+    assert bool(fresh._save_thumb(1, buf.getvalue(), "image")) is ok
+
+
+@pytest.mark.parametrize("addr,private,ok", [
+    ("64:ff9b::7f00:1", True, False),      # NAT64 form of 127.0.0.1
+    ("64:ff9b::a9fe:a9fe", True, False),   # NAT64 form of the cloud metadata address
+    ("64:ff9b::c0a8:10a", False, False),   # NAT64 form of 192.168.1.10
+    ("64:ff9b::c0a8:10a", True, True),
+    ("64:ff9b::808:808", False, True),     # an ordinary site on an IPv6-only network with NAT64
+    ("2002:7f00:1::1", True, False),       # 6to4 form of 127.0.0.1
+    ("2002:a9fe:a9fe::1", True, False),    # 6to4 form of 169.254.169.254
+    ("2002:c0a8:10a::1", False, False),
+    ("2002:808:808::1", False, True),
+])
+def test_nat64_and_6to4_judged_by_their_ipv4(fresh, addr, private, ok):
+    assert fresh._addr_allowed(addr, private) is ok
+
+
+def test_image_runs_as_normal_user():
+    d = open(os.path.join(ROOT, "Dockerfile")).read()
+    assert 'ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]' in d and "useradd --uid 1000" in d
+    sh = open(os.path.join(ROOT, "docker-entrypoint.sh")).read()
+    assert "exec setpriv" in sh and "--no-new-privs" in sh
+    assert os.access(os.path.join(ROOT, "docker-entrypoint.sh"), os.X_OK)
+
+
+def test_privacy_wording_is_honest():
+    """The admin can't browse someone's links, but can set a new password for them, and the
+    daily backups hold everyone's links. The texts must not promise more than that."""
+    import subprocess
+    files = subprocess.check_output(["git", "ls-files", "pages", "docs", "homeassistant-addon/DOCS.md", "README.md"],
+                                    cwd=ROOT, text=True).split()
+    for f in files:
+        if f.endswith((".html", ".md", ".json")):
+            text = open(os.path.join(ROOT, f), encoding="utf-8").read()
+            assert "the admin included" not in text and "can't see anyone else's links" not in text, f

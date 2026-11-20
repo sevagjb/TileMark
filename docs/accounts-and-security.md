@@ -7,7 +7,7 @@ TileMark is made for a household: everyone gets their own private links, and not
 - **Every page needs signing in.** There is no open mode and no public sign-up page.
 - The **first account** is made on the welcome screen (protected by the setup code from the container log; see [Getting started](getting-started.md#create-the-first-account)). It is the **admin**.
 - The admin adds everyone else. Each person has their **own links, groups, settings, API key and backups**.
-- **Links are private.** The admin manages accounts, but can't see anyone else's links.
+- **Links are private per person.** Other people never see your links, and TileMark has no screen where an admin can browse them. An admin is still trusted with a lot, though; see [What an admin can do](#what-an-admin-can-do).
 - Layout, appearance, language and sort order are saved **with the account**, so every device looks the same.
 
 ### Adding people (admin)
@@ -27,6 +27,14 @@ For each person, the list shows how many links they have and offers:
 | **Remove** | Deletes the account with **all its links, groups and pictures**. Can't be undone. |
 
 In the [Home Assistant app](home-assistant-add-on.md), accounts are made automatically for every Home Assistant user who opens TileMark.
+
+### What an admin can do
+
+TileMark keeps everyone's links apart, but it is not a safe against the admin, who runs the installation. Give admin rights only to people you would trust with everyone's links:
+
+- An admin can **set a new password** for any account (**People → New password**) and sign in with it, and can **turn off** someone's two-factor sign-in. The person notices: their old password stops working and they are signed out everywhere.
+- The **daily backups of the whole installation** hold everyone's links. An admin can download them, and opens encrypted ones with their own password or the recovery key.
+- Whoever can reach the **server or the `data` folder** can read the database. In the Home Assistant app, every Home Assistant administrator is a TileMark admin too.
 
 ## Your account
 
@@ -132,6 +140,30 @@ Passwords are stored only as salted hashes, never as plain text. The list of sig
 
 Only TileMark's own pages can change anything in TileMark. When another website (also another app on the same server, or on the same domain) tries to make your browser send TileMark a change, TileMark refuses it. Apps without a browser, such as a Shortcut with an [API key](save-from-anywhere.md#api-key), are not affected.
 
+TileMark's pages also tell the browser to:
+
+- **run only TileMark's own code** (a Content-Security-Policy), so a strange title or a planted backup can never run a script in TileMark;
+- **show TileMark in a frame only on its own address**, so another site can't hide it under its own buttons. The Home Assistant sidebar counts as TileMark's own address. To show TileMark in a frame on another address on purpose, for example in a Webpage card on a Home Assistant dashboard, see the `FRAME_ANCESTORS` [container option](getting-started.md#container-options);
+- **read every file only as what it is** (`nosniff`), and send no address of TileMark's pages to the sites you open.
+
+## Uploads
+
+So that one person can't overload the server with a huge file:
+
+| Upload | At most |
+| --- | --- |
+| A picture for a card | 20 MB |
+| An import (bookmarks file, list or TileMark file) | 100 MB |
+| A backup to restore | 500 MB |
+
+Only one import or restore larger than 25 MB is handled at a time; a second one meanwhile is asked to try again in a moment.
+
+Pictures, fetched or uploaded, are only opened as the formats websites use: **JPEG, PNG, WebP, GIF, ICO and AVIF**. Other formats are refused.
+
+## Container user
+
+The Docker image runs TileMark as a normal user (`tilemark`, user id 1000), not as root. When the container starts, it gives the `data` folder to that user and then drops all root rights. Updating from an older version needs nothing: the first start takes care of the folder. The [container options](getting-started.md#container-options) explain how to choose another user id.
+
 ## Local addresses
 
 To show a picture, TileMark visits the page you save, and the page itself tells TileMark where its picture is. A cleverly made page (or another account) could try to make TileMark look **inside your network**: your router, your NAS, Home Assistant. TileMark prevents this:
@@ -139,6 +171,7 @@ To show a picture, TileMark visits the page you save, and the page itself tells 
 - It **never** visits its own machine, link-local addresses or cloud metadata addresses.
 - By default it doesn't visit **private network addresses** either (`192.168.x.x`, `10.x.x.x`, `nas.local` …).
 - Every redirect is checked, and so is the address it actually connects to.
+- IPv6 addresses that stand for an IPv4 address (NAT64 `64:ff9b::…` and 6to4 `2002:…`) are judged by that IPv4 address. So on an IPv6-only network with NAT64, ordinary sites still get their pictures, and a trick like `64:ff9b::127.0.0.1` is still refused.
 
 You can still **save** local links: they show their address and a letter tile instead of a picture.
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.7.1
+
+A hardening update: it finishes the security review that started with 2.6.1. Nothing changes in how you use TileMark, and nothing needs to be done after updating.
+
+### Changed
+- **TileMark runs as a normal user, not as root.** In Docker and Dockge, TileMark now runs as the user `tilemark` (id 1000), with no root rights left. The first start after updating gives the `data` folder to that user by itself; on the server its files then belong to user 1000. Set `PUID` and `PGID` to use another id, for example to match a folder on a NAS. On a network share that doesn't allow changing owners, TileMark keeps running as root, as before, and says so in the log. `docker exec tilemark python app.py reset-login` works as before.
+- **Strict browser security rules.** TileMark's pages tell the browser to run only TileMark's own code (a Content-Security-Policy), to read files only as what they are (`nosniff`), and to show TileMark in a frame only on its own address. The Home Assistant sidebar keeps working as it is. A Webpage card on a Home Assistant dashboard that shows TileMark's Docker address now stays empty; add that Home Assistant address to the new `FRAME_ANCESTORS` container option to allow it.
+- **Upload limits.** A picture for a card can be at most 20 MB (as before), an import 100 MB and a backup to restore 500 MB (before, up to 1 GB for everything). Only one import or restore larger than 25 MB is handled at a time. A file that is too large gets a clear message.
+- **Only web picture formats.** Fetched and uploaded pictures are only opened as JPEG, PNG, WebP, GIF, ICO or AVIF; other, rarely used formats are refused.
+- **Honest wording about admins.** Settings and the guide no longer say that nobody, the admin included, can see someone else's links. TileMark has no screen for it, but an admin can set a new password for an account and sign in with it, and the daily backups hold everyone's links. The new section *What an admin can do* in the guide explains this.
+
+### Fixed
+- **IPv6 addresses that stand for an IPv4 address** (NAT64 `64:ff9b::…` and 6to4 `2002:…`) are judged by that IPv4 address when TileMark fetches a page. A 6to4 address leading to the server itself or to a cloud metadata address is refused even when local addresses are allowed, and on an IPv6-only network with NAT64 ordinary sites get their titles and pictures again.
+
 ## 2.7.0
 
 ### New

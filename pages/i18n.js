@@ -20,6 +20,7 @@ const PATTERNS = [
   [/^This page is already saved in "(.+)": (.+)$/, 'This page is already saved in "{group}": {title}', ["group", "title"]],
   [/^This page is already saved: (.+)$/, "This page is already saved: {title}", ["title"]],
   [/^Too many attempts\. Try again in (\d+) seconds\.$/, "Too many attempts. Try again in {n} seconds.", ["n"]],
+  [/^This file is too large \(at most (\d+) MB\)\.$/, "This file is too large (at most {n} MB).", ["n"]],
   [/^To confirm, type the date of the backup: (.+)$/, "To confirm, type the date of the backup: {date}", ["date"]],
   [/^Broker refused the connection: (.+)$/, "Broker refused the connection: {error}", ["error"]],
   [/^Connection lost \((.+)\); retrying\.$/, "Connection lost ({error}); retrying.", ["error"]]

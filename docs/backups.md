@@ -13,7 +13,7 @@ TileMark has two kinds of backup. Use both, and your links are safe from a broke
 
 ## Your own backup
 
-**⚙ Settings → Backup and restore → Download backup**
+**👤 Your account → Backup and restore → Download backup**
 
 The file is **encrypted with your login password**: only that password opens it. You don't have to type anything to make it. If you change your password later, both the old and the new password keep opening backups you made before.
 

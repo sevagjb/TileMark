@@ -17,12 +17,12 @@ The full guide, with every option explained, is on the website: <https://sevagjb
 3. Paste a web address into the field at the top and press **Enter**. The card appears at once and fills in with a title and picture a moment later.
 4. Have bookmarks in your browser already? Use **Import** to bring them all in at once (see **Importing bookmarks** below).
 
-The app has **no options** on the Configuration tab. Everything is set inside TileMark, under **⚙ Settings** (top right).
+The app has **no options** on the Configuration tab. Everything is set inside TileMark, under **👤 Your account** and, for admins, **⚙ Settings** (top right).
 
 ## Accounts
 
 - Every Home Assistant user who opens TileMark gets **their own TileMark account**, with their own links, groups and settings. Other users don't see them. TileMark admins (every Home Assistant administrator is one) are trusted with more; see [What an admin can do](https://sevagjb.github.io/TileMark/accounts-and-security.html#what-an-admin-can-do).
-- The **first person** to open TileMark becomes its admin, and so does every **Home Assistant administrator**. Admins see extra cards at the bottom of Settings (people, installation settings, sensors).
+- The **first person** to open TileMark becomes its admin, and so does every **Home Assistant administrator**. Admins also get the **⚙ Settings** button (people, installation settings, sensors).
 - Home Assistant's own sign-in, and its two-factor if you use it, protects the sidebar page. TileMark's own two-factor sign-in and passkeys are only used on **TileMark's own address**.
 
 ## Saving links
@@ -65,7 +65,7 @@ Groups are like folders, or like the tab groups in your browser: each has a **na
 
 Below your groups, TileMark keeps lists for you: **Ungrouped**, **Favourites**, **All links**, **Recently added**, **Recently opened**, and, when there are any, **Broken links** and **Duplicates**.
 
-**Two layouts** (⚙ Settings → Layout): **Side panel** (shown at the top of this page) or **Sections**, all groups on one page with large picture cards:
+**Two layouts** (👤 Your account → Layout): **Side panel** (shown at the top of this page) or **Sections**, all groups on one page with large picture cards:
 
 ![The Sections layout in dark mode](https://raw.githubusercontent.com/sevagjb/tilemark/v2.3.3/docs/images/sections-dark.webp)
 
@@ -104,38 +104,40 @@ Links you already have are **never added twice and never thrown away silently**.
 
 **Once a week**, TileMark checks every link in the background. A link that no longer works gets a red **Broken** label and appears in **Broken links** in the left column. When a later check reaches it again, the label disappears by itself. Pages behind a sign-in and sites that are briefly down are not counted.
 
-**⚙ Settings → Link check → Check now** checks your links straight away. For an admin it checks the links of every account, the same as the weekly check.
+**👤 Your account → Link check → Check now** checks your links straight away. For an admin it checks the links of every account, the same as the weekly check.
 
 ## Settings
 
 ![The Settings window](https://raw.githubusercontent.com/sevagjb/tilemark/v2.3.3/docs/images/settings.webp)
 
-Everything is in **⚙ Settings** (top right). Each section is a card: click its title to open it, and a closed card shows a short status. Your own choices are saved with your account, so all your devices look the same.
+Two panels open from the top right and slide in from the side: **👤 Your account** for everyone, and **⚙ Settings** for admins. Each section is a card: click its title to open it, and a closed card shows a short status. Your own choices are saved with your account, so all your devices look the same; only the tile size is remembered per device.
 
 | Card | What you set there |
 | --- | --- |
+| **Username and password** | A password, needed only for **TileMark's own address**. |
 | **Layout** | Side panel or Sections. |
 | **Appearance** | Light, dark or follow your device; language: English, Nederlands, Deutsch, Français, Español or العربية. |
-| **Cards** | Picture size, open links in a new tab or this tab, the group new links go to. |
-| **Your account** | Username and a password, needed only for **TileMark's own address**. **Delete all my links** empties your own library. |
+| **Cards and tile size** | Extra small, Small, Medium or Large tiles (per device), open links in a new tab or this tab, the group new links go to. |
+| **Start screen** | Start with no group open (the clean screen with the logo), or reopen the last group. |
 | **Signed-in devices** | See and sign out the browsers signed in on TileMark's own address. |
 | **Save from anywhere** | The browser button, the phone app and the API key. |
 | **Link check** | Check now, and refresh all titles and pictures. |
 | **Backup and restore** | Download a backup of your own links, or restore one. |
+| **Delete all my links** | Empties your own library. |
 | **People** *(admin)* | Everyone with an account, their number of links, admin rights, remove an account. |
 | **Installation** *(admin)* | The weekly link check, TileMark's own daily backup, fetching local addresses. |
 | **Restore the whole installation** *(admin)* | TileMark's own daily backups: encrypt them, download, restore, make one now. |
 | **Home Assistant sensors** *(admin)* | The MQTT device; see **Sensors and notifications** below. |
 | **Reset TileMark** *(admin)* | Deletes every account, link and setting, so TileMark starts again as if just installed. A copy is kept unless you choose otherwise. |
 
-The version you are running is shown at the bottom of Settings.
+The version you are running is shown at the bottom of **👤 Your account**.
 
 ## Backups
 
 Everything TileMark stores is in the app's data folder, so **Home Assistant backups include TileMark**. The app pauses for a moment while Home Assistant makes a backup, so the copy is always consistent.
 
 - TileMark's own **daily backup** is **off** in the app, because Home Assistant already covers it (and Home Assistant can encrypt its own backups). An admin can switch it on in **⚙ Settings → Installation** to have both, and encrypt it under **Restore the whole installation**.
-- Each person can always **download a backup of their own links** in **⚙ Settings → Backup and restore**. It is encrypted with their TileMark password; accounts made by Home Assistant have none until one is set in **Your account**, so until then use **More options → A different password** (it can't be recovered if forgotten).
+- Each person can always **download a backup of their own links** in **👤 Your account → Backup and restore**. It is encrypted with their TileMark password; accounts made by Home Assistant have none until one is set in **Your account**, so until then use **More options → A different password** (it can't be recovered if forgotten).
 
 ## Sensors and notifications
 
@@ -182,15 +184,15 @@ actions:
 Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button** (save the page you are on with one click), the **phone app** (install TileMark and share links to it from other apps) and the **API key** (for scripts and iPhone Shortcuts). To use them:
 
 1. On this app's **Configuration** tab, under **Network**, enter a port for TileMark (for example `8080`), save, and restart the app.
-2. In TileMark (from the sidebar), open **⚙ Settings → Your account** and **set a password**. Accounts made through Home Assistant have none until you set one.
+2. In TileMark (from the sidebar), open **👤 Your account → Username and password** and **set a password**. Accounts made through Home Assistant have none until you set one.
 3. Open `http://<your-home-assistant>:<port>` and sign in with your TileMark username and that password.
-4. Set up the browser button, the phone app or the API key from **⚙ Settings → Save from anywhere** on that page.
+4. Set up the browser button, the phone app or the API key from **👤 Your account → Save from anywhere** on that page.
 
 Leave the port empty if you only use the sidebar; TileMark can then only be reached through Home Assistant. For the **phone app** the address must be **HTTPS**, for example through a reverse proxy. Step by step: <https://sevagjb.github.io/TileMark/save-from-anywhere.html>
 
 ## Moving from Docker
 
-1. In your Docker TileMark, each person downloads a backup: **⚙ Settings → Backup and restore → Download backup**.
+1. In your Docker TileMark, each person downloads a backup: **👤 Your account → Backup and restore → Download backup**.
 2. In Home Assistant, each person opens TileMark from the sidebar once (this creates their account) and restores their file in the same section.
 
 If you keep both running, see *Two TileMarks showing as one device* under **Sensors**.
@@ -203,7 +205,7 @@ Home Assistant shows an update for TileMark like for any app; the **Changelog** 
 
 - **No title or picture for a link.** Sites that need a sign-in (Instagram, for example) often have none; use **✎** to add your own picture. For pages inside your network (`192.168.x.x`, `homeassistant.local` …) TileMark doesn't fetch anything unless an admin allows it in **⚙ Settings → Installation**. Local links can always be saved.
 - **TileMark is not in the sidebar.** Turn on **Show in sidebar** on the Info tab, and check that the app is started.
-- **The direct address asks for a password I don't have.** Set one first in **⚙ Settings → Your account**, from the sidebar.
+- **The direct address asks for a password I don't have.** Set one first in **👤 Your account → Username and password**, from the sidebar.
 - **No device in Home Assistant.** Check that the MQTT integration is set up, and that **⚙ Settings → Home Assistant sensors** says **Connected**.
 - **Something else?** Look at the app's **Log** tab, and the questions on the website: <https://sevagjb.github.io/TileMark/faq.html>
 

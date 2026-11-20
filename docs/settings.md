@@ -1,14 +1,32 @@
-# Settings
+# Your account and Settings
 
-Everything you can set in TileMark is in **⚙ Settings** (top right). Each section is a card: click its title to open it. Only one card is open at a time, and a closed card shows a short status, so you often don't need to open it at all.
+TileMark has two side panels, both opened from the top right. They slide in from the right (from the left in Arabic), just under the toolbar, and close with **✕**, **Esc**, a click beside the panel, or the same button again.
 
-![The Settings window](images/settings.webp)
+- **👤 Your account**, for everyone: your sign-in, your own choices and your own links.
+- **⚙ Settings**, for admins only: the settings of the whole installation. Other people don't see this button.
 
-Your own choices (layout, appearance, language, cards) are saved **with your account**, so every device you use looks the same. Admin cards are grouped at the bottom under **Installation (admin)**; other people don't see them.
+In both, each section is a card: click its title to open it. Only one card is open at a time, and a closed card shows a short status, so you often don't need to open it at all.
 
-**On this page:** [Layout](#layout) · [Appearance](#appearance) · [Cards](#cards) · [Your account](#your-account) · [Two-factor sign-in](#two-factor-sign-in) · [Passkeys](#passkeys) · [Signed-in devices](#signed-in-devices) · [Save from anywhere](#save-from-anywhere) · [Link check](#link-check) · [Backup and restore](#backup-and-restore) · [People](#people) · [Installation](#installation) · [Restore the whole installation](#restore-the-whole-installation) · [Home Assistant sensors](#home-assistant-sensors) · [Reset TileMark](#reset-tilemark)
+![Your account, sliding in from the right over the start screen](images/settings.webp)
+
+**On this page:** 👤 [Username and password](#username-and-password) · [Layout](#layout) · [Appearance](#appearance) · [Cards and tile size](#cards-and-tile-size) · [Start screen](#start-screen) · [Two-factor sign-in](#two-factor-sign-in) · [Passkeys](#passkeys) · [Signed-in devices](#signed-in-devices) · [Save from anywhere](#save-from-anywhere) · [Link check](#link-check) · [Backup and restore](#backup-and-restore) · [Delete all my links](#delete-all-my-links) — ⚙ [People](#people) · [Installation](#installation) · [Restore the whole installation](#restore-the-whole-installation) · [Home Assistant sensors](#home-assistant-sensors) · [Reset TileMark](#reset-tilemark)
 
 ---
+
+# 👤 Your account
+
+Your own choices (layout, appearance, language, cards, start screen) are saved **with your account**, so every device you use looks the same. The one exception is the **tile size**, which each device remembers for itself.
+
+## Username and password
+
+| Option | What it does |
+| --- | --- |
+| **Username** | Your name for signing in. |
+| **New password** | Leave empty to keep your current one. At least 8 characters. A new password signs out your other devices. |
+| **Current password** | Needed to save any change. |
+| **Save account** | Saves the changes above. |
+
+In the [Home Assistant app](home-assistant-add-on.md) you are signed in through Home Assistant; set a password here only if you also want to use TileMark's own address.
 
 ## Layout
 
@@ -28,27 +46,24 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 
 ![TileMark in Arabic](images/arabic.webp)
 
-## Cards
+## Cards and tile size
 
 | Option | What it does |
 | --- | --- |
-| **Picture size** | **Small**, **Medium** or **Large** pictures on the cards. |
+| **Tile size** | **Extra small**, **Small**, **Medium** or **Large**. Extra small is a dense grid with only the site's icon and the title, for long lists; its only card button is **✎**, whose window has favourite, group and delete. **Remembered on each device**, so your phone and your computer can each have their own size. A new device starts with the size you chose last. |
 | **Clicking a link opens it** | **In a new tab** (the default) or **In this tab**. |
 | **New links go to** | The group that new links go to when you aren't looking at a group. **No group** leaves them ungrouped. |
 
-The keyboard shortcuts are listed here too: `/` search, `n` add a link, `Esc` clear the search or leave a field.
+The keyboard shortcuts are listed here too: `/` search, `n` add a link, `Esc` clear the search, leave a field, or close a panel or the open group.
 
-## Your account
+## Start screen
+
+Used with the **Side panel** layout.
 
 | Option | What it does |
 | --- | --- |
-| **Username** | Your name for signing in. |
-| **New password** | Leave empty to keep your current one. At least 8 characters. A new password signs out your other devices. |
-| **Current password** | Needed to save any change. |
-| **Save account** | Saves the changes above. |
-| **Delete all my links** | Deletes all your links, groups and pictures; your account, settings and passkeys stay. Asks you to confirm and for your password. **Download backup first** downloads your backup before you do. |
-
-In the [Home Assistant app](home-assistant-add-on.md) you are signed in through Home Assistant; set a password here only if you also want to use TileMark's own address.
+| **Clean start screen** (the default) | No group is open when TileMark starts: you see the TileMark logo, a short hint and how many links, groups and favourites you have. Click a group to open it; click it again, or press **Esc**, to close it and go back to this screen. |
+| **Reopen the last group** | TileMark opens with the group (or list) that was open last. |
 
 ## Two-factor sign-in
 
@@ -119,11 +134,17 @@ More in [Broken links](broken-links.md).
 
 More in [Backups](backups.md).
 
+## Delete all my links
+
+The last card, marked in red. Deletes all your links, groups and pictures, for a fresh start; your account, settings and passkeys stay. Asks you to confirm and for your password. **Download backup first** downloads your backup before you do.
+
+At the bottom of Your account: **Sign out** (signs you out on this device; not shown in the Home Assistant sidebar, where Home Assistant's own sign-in applies) and the version of TileMark you are running.
+
 ---
 
-## Installation (admin)
+# ⚙ Settings (admin)
 
-Only admins see these cards. They affect every account.
+Only admins see the **⚙** button. These cards affect every account. The server refuses these changes from anyone who isn't an admin, whatever the page shows.
 
 ## People
 
@@ -175,10 +196,6 @@ More in [Backups](backups.md#encrypting-the-daily-backups-admin).
 | **Device ID / New ID** | Gives this installation a new device in Home Assistant, for when two TileMarks share one ID. |
 
 More in [Home Assistant sensors](home-assistant-sensors.md).
-
----
-
-At the bottom of Settings: the version of TileMark you are running, **Sign out** (signs you out on this device; not shown in the Home Assistant sidebar, where Home Assistant's own sign-in applies) and **Done**.
 
 ## Reset TileMark
 

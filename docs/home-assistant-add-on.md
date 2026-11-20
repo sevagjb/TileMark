@@ -30,7 +30,7 @@ There is no setup code and no separate password: Home Assistant has already sign
 Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button**, the **phone app** and the **API key**. To use them:
 
 1. In Home Assistant, open **Settings → Apps → TileMark → Configuration → Network**, enter a port for TileMark (for example `8080`) and restart TileMark.
-2. In TileMark (from the sidebar), open **⚙ Settings → Your account** and **set a password**. Accounts made through Home Assistant have none until you set one.
+2. In TileMark (from the sidebar), open **👤 Your account → Username and password** and **set a password**. Accounts made through Home Assistant have none until you set one.
 3. Open `http://<your-home-assistant>:<port>` and sign in with your TileMark username and that password.
 4. Set up the browser button, the phone app or the API key from that page. See [Save from anywhere](save-from-anywhere.md).
 
@@ -56,7 +56,7 @@ No setup is needed: the app uses Home Assistant's own broker. Details, and an ex
 
 ## Moving from Docker to Home Assistant
 
-1. In your Docker TileMark, each person downloads a backup: **⚙ Settings → Backup and restore → Download backup**.
+1. In your Docker TileMark, each person downloads a backup: **👤 Your account → Backup and restore → Download backup**.
 2. In Home Assistant, each person opens TileMark from the sidebar once (this creates their account) and restores their file in the same section.
 
 If you keep both running, give one of them a new device ID so Home Assistant shows them as two devices; see [Several TileMarks](home-assistant-sensors.md#several-tilemarks-in-one-home-assistant).

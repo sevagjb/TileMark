@@ -38,11 +38,11 @@ TileMark keeps everyone's links apart, but it is not a safe against the admin, w
 
 ## Your account
 
-**⚙ Settings → Your account** changes your **username** or **password**. Saving needs your **current password**. A new password signs you out on your other devices.
+**👤 Your account → Username and password** changes your **username** or **password**. Saving needs your **current password**. A new password signs you out on your other devices.
 
 **Delete all my links**, in the same card, empties your library for a fresh start: all your links, groups and pictures are deleted. Your account, settings and passkeys stay, and other people's links aren't touched. It asks you to confirm and for your current password, and it can't be undone, so press **Download backup first** if you might want them back.
 
-**Sign out** is at the bottom of Settings, whichever card is open.
+**Sign out** is at the bottom of **👤 Your account**, whichever card is open.
 
 "**Keep me signed in on this device for 30 days**" on the sign-in page remembers the device. Without it, you're signed out when the browser closes.
 
@@ -54,7 +54,7 @@ With two-factor sign-in, TileMark asks for a **code from an app on your phone** 
 
 **Turning it on:**
 
-1. **⚙ Settings → Two-factor sign-in → Turn on**.
+1. **👤 Your account → Two-factor sign-in → Turn on**.
 2. Scan the **QR code** with an authenticator app: Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden, Aegis, or any other. Can't scan? Type the key shown under it.
 3. Enter the **6-digit code** the app shows and press **Confirm and turn on**.
 4. You get **ten recovery codes**. **Download** them or write them down, and keep them somewhere safe. Each one signs you in once if your phone isn't at hand.
@@ -75,7 +75,7 @@ A passkey lets you sign in with your **phone, computer or security key** instead
 **Adding one:**
 
 1. Open TileMark on its **HTTPS address** (see [Where passkeys work](#where-passkeys-work)).
-2. **⚙ Settings → Passkeys → Add a passkey**, and enter your current password.
+2. **👤 Your account → Passkeys → Add a passkey**, and enter your current password.
 3. Your browser or phone asks how to save the passkey (iCloud Keychain, Google Password Manager, Windows Hello, 1Password, a security key …). Confirm with your face, fingerprint or PIN.
 4. Give it a name you'll recognise, such as "iPhone" or "Work laptop".
 
@@ -91,7 +91,7 @@ A passkey belongs to the exact address it was made on. If you reach TileMark thr
 
 ## Signed-in devices
 
-**⚙ Settings → Signed-in devices** lists every browser signed in to your account, with the browser and system, its address, and when it was last active. **This device** is marked.
+**👤 Your account → Signed-in devices** lists every browser signed in to your account, with the browser and system, its address, and when it was last active. **This device** is marked.
 
 - **Sign out** next to a device ends that session.
 - **Sign out all other devices** ends all of them except the one you're using.

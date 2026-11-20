@@ -68,7 +68,7 @@ Your data stays as it is. What changed in each version is in the [changelog](../
 
 **Updating to 2.7.1 or later from an older version:** TileMark now runs as a normal user instead of root. The first start gives the `data` folder to that user by itself (this can take a few seconds with many pictures); nothing needs to be done.
 
-**Coming from LinkBoard?** TileMark is LinkBoard's new name since 2.0.0. Install TileMark fresh and restore your LinkBoard backup in **⚙ Settings → Backup and restore**; old backup files, encrypted or not, are accepted.
+**Coming from LinkBoard?** TileMark is LinkBoard's new name since 2.0.0. Install TileMark fresh and restore your LinkBoard backup in **👤 Your account → Backup and restore**; old backup files, encrypted or not, are accepted.
 
 **Image tags:**
 
@@ -88,7 +88,7 @@ HTTPS also unlocks installing TileMark as an app on your phone; see [Save from a
 
 ## Container options
 
-Most choices are made in **⚙ Settings** and saved with your account. The container itself has only a few options, set as environment variables:
+Most choices are made in **👤 Your account** (and, for admins, **⚙ Settings**) and saved with your account. The container itself has only a few options, set as environment variables:
 
 | Variable | Default | What it does |
 | --- | --- | --- |

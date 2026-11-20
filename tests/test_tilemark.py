@@ -6,6 +6,7 @@ import importlib
 import json
 import io
 import os
+import re
 import sqlite3
 import sys
 import threading
@@ -314,6 +315,37 @@ def test_prefs_are_per_user_and_validated(two):
     admin.put("/api/prefs", json={"layout": "bogus"})
     assert bob.get("/api/state").get_json()["prefs"] == {"layout": "sections", "theme": "dark", "sorts": {"3": "name"}}
     assert admin.get("/api/state").get_json()["prefs"] == {}
+
+
+def test_prefs_tile_size_and_start_screen(two):
+    A, admin, bob, *_ = two
+    bob.put("/api/prefs", json={"thumb": "xs", "start": "last"})
+    assert bob.get("/api/state").get_json()["prefs"] == {"thumb": "xs", "start": "last"}
+    bob.put("/api/prefs", json={"thumb": "xl", "start": "bogus"})  # unknown values are ignored
+    assert bob.get("/api/state").get_json()["prefs"] == {"thumb": "xs", "start": "last"}
+    for size in ("s", "m", "l", "xs"):
+        assert bob.put("/api/prefs", json={"thumb": size}).get_json()["prefs"]["thumb"] == size
+    assert bob.put("/api/prefs", json={"start": "empty"}).get_json()["prefs"]["start"] == "empty"
+
+
+def test_admin_settings_stay_refused_for_normal_users(two):
+    # 2.8 hides the ⚙ Settings button from normal users; the server must refuse all of it anyway
+    A, admin, bob, *_ = two
+    for method, path, body in [("get", "/api/users", None), ("post", "/api/users", {"username": "x", "password": "longenough1"}),
+                               ("post", "/api/settings", {"fetch_private": True}), ("get", "/api/backups", None),
+                               ("post", "/api/backups", None), ("get", "/api/mqtt", None), ("post", "/api/mqtt", {"enabled": True}),
+                               ("post", "/api/reset", {"confirm": "RESET", "password": "userpass11"})]:
+        r = getattr(bob, method)(path, json=body) if body is not None else getattr(bob, method)(path)
+        assert r.status_code == 403, (method, path, r.status_code)
+    assert admin.get("/api/users").status_code == 200
+
+
+def test_page_has_both_side_panels(two):
+    A, admin, *_ = two
+    html = admin.get("/").get_data(as_text=True)
+    assert 'id="accountDlg" class="drawer"' in html and 'id="settingsDlg" class="drawer"' in html
+    assert re.search(r'<button[^>]*id="settingsBtn"[^>]*\bhidden\b', html)  # shown by the script, for admins only
+    assert 'name="thumb" value="xs"' in html and 'name="start" value="last"' in html
 
 
 # ------------------------------------------------------------ safe fetching

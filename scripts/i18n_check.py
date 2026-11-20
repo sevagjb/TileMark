@@ -73,7 +73,7 @@ def main():
         save("languages.json", langs)
         save(code + ".json", {k: "" for k in keys})
         print(f"Started pages/lang/{code}.json with {len(keys)} texts to translate, and added {name} to languages.json.")
-        print("Restart TileMark to see it in Settings → Appearance → Language.")
+        print("Restart TileMark to see it in Your account → Appearance → Language.")
         return
 
     used = used_texts()

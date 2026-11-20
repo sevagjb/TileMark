@@ -115,7 +115,7 @@ When TileMark opens, no group is open yet: you see the TileMark logo, a short hi
 
 ## Tile size
 
-**👤 Your account → Cards and tile size → Tile size** has four steps: **Extra small**, **Small**, **Medium** and **Large**. **Extra small** is a dense grid with only the site's icon and the title, handy for long lists; its only card button is **✎**, which opens the link's window with favourite, group and delete. Each device remembers its own size, so your phone can show Extra small while your computer shows Medium.
+**👤 Your account → Cards and tile size → Tile size** has four steps: **Extra small**, **Small**, **Medium** and **Large**. **Extra small** is handy for long lists. In the **Side panel** layout it is a slim list, one link per line, with the site's icon, the title and the address on the right (and the group, in lists like All links); hover over a line for its buttons. In **Sections** it is a dense grid of small tiles with only the icon and the title. On a phone, and in that grid, the only card button is **✎**, which opens the link's window with favourite, group and delete. Each device remembers its own size, so your phone can show Extra small while your computer shows Medium.
 
 ## Ordering and sorting
 

@@ -547,7 +547,6 @@
   "Settings for the whole installation. Only admins see them; your own choices are under Your account.": "Instellingen voor de hele installatie. Alleen beheerders zien ze; je eigen keuzes staan onder Je account.",
   "Last group": "Laatste groep",
   "Clean": "Leeg",
-  "A dense grid: favicon and title only. The ✎ button opens a link's settings, with favourite, group and delete.": "Een compact raster: alleen favicon en titel. De knop ✎ opent de instellingen van een link, met favoriet, groep en verwijderen.",
   "Small cards with a small picture.": "Kleine kaarten met een kleine afbeelding.",
   "The standard size.": "De standaardgrootte.",
   "Large cards with big pictures.": "Grote kaarten met grote afbeeldingen.",
@@ -557,5 +556,6 @@
   "{n} group": "{n} groep",
   "{n} groups": "{n} groepen",
   "{n} favourite": "{n} favoriet",
-  "{n} favourites": "{n} favorieten"
+  "{n} favourites": "{n} favorieten",
+  "Side panel: a slim list, one link per line, with the address on the right. Sections: a dense grid of small tiles with only the icon and the title.": "Zijpaneel: een slanke lijst, één link per regel, met het adres rechts. Secties: een compact raster van kleine tegels met alleen het pictogram en de titel."
 }

@@ -50,7 +50,7 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 
 | Option | What it does |
 | --- | --- |
-| **Tile size** | **Extra small**, **Small**, **Medium** or **Large**. Extra small is a dense grid with only the site's icon and the title, for long lists; its only card button is **✎**, whose window has favourite, group and delete. **Remembered on each device**, so your phone and your computer can each have their own size. A new device starts with the size you chose last. |
+| **Tile size** | **Extra small**, **Small**, **Medium** or **Large**. Extra small is for long lists: in the **Side panel** layout a slim list with one link per line (the site's icon, the title, and the address on the right), in **Sections** a dense grid of small tiles with only the icon and the title. On a phone, and in the Sections grid, its only card button is **✎**, whose window has favourite, group and delete. **Remembered on each device**, so your phone and your computer can each have their own size. A new device starts with the size you chose last. |
 | **Clicking a link opens it** | **In a new tab** (the default) or **In this tab**. |
 | **New links go to** | The group that new links go to when you aren't looking at a group. **No group** leaves them ungrouped. |
 

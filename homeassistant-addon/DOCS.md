@@ -117,7 +117,7 @@ Two panels open from the top right and slide in from the side: **👤 Your accou
 | **Username and password** | A password, needed only for **TileMark's own address**. |
 | **Layout** | Side panel or Sections. |
 | **Appearance** | Light, dark or follow your device; language: English, Nederlands, Deutsch, Français, Español or العربية. |
-| **Cards and tile size** | Extra small, Small, Medium or Large tiles (per device), open links in a new tab or this tab, the group new links go to. |
+| **Cards and tile size** | Extra small (a slim list in Side panel, small tiles in Sections), Small, Medium or Large (per device), open links in a new tab or this tab, the group new links go to. |
 | **Start screen** | Start with no group open (the clean screen with the logo), or reopen the last group. |
 | **Signed-in devices** | See and sign out the browsers signed in on TileMark's own address. |
 | **Save from anywhere** | The browser button, the phone app and the API key. |

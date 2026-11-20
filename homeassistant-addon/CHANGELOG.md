@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.8.1
+
+### Changed
+- **Extra small is a slim list in the Side panel layout.** One link per line, in rounded rows like the other sizes: the site's icon, the title, and the address on the right (plus the group in All links, Favourites and search results). On a computer every card button appears when you hover over a line; on a phone only ✎ is shown. In the Sections layout, Extra small stays a grid of small tiles.
+
 ## 2.8.0
 
 A new look: a calm start screen, side panels instead of the Settings window, and a fourth tile size. Nothing needs to be done after updating.

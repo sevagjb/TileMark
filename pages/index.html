@@ -312,25 +312,46 @@ dialog .lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px
 .at-home .tools { display: none; }
 @media (max-width: 760px) { .home { min-height: 46vh; } .home .wm { width: min(180px, 46vw); } }
 
-/* Extra small: a dense grid of favicon and title, in both layouts */
-body.thumb-xs .list, body.thumb-xs .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
-body.thumb-xs .card, body.thumb-xs .list .card { flex-direction: row; align-items: center; gap: 9px; min-height: 42px; padding: 0 6px 0 10px; border-radius: 9px; box-shadow: none; }
+/* Extra small. Sections layout: a dense grid of small tiles. Side panel layout: a slim list,
+   one link per row: favicon, title, and the address (and group, in mixed lists) on the right. */
+body.thumb-xs .card { flex-direction: row; align-items: center; gap: 9px; border-radius: 9px; }
 body.thumb-xs .card:hover { transform: none; }
 body.thumb-xs .thumb, body.thumb-xs .list .thumb { flex: 0 0 22px; width: 22px; height: 22px; aspect-ratio: auto; border: 0; border-radius: 6px; }
 body.thumb-xs .thumb img.icon, body.thumb-xs .list .thumb img.icon { width: 22px; height: 22px; border-radius: 5px; }
 body.thumb-xs .thumb .letter, body.thumb-xs .list .thumb .letter { font-size: 12px; }
 body.thumb-xs .thumb .spin { width: 14px; height: 14px; border-width: 2px; }
-body.thumb-xs .body, body.thumb-xs .list .body { flex: 1; min-width: 0; padding: 0; display: block; }
 body.thumb-xs .title { -webkit-line-clamp: 1; font-size: 13.5px; font-weight: 550; }
-body.thumb-xs .note, body.thumb-xs .desc, body.thumb-xs .meta { display: none; }
-body.thumb-xs .actions, body.thumb-xs .list .actions { position: static; transform: none; flex: none; }
-body.thumb-xs .actions button:not(.ed) { display: none; }
+body.thumb-xs .note, body.thumb-xs .desc { display: none; }
+body.thumb-xs .tick { top: 50%; transform: translateY(-50%); inset-inline-start: 7px; }
 body.thumb-xs .actions button { width: 28px; height: 28px; background: transparent; color: var(--muted); }
 body.thumb-xs .actions button:hover { background: var(--line); color: var(--text); }
-body.thumb-xs .tick { top: 50%; transform: translateY(-50%); inset-inline-start: 7px; }
-body.thumb-xs .list .card.ins-before { box-shadow: -5px 0 0 -1px var(--accent); } body.thumb-xs .list .card.ins-after { box-shadow: 5px 0 0 -1px var(--accent); }
-[dir=rtl] body.thumb-xs .list .card.ins-before { box-shadow: 5px 0 0 -1px var(--accent); } [dir=rtl] body.thumb-xs .list .card.ins-after { box-shadow: -5px 0 0 -1px var(--accent); }
-@media (hover: none) and (max-width: 760px) { body.thumb-xs .list .body { padding: 0; } }
+body.thumb-xs .actions button.on { color: #f5b83d; }
+/* the grid (Sections) */
+body.thumb-xs .grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+body.thumb-xs .grid .card { min-height: 42px; padding: 0 6px 0 10px; box-shadow: none; }
+body.thumb-xs .grid .body { flex: 1; min-width: 0; padding: 0; }
+body.thumb-xs .grid .meta { display: none; }
+body.thumb-xs .grid .actions { position: static; opacity: 0; flex: none; }
+body.thumb-xs .grid .card:hover .actions, body.thumb-xs .grid .card:focus-within .actions { opacity: 1; }
+body.thumb-xs .grid .actions button:not(.ed) { display: none; }
+/* the list (Side panel) */
+body.thumb-xs .list { gap: 6px; }
+body.thumb-xs .list .card { min-height: 38px; padding-block: 0; padding-inline: 10px 12px; }
+body.thumb-xs .list .body { flex: 1; min-width: 0; padding: 0; display: flex; flex-direction: row; align-items: center; gap: 12px; }
+body.thumb-xs .list .title { flex: 1; min-width: 0; }
+body.thumb-xs .list .meta { margin: 0; flex: 0 1 auto; max-width: 48%; justify-content: flex-end; }
+body.thumb-xs .list .meta .tag { margin-inline-start: 6px; max-width: none; }
+/* computer: every button, over the end of the row while it is hovered */
+body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inline-end: 6px; gap: 2px; padding-inline-start: 10px;
+  background: linear-gradient(to right, transparent, var(--panel) 10px); }
+[dir=rtl] body.thumb-xs .list .actions { background: linear-gradient(to left, transparent, var(--panel) 10px); }
+/* phone: only ✎, in the row itself */
+@media (hover: none) {
+  body.thumb-xs .list .actions { position: static; transform: none; background: none; padding: 0; flex: none; }
+  body.thumb-xs .list .actions button:not(.ed) { display: none; }
+}
+@media (hover: none) and (max-width: 760px) { body.thumb-xs .list .body { padding: 0; } body.thumb-xs .list .actions { bottom: auto; } }
+@media (max-width: 520px) { body.thumb-xs .list .meta .host { display: none; } }
 </style>
 </head>
 <body>
@@ -1183,7 +1204,7 @@ function sumPrefs() {
   setSum("start", cfg.start === "last" ? t("Last group") : t("Clean"));
 }
 const SIZE_NAMES = { xs: "Extra small", s: "Small", m: "Medium", l: "Large" };
-const SIZE_HELP = { xs: "A dense grid: favicon and title only. The ✎ button opens a link's settings, with favourite, group and delete.",
+const SIZE_HELP = { xs: "Side panel: a slim list, one link per line, with the address on the right. Sections: a dense grid of small tiles with only the icon and the title.",
   s: "Small cards with a small picture.", m: "The standard size.", l: "Large cards with big pictures." };
 (function () {
   let open = [];

@@ -778,7 +778,6 @@
   "Settings for the whole installation. Only admins see them; your own choices are under Your account.": "إعدادات التثبيت بأكمله. لا يراها إلا المسؤولون، أما خياراتك الخاصة ففي «حسابك».",
   "Last group": "آخر مجموعة",
   "Clean": "نظيفة",
-  "A dense grid: favicon and title only. The ✎ button opens a link's settings, with favourite, group and delete.": "شبكة مكثّفة: أيقونة الموقع والعنوان فقط. يفتح الزر ✎ إعدادات الرابط، وفيها المفضلة والمجموعة والحذف.",
   "Small cards with a small picture.": "بطاقات صغيرة بصورة صغيرة.",
   "The standard size.": "الحجم المعتاد.",
   "Large cards with big pictures.": "بطاقات كبيرة بصور كبيرة.",
@@ -816,5 +815,6 @@
     "few": "{n} مفضّلات",
     "many": "{n} مفضّلة",
     "other": "{n} مفضّلة"
-  }
+  },
+  "Side panel: a slim list, one link per line, with the address on the right. Sections: a dense grid of small tiles with only the icon and the title.": "اللوحة الجانبية: قائمة نحيفة، رابط واحد في كل سطر، والعنوان في الطرف الآخر. الأقسام: شبكة مكثّفة من بطاقات صغيرة فيها الأيقونة والعنوان فقط."
 }

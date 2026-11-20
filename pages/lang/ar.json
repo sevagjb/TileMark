@@ -252,7 +252,7 @@
   "Turn off": "إيقاف",
   "Signed-in devices": "الأجهزة المسجّل دخولها",
   "Sign out all other devices": "تسجيل الخروج من كل الأجهزة الأخرى",
-  "Everyone has their own links, groups, API key and backups. Nobody, the admin included, can see someone else's links.": "لكل شخص روابطه ومجموعاته ومفتاح API ونسخه الاحتياطية. لا يستطيع أحد، ولا المسؤول نفسه، رؤية روابط شخص آخر.",
+  "Everyone has their own links, groups, API key and backups, and nobody sees someone else's links in TileMark. An admin can still set a new password for an account and sign in with it (the person notices: their old password stops working), and the daily backups hold everyone's links.": "لكل شخص روابطه ومجموعاته ومفتاح API ونسخه الاحتياطية، ولا يرى أحد في TileMark روابط شخص آخر. لكن المسؤول يستطيع تعيين كلمة مرور جديدة لأي حساب وتسجيل الدخول بها (وسيلاحظ صاحب الحساب ذلك، لأن كلمة مروره القديمة لن تعمل بعد الآن)، كما أن النسخ الاحتياطية اليومية تحتوي على روابط الجميع.",
   "Add a person: username": "إضافة شخص: اسم المستخدم",
   "Their first password (at least 8 characters)": "كلمة المرور الأولى (8 أحرف على الأقل)",
   "Also an admin": "مسؤول أيضًا",
@@ -692,6 +692,8 @@
     "many": "محاولات كثيرة جدًا. أعد المحاولة بعد {n} ثانية.",
     "other": "محاولات كثيرة جدًا. أعد المحاولة بعد {n} ثانية."
   },
+  "This file is too large (at most {n} MB).": "هذا الملف كبير جدًا (الحد الأقصى {n} ميغابايت).",
+  "Another large file is being handled. Try again in a moment.": "يجري الآن معالجة ملف كبير آخر. أعد المحاولة بعد قليل.",
   "To confirm, type the date of the backup: {date}": "للتأكيد، اكتب تاريخ النسخة الاحتياطية: {date}",
   "Broker refused the connection: {error}": "رفض الوسيط الاتصال: {error}",
   "Connection lost ({error}); retrying.": "انقطع الاتصال ({error})؛ جارٍ إعادة المحاولة.",

@@ -28,7 +28,7 @@ TileMark needs no database server, no account anywhere and no internet service o
 2. Start it: **Deploy** in Dockge, or `docker compose up -d` in that folder.
 3. Open `http://<your-server>:8080` in your browser.
 
-Everything TileMark stores (the database, the pictures and the daily backups) lives in the `data` folder next to the compose file. Keep that folder and you keep everything.
+Everything TileMark stores (the database, the pictures and the daily backups) lives in the `data` folder next to the compose file. Keep that folder and you keep everything. TileMark runs as a normal user (id 1000), not as root, so on the server the folder's files belong to that user; see [Container user](accounts-and-security.md#container-user).
 
 > **Port already in use?** Change only the first number, for example `"8090:8080"`, and open port 8090 instead.
 
@@ -66,6 +66,8 @@ Next: [Links and groups](links-and-groups.md) explains everything you can do wit
 
 Your data stays as it is. What changed in each version is in the [changelog](../CHANGELOG.md).
 
+**Updating to 2.7.1 or later from an older version:** TileMark now runs as a normal user instead of root. The first start gives the `data` folder to that user by itself (this can take a few seconds with many pictures); nothing needs to be done.
+
 **Coming from LinkBoard?** TileMark is LinkBoard's new name since 2.0.0. Install TileMark fresh and restore your LinkBoard backup in **⚙ Settings → Backup and restore**; old backup files, encrypted or not, are accepted.
 
 **Image tags:**
@@ -92,6 +94,10 @@ Most choices are made in **⚙ Settings** and saved with your account. The conta
 | --- | --- | --- |
 | `FETCH_WORKERS` | `4` | How many pages are fetched at the same time. Lower it on a very small machine. |
 | `DATA_DIR` | `/data` | Where the database, pictures and backups are stored inside the container. |
+| `PUID`, `PGID` | `1000` | The user and group id TileMark runs as. Change them to match the owner of a folder on a NAS, for example. |
+| `FRAME_ANCESTORS` | *(empty)* | Other addresses that may show TileMark in a frame, separated by spaces, for example `https://ha.example.com`. Only needed to embed TileMark in another page, such as a Webpage card in Home Assistant; the Home Assistant app's sidebar works without it. Signing in inside such a frame only works when both addresses belong to the same site (the same domain). |
+
+TileMark's data folder may also be on a network share that doesn't allow changing owners. Then TileMark keeps running as root, as before, and says so in the log. Starting the container with `user: "1000:1000"` in the compose file works too, as long as that user can write to the `data` folder.
 
 ## Building from source
 

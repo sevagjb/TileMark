@@ -68,6 +68,7 @@
 - See and sign out your signed-in devices
 - Encrypted backups, unlocked with your login password or a recovery key
 - Never visits addresses inside your network unless you allow it
+- Hardened: runs as a normal user, not root, with strict browser security rules and upload limits
 
 </td>
 <td valign="top">
@@ -134,7 +135,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | [Import and export](docs/import-export.md) | Bookmarks in, files out, duplicates |
 | [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API key |
 | [Broken links](docs/broken-links.md) | The weekly check |
-| [Accounts and security](docs/accounts-and-security.md) | People, two-factor sign-in, passkeys, devices, passwords, reset |
+| [Accounts and security](docs/accounts-and-security.md) | People, what an admin can do, two-factor sign-in, passkeys, devices, passwords, reset, uploads, container user |
 | [Backups](docs/backups.md) | Your own, daily, restoring |
 | [Home Assistant sensors](docs/home-assistant-sensors.md) | Sensors and notifications over MQTT |
 | [Settings](docs/settings.md) | Every option, card by card |

@@ -29,6 +29,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 COPY pages ./pages
 
+# TileMark runs as this normal user, not as root. The container starts as root only for
+# docker-entrypoint.sh, which gives the data folder to this user (or to PUID/PGID) and then
+# drops every root right before TileMark starts.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh \
+ && groupadd --gid 1000 tilemark \
+ && useradd --uid 1000 --gid 1000 --no-create-home --home-dir /app --shell /usr/sbin/nologin tilemark \
+ && command -v setpriv
+
 VOLUME /data
 EXPOSE 8080
 
@@ -38,5 +47,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=4)"]
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 # One worker on purpose: thumbnail fetching runs in a thread pool inside it.
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "8", "--timeout", "120", "app:app"]

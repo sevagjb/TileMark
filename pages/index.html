@@ -139,7 +139,7 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
   header { padding: 10px 12px 8px; }
   .bar { gap: 6px; row-gap: 8px; }
   .brand { margin-inline-end: auto; }
-  .bar > .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 9px; }
+  .bar > .btn, .bar .iowrap > .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 9px; }
   #importBtn, #exportBtn { display: none; }
   #searchBtn, .iowrap { display: inline-flex; }
   .bar.searching #searchBtn { border-color: var(--accent); color: var(--accent); }
@@ -162,7 +162,7 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 }
 @media (max-width: 380px) {  /* narrow phones: slightly smaller buttons so row 1 still fits */
   .bar { column-gap: 4px; }
-  .bar > .btn { min-width: 36px; height: 36px; padding: 0 6px; }
+  .bar > .btn, .bar .iowrap > .btn { min-width: 36px; height: 36px; padding: 0 6px; }
 }
 .lay-sections .layout { grid-template-columns: minmax(0, 1fr); }
 .lay-sections .side, .lay-sections #ptitle, .lay-sections #openAll, .lay-sections #sortSel { display: none; }
@@ -261,6 +261,76 @@ dialog.wide { width: min(760px, calc(100vw - 32px)); }
 .sess + .sess { border-top: 1px solid var(--line); }
 .sess div { flex: 1; min-width: 0; } .sess small { display: block; color: var(--muted); }
 kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+#accountBtn { min-width: 40px; display: inline-flex; align-items: center; justify-content: center; }
+#accountBtn[aria-expanded="true"], #settingsBtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+
+/* Your account and Settings: side panels that slide in from the right (from the left in a
+   right-to-left language), hanging from the bottom edge of the toolbar. --hdr is the height
+   of the toolbar, kept up to date by the script. */
+:root { --hdr: 64px; }
+dialog.drawer { position: fixed; top: var(--hdr); bottom: 0; inset-inline-start: auto; inset-inline-end: 0; margin: 0; z-index: 6;
+  width: min(460px, 100vw); max-width: 100vw; height: auto; max-height: none; padding: 0; border: 0; border-inline-start: 1px solid var(--line);
+  border-radius: 0; box-shadow: -14px 0 34px rgba(10,12,18,.14); flex-direction: column; overflow: hidden;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.2,.8,.2,1); }
+[dir=rtl] dialog.drawer { transform: translateX(-100%); box-shadow: 14px 0 34px rgba(10,12,18,.14); }
+dialog.drawer[open] { display: flex; }
+dialog.drawer.in, [dir=rtl] dialog.drawer.in { transform: none; }
+dialog.drawer.instant { transition: none; }
+.dhead { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px 20px; border-bottom: 1px solid var(--line); flex: none; }
+.dhead h2 { margin: 0; flex: 1; font-size: 18px; }
+.dclose { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px;
+  background: var(--bg); color: var(--text); cursor: pointer; flex: none; }
+.dclose:hover { background: var(--line); }
+.dclose:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dbody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 22px; }
+.dbody > .hint:first-child { margin-top: 12px; }
+.dfoot { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+.dfoot .hint { margin: 0; margin-inline-start: auto; }
+.dback { position: fixed; top: var(--hdr); left: 0; right: 0; bottom: 0; z-index: 5; background: rgba(10,12,18,.28); opacity: 0; transition: opacity .28s ease; }
+.dback.in { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { dialog.drawer, .dback { transition: none; } }
+
+/* the tile size: four steps */
+.seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-top: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 11px; }
+dialog .seg label { position: relative; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; min-height: 58px;
+  padding: 8px 4px; border-radius: 8px; cursor: pointer; color: var(--text); font-size: 12.5px; line-height: 1.2; text-align: center; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg .sz { width: var(--s); height: var(--s); border-radius: 3px; background: var(--muted); }
+dialog .seg label:has(input:checked) { background: var(--panel); box-shadow: var(--shadow); font-weight: 600; }
+.seg label:has(input:checked) .sz { background: var(--accent); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+dialog .lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+/* the start screen: no group open yet */
+.home { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px;
+  min-height: max(360px, calc(100vh - var(--hdr) - 110px)); padding: 30px 20px; }
+.home .wm { width: min(260px, 50vw); height: auto; color: var(--text); opacity: .06; margin-bottom: 14px; }
+.home p { margin: 0; }
+.home .home-hint { color: var(--muted); font-size: 15px; }
+.home .home-hint b { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
+.home .home-stats { color: var(--muted); font-size: 13px; letter-spacing: .01em; }
+.at-home .tools { display: none; }
+@media (max-width: 760px) { .home { min-height: 46vh; } .home .wm { width: min(180px, 46vw); } }
+
+/* Extra small: a dense grid of favicon and title, in both layouts */
+body.thumb-xs .list, body.thumb-xs .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+body.thumb-xs .card, body.thumb-xs .list .card { flex-direction: row; align-items: center; gap: 9px; min-height: 42px; padding: 0 6px 0 10px; border-radius: 9px; box-shadow: none; }
+body.thumb-xs .card:hover { transform: none; }
+body.thumb-xs .thumb, body.thumb-xs .list .thumb { flex: 0 0 22px; width: 22px; height: 22px; aspect-ratio: auto; border: 0; border-radius: 6px; }
+body.thumb-xs .thumb img.icon, body.thumb-xs .list .thumb img.icon { width: 22px; height: 22px; border-radius: 5px; }
+body.thumb-xs .thumb .letter, body.thumb-xs .list .thumb .letter { font-size: 12px; }
+body.thumb-xs .thumb .spin { width: 14px; height: 14px; border-width: 2px; }
+body.thumb-xs .body, body.thumb-xs .list .body { flex: 1; min-width: 0; padding: 0; display: block; }
+body.thumb-xs .title { -webkit-line-clamp: 1; font-size: 13.5px; font-weight: 550; }
+body.thumb-xs .note, body.thumb-xs .desc, body.thumb-xs .meta { display: none; }
+body.thumb-xs .actions, body.thumb-xs .list .actions { position: static; transform: none; flex: none; }
+body.thumb-xs .actions button:not(.ed) { display: none; }
+body.thumb-xs .actions button { width: 28px; height: 28px; background: transparent; color: var(--muted); }
+body.thumb-xs .actions button:hover { background: var(--line); color: var(--text); }
+body.thumb-xs .tick { top: 50%; transform: translateY(-50%); inset-inline-start: 7px; }
+body.thumb-xs .list .card.ins-before { box-shadow: -5px 0 0 -1px var(--accent); } body.thumb-xs .list .card.ins-after { box-shadow: 5px 0 0 -1px var(--accent); }
+[dir=rtl] body.thumb-xs .list .card.ins-before { box-shadow: 5px 0 0 -1px var(--accent); } [dir=rtl] body.thumb-xs .list .card.ins-after { box-shadow: -5px 0 0 -1px var(--accent); }
+@media (hover: none) and (max-width: 760px) { body.thumb-xs .list .body { padding: 0; } }
 </style>
 </head>
 <body>
@@ -279,7 +349,8 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <span class="iowrap"><button class="btn" id="ioBtn" title="Import and export" aria-label="Import and export" aria-haspopup="menu" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20V5"/><path d="M4 9l4-4 4 4"/><path d="M16 4v15"/><path d="M12 15l4 4 4-4"/></svg></button>
       <span class="iomenu" id="ioMenu" role="menu" hidden><button type="button" role="menuitem" data-go="importBtn">Import</button><button type="button" role="menuitem" data-go="exportBtn">Export</button></span></span>
     <button class="btn" id="helpBtn" title="Guide and help" aria-label="Guide and help"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg></button>
-    <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
+    <button class="btn" id="accountBtn" title="Your account" aria-label="Your account" aria-controls="accountDlg" aria-expanded="false"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.4-3.9 4.4-6 8-6s6.6 2.1 8 6"/></svg></button>
+    <button class="btn" id="settingsBtn" title="Settings" aria-label="Settings" aria-controls="settingsDlg" aria-expanded="false" hidden>⚙</button>
   </div>
 </header>
 
@@ -306,6 +377,11 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
         <button class="btn not-selecting" id="selBtn">Select</button></div>
       <div id="board"></div>
       <div class="empty" id="empty" hidden></div>
+      <div class="home" id="home" hidden>
+        <svg class="wm" viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" rx="28" fill="currentColor"/><g fill="var(--bg)"><rect x="22" y="22" width="35" height="35" rx="9"/><rect x="63" y="22" width="35" height="35" rx="9"/><rect x="22" y="63" width="35" height="35" rx="9"/><rect x="63" y="63" width="35" height="35" rx="9"/></g></svg>
+        <p class="home-hint" id="homeHint"></p>
+        <p class="home-stats" id="homeStats"></p>
+      </div>
     </section>
   </div>
 </main>
@@ -372,25 +448,10 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
   <div class="row"><button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="iGo">Import</button></div>
 </form></dialog>
 
-<dialog id="settingsDlg"><form method="dialog">
-  <h2>Settings</h2>
-  <details class="sec" data-k="layout"><summary><span class="st">Layout</span><span class="sum" id="sum-layout"></span></summary><div class="secb">
-    <label class="choice"><input type="radio" name="layout" value="panel"><div><b>Side panel</b><span>Groups in a column on the left; click one to list its links beside it.</span></div></label>
-    <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
-  </div></details>
-  <details class="sec" data-k="appearance"><summary><span class="st">Appearance</span><span class="sum" id="sum-appearance"></span></summary><div class="secb">
-    <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
-    <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option></select>
-    <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
-  </div></details>
-  <details class="sec" data-k="cards"><summary><span class="st">Cards</span><span class="sum" id="sum-cards"></span></summary><div class="secb">
-    <label for="setThumb">Picture size</label><select id="setThumb"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select>
-    <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
-    <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
-    <p class="hint">Layout, appearance and these card choices are saved with your account, so all your devices look the same.</p>
-    <p class="hint">Keyboard: <kbd>/</kbd> search, <kbd>n</kbd> add a link, <kbd>Esc</kbd> clear the search or leave a field.</p>
-  </div></details>
-  <details class="sec" data-k="account"><summary><span class="st">Your account</span><span class="sum" id="sum-account"></span></summary><div class="secb">
+<dialog id="accountDlg" class="drawer" aria-labelledby="accountHead">
+  <div class="dhead"><h2 id="accountHead">Your account</h2><button class="dclose" type="button" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="dbody">
+  <details class="sec" data-k="account"><summary><span class="st">Username and password</span><span class="sum" id="sum-account"></span></summary><div class="secb">
     <p class="hint" id="authState"></p>
     <div id="authForm">
     <label for="auUser">Username</label><input id="auUser" type="text" maxlength="60" autocomplete="username">
@@ -400,9 +461,35 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <div class="row" style="justify-content:flex-start;margin-top:12px">
     <button class="btn primary" type="button" id="auSave">Save account</button>
     </div>
-    <h4 class="sub">Delete all my links</h4>
-    <p class="hint">Deletes all your links, groups and pictures, for a fresh start. Your account, settings and passkeys stay. Download a backup first if you might want them back.</p>
-    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="clBackup">Download backup first</button><button class="btn danger" type="button" id="clGo">Delete all my links</button></div>
+  </div></details>
+  <details class="sec" data-k="layout"><summary><span class="st">Layout</span><span class="sum" id="sum-layout"></span></summary><div class="secb">
+    <label class="choice"><input type="radio" name="layout" value="panel"><div><b>Side panel</b><span>Groups in a column on the left; click one to list its links beside it.</span></div></label>
+    <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
+  </div></details>
+  <details class="sec" data-k="appearance"><summary><span class="st">Appearance</span><span class="sum" id="sum-appearance"></span></summary><div class="secb">
+    <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+    <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option></select>
+    <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
+  </div></details>
+  <details class="sec" data-k="cards"><summary><span class="st">Cards and tile size</span><span class="sum" id="sum-cards"></span></summary><div class="secb">
+    <span class="lbl" id="thumbLbl">Tile size</span>
+    <div class="seg" role="radiogroup" aria-labelledby="thumbLbl">
+      <label><input type="radio" name="thumb" value="xs"><span class="sz" style="--s:6px"></span><span>Extra small</span></label>
+      <label><input type="radio" name="thumb" value="s"><span class="sz" style="--s:9px"></span><span>Small</span></label>
+      <label><input type="radio" name="thumb" value="m"><span class="sz" style="--s:12px"></span><span>Medium</span></label>
+      <label><input type="radio" name="thumb" value="l"><span class="sz" style="--s:15px"></span><span>Large</span></label>
+    </div>
+    <p class="hint" id="thumbHelp"></p>
+    <p class="hint">The tile size is remembered on each device, so a phone and a computer can each have their own. A new device starts with the size you chose last.</p>
+    <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
+    <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
+    <p class="hint">Layout, appearance, the start screen and the other card choices are saved with your account, so all your devices look the same.</p>
+    <p class="hint">Keyboard: <kbd>/</kbd> search, <kbd>n</kbd> add a link, <kbd>Esc</kbd> clear the search, leave a field, or close a panel or the open group.</p>
+  </div></details>
+  <details class="sec" data-k="start"><summary><span class="st">Start screen</span><span class="sum" id="sum-start"></span></summary><div class="secb">
+    <label class="choice"><input type="radio" name="start" value="empty"><div><b>Clean start screen</b><span>No group is open when TileMark starts. Click a group to open it; click it again or press Esc to close it.</span></div></label>
+    <label class="choice"><input type="radio" name="start" value="last"><div><b>Reopen the last group</b><span>TileMark opens with the group that was open last.</span></div></label>
+    <p class="hint">Used with the Side panel layout.</p>
   </div></details>
   <details class="sec" data-k="tfa" id="tfBox"><summary><span class="st">Two-factor sign-in</span><span class="sum" id="sum-tfa"></span></summary><div class="secb">
     <p class="hint" id="tfState"></p>
@@ -464,8 +551,17 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <p class="hint err" id="rsPassErr" role="alert" hidden></p>
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rsGo">Restore from backup</button></div>
   </div></details>
-  <div id="adminBox" hidden>
-  <h3 class="group">Installation (admin)</h3>
+  <details class="sec danger-zone" data-k="clear"><summary><span class="st">Delete all my links</span></summary><div class="secb">
+    <p class="hint">Deletes all your links, groups and pictures, for a fresh start. Your account, settings and passkeys stay. Download a backup first if you might want them back.</p>
+    <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn" type="button" id="clBackup">Download backup first</button><button class="btn danger" type="button" id="clGo">Delete all my links</button></div>
+  </div></details>
+  <div class="dfoot"><button class="btn" type="button" id="auOut">Sign out</button><p class="hint" id="appVersion"></p></div>
+  </div>
+</dialog>
+<dialog id="settingsDlg" class="drawer" aria-labelledby="settingsHead">
+  <div class="dhead"><h2 id="settingsHead">Settings</h2><button class="dclose" type="button" title="Close" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="dbody">
+  <p class="hint">Settings for the whole installation. Only admins see them; your own choices are under Your account.</p>
   <details class="sec" data-k="people"><summary><span class="st">People</span><span class="sum" id="sum-people"></span></summary><div class="secb">
     <p class="hint">Everyone has their own links, groups, API key and backups, and nobody sees someone else's links in TileMark. An admin can still set a new password for an account and sign in with it (the person notices: their old password stops working), and the daily backups hold everyone's links.</p>
     <div id="userList"></div>
@@ -531,9 +627,8 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
     <div class="row" style="justify-content:flex-start;margin-top:12px"><button class="btn danger" type="button" id="rtGo">Reset TileMark</button></div>
   </div></details>
   </div>
-  <p class="hint" id="appVersion" style="text-align:end"></p>
-  <div class="row"><button class="btn left" type="button" id="auOut">Sign out</button><button class="btn primary" value="close">Done</button></div>
-</form></dialog>
+</dialog>
+<div class="dback" id="dback" hidden></div>
 
 <dialog id="secretDlg"><form method="dialog">
   <p id="secretMsg" style="white-space:pre-line;margin-top:0"></p>
@@ -548,13 +643,18 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8793a","#e5534b","#d6589f","#b455c9","#8e6ad8","#5b63d6","#a0714f","#7d8590","#4a5568","#c9a227"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
-let cfg = { layout: "panel", theme: "system", thumb: "m", open: "new", defgroup: "" };
+let cfg = { layout: "panel", theme: "system", thumb: "m", open: "new", defgroup: "", start: "empty" };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("tm.settings") || "{}")); } catch {}
 if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
+// The tile size is remembered per device (a phone and a computer can differ). The account
+// keeps the size chosen last, which a device uses until a size is picked on it.
+const THUMBS = ["xs", "s", "m", "l"];
+let devThumb = ""; try { devThumb = localStorage.getItem("tm.thumbDevice") || ""; } catch {}
+const thumbNow = () => THUMBS.includes(devThumb) ? devThumb : THUMBS.includes(cfg.thumb) ? cfg.thumb : "m";
 function applySettings() {
   try { localStorage.setItem("tm.settings", JSON.stringify(cfg)); } catch {}
-  document.body.classList.remove("lay-panel", "lay-sections", "thumb-s", "thumb-m", "thumb-l");
-  document.body.classList.add("lay-" + cfg.layout, "thumb-" + (["s", "m", "l"].includes(cfg.thumb) ? cfg.thumb : "m"));
+  document.body.classList.remove("lay-panel", "lay-sections", "thumb-xs", "thumb-s", "thumb-m", "thumb-l");
+  document.body.classList.add("lay-" + cfg.layout, "thumb-" + thumbNow());
   if (cfg.theme === "light" || cfg.theme === "dark") document.documentElement.dataset.theme = cfg.theme;
   else delete document.documentElement.dataset.theme;
 }
@@ -594,14 +694,14 @@ const group = id => S.groups.find(g => g.id === id);
 let prefsLoaded = false, prefsTimer = null;
 function savePrefs() {
   clearTimeout(prefsTimer);
-  prefsTimer = setTimeout(() => api("PUT", "api/prefs", { layout: cfg.layout, theme: cfg.theme, thumb: cfg.thumb, open: cfg.open, defgroup: cfg.defgroup, sorts }).catch(() => {}), 400);
+  prefsTimer = setTimeout(() => api("PUT", "api/prefs", { layout: cfg.layout, theme: cfg.theme, thumb: cfg.thumb, open: cfg.open, defgroup: cfg.defgroup, start: cfg.start, sorts }).catch(() => {}), 400);
 }
 function takePrefs(p) {
   prefsLoaded = true;
   if (!p || !Object.keys(p).length) { savePrefs(); return; }
   if (p.layout) cfg.layout = p.layout;
   if (p.theme) cfg.theme = p.theme;
-  for (const k of ["thumb", "open", "defgroup"]) if (k in p) cfg[k] = p[k];
+  for (const k of ["thumb", "open", "defgroup", "start"]) if (k in p) cfg[k] = p[k];
   if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} }
   applySettings();
 }
@@ -613,14 +713,18 @@ async function load() {
     $("brandVer").textContent = /^\d/.test(S.version) ? "v" + S.version : S.version;
     document.querySelector(".brand").title = "TileMark " + S.version;
   }
-  if (!prefsLoaded) takePrefs(S.prefs);
+  $("settingsBtn").hidden = !(S.me && S.me.is_admin);  // Settings holds only the installation's (admin) settings
+  if (!prefsLoaded) {
+    takePrefs(S.prefs);
+    if (cfg.start !== "last") filter = "";  // the clean start screen: no group open yet
+  }
   dupok = (S.prefs && S.prefs.dupok) || [];
-  if (filter === "none" ? !S.links.some(l => l.group_id === null) : !(filter in SPECIAL) && !group(+filter))
-    filter = S.groups.length ? String(S.groups[0].id) : "all";  // nothing (valid) chosen yet: open the first group
+  // "" is the start screen; a group or list that no longer exists also leads back to it
+  if (filter && (filter === "none" ? !S.links.some(l => l.group_id === null) : !(filter in SPECIAL) && !group(+filter))) filter = "";
   render();
   clearTimeout(timer);
   if (S.links.some(l => l.status === "pending") || (S.check && S.check.running)) timer = setTimeout(load, 2000);
-  if ($("settingsDlg").open) showCheck();
+  if (drawer) showCheck();
 }
 // Links can be added elsewhere (browser button, phone, API key, another device): fetch the
 // list again when this tab is shown again, and every 5 minutes while it is visible.
@@ -629,7 +733,11 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && Date.now() - lastLoad > 3000 && !document.querySelector("dialog[open]")) load();
 });
 setInterval(() => { if (document.visibilityState === "visible" && !selecting && !document.querySelector("dialog[open]")) load(); }, 5 * 60 * 1000);
-function setFilter(f) { filter = String(f); localStorage.setItem("tm.filter", filter); render(); }
+function setFilter(f) {
+  filter = String(f); localStorage.setItem("tm.filter", filter);
+  if (!filter && selecting) { selecting = false; selected.clear(); }  // nothing left to select on the start screen
+  render();
+}
 
 function visible() {
   const needle = q.trim().toLowerCase();
@@ -654,7 +762,11 @@ function sideItem(label, key, color, n, g) {
   c.append(el("span", { className: "dot" }), el("span", { className: "gname", textContent: label }), el("span", { className: "n", textContent: n }));
   if (g) { const b = el("button", { className: "edit", title: t("Edit group"), textContent: "✎" });
            b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); dragGroup(c, g); }
-  const pick = () => { if (q) { q = ""; $("search").value = ""; } setFilter(key); };
+  // clicking the open group (or list) again closes it, back to the start screen
+  const pick = () => {
+    if (q) { q = ""; $("search").value = ""; return setFilter(key); }
+    setFilter(filter === String(key) ? "" : key);
+  };
   c.onclick = pick;
   c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
   if (key === "none" || typeof key === "number") makeDrop(c, key);
@@ -784,7 +896,8 @@ function card(l) {
   };
   const th = el("div", { className: "thumb" });
   const letter = () => el("span", { className: "letter", textContent: (host(l.url)[0] || "?") });
-  if (l.thumb) { const img = el("img", { className: l.thumb_kind === "image" ? "full" : "icon", src: "thumbs/" + l.thumb, alt: "", loading: "lazy", draggable: false });
+  // Extra small shows a favicon at most: a page picture can't be made out at that size
+  if (l.thumb && (l.thumb_kind !== "image" || thumbNow() !== "xs")) { const img = el("img", { className: l.thumb_kind === "image" ? "full" : "icon", src: "thumbs/" + l.thumb, alt: "", loading: "lazy", draggable: false });
                  img.onerror = () => img.replaceWith(letter()); th.append(img); }
   else th.append(l.status === "pending" ? el("span", { className: "spin" }) : letter());
   const meta = el("div", { className: "meta" }, el("span", { className: "host", textContent: host(l.url) }));
@@ -795,7 +908,8 @@ function card(l) {
   const star = btn(l.pinned ? "★" : "☆", l.pinned ? t("Remove from favourites") : t("Add to favourites"),
     async () => { try { await api("PATCH", "api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
   if (l.pinned) star.classList.add("on");
-  act.append(star, btn("↗", t("Share"), () => shareLink(l)), btn("✎", t("Edit"), () => openLink(l)),
+  const ed = btn("✎", t("Edit"), () => openLink(l)); ed.classList.add("ed");  // the only button shown at Extra small
+  act.append(star, btn("↗", t("Share"), () => shareLink(l)), ed,
              btn("↻", t("Refresh thumbnail"), async () => { await api("POST", "api/links/" + l.id + "/refresh"); load(); }),
              btn("✕", t("Delete"), () => removeLink(l)));
   if (g && cfg.layout === "panel" && (!isGroupView() || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
@@ -853,9 +967,23 @@ function renderSelection() {
     el("option", { value: "none", textContent: t("No group") }));
   sel.disabled = $("selDelete").disabled = $("selRefresh").disabled = !selected.size;
 }
+// The start screen of the Side panel layout: the logo as a watermark, a hint and a short overview
+function renderHome() {
+  const hint = $("homeHint"), n = S.links.length;
+  if (!n) hint.replaceChildren(el("b", { textContent: t("No links yet") }), t("Paste a link above, or use Import to bring in your bookmarks all at once."));
+  else if (matchMedia("(hover: none)").matches) hint.replaceChildren(t("Choose a group to see its links."));
+  else { const [a, b] = t("Choose a group, or press {key} to search.").split("{key}");
+         hint.replaceChildren(a, el("kbd", { textContent: "/" }), b || ""); }
+  const g = S.groups.length, f = S.links.filter(l => l.pinned).length;
+  $("homeStats").textContent = !n ? "" : [n === 1 ? t("{n} link", { n }) : t("{n} links", { n }),
+    g ? (g === 1 ? t("{n} group", { n: g }) : t("{n} groups", { n: g })) : "",
+    f ? (f === 1 ? t("{n} favourite", { n: f }) : t("{n} favourites", { n: f })) : ""].filter(Boolean).join(" · ");
+}
 function render() {
   renderSelection();
   showDupCount();
+  const home = cfg.layout === "panel" && !filter && !q.trim();
+  $("home").hidden = !home; document.body.classList.toggle("at-home", home);
   if (cfg.layout === "sections") {
     fillSelect($("addGroup"), addGroupValue(null), t("No group"));
     return renderSections(visible());
@@ -879,6 +1007,7 @@ function render() {
   side.append(add);
 
   fillSelect($("addGroup"), addGroupValue(group(+filter) ? filter : null), t("No group"));
+  if (home) { $("board").replaceChildren(); $("empty").hidden = true; renderHome(); return; }
 
   const list = visible(), g = group(+filter), pt = $("ptitle");
   pt.replaceChildren();
@@ -920,7 +1049,7 @@ function showIo(on) { $("ioMenu").hidden = !on; $("ioBtn").setAttribute("aria-ex
 $("ioBtn").onclick = e => { e.stopPropagation(); showIo($("ioMenu").hidden); };
 for (const b of $("ioMenu").querySelectorAll("button")) b.onclick = () => { showIo(false); $(b.dataset.go).click(); };
 document.addEventListener("click", e => { if (!$("ioMenu").hidden && !e.target.closest(".iowrap")) showIo(false); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("ioMenu").hidden) { showIo(false); $("ioBtn").focus(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("ioMenu").hidden) { e.preventDefault(); showIo(false); $("ioBtn").focus(); } });
 $("searchBtn").onclick = () => showSearch(!document.querySelector(".bar").classList.contains("searching"));
 $("search").addEventListener("blur", () => { if (!$("search").value) setTimeout(() => { if (document.activeElement !== $("searchBtn")) showSearch(false); }, 150); });
 $("addGroup").addEventListener("change", e => { if (!group(+filter)) addGroupPicked = e.target.value; });
@@ -1041,7 +1170,7 @@ $("selDelete").onclick = async () => {
   if (!selected.size || !confirm((selected.size === 1 ? t("Delete {n} link?", {n: selected.size}) : t("Delete {n} links?", {n: selected.size})))) return;
   try { await api("POST", "api/links/bulk", { ids: [...selected], delete: true }); selected.clear(); load(); } catch (err) { toast(err.message); }
 };
-document.addEventListener("keydown", e => { if (e.key === "Escape" && selecting && !document.querySelector("dialog[open]")) $("selDone").click(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !e.defaultPrevented && selecting && !document.querySelector("dialog[open]")) { e.preventDefault(); $("selDone").click(); } });
 
 // settings: each section is a card, one open at a time (the last one is remembered),
 // and a closed card shows a short status in its title
@@ -1050,15 +1179,19 @@ const optText = id => { const o = $(id).selectedOptions[0]; return o ? o.textCon
 function sumPrefs() {
   setSum("layout", cfg.layout === "sections" ? t("Sections") : t("Side panel"));
   setSum("appearance", optText("setTheme") + " · " + TM_LANGS[tmLang()]);  // the language in use, also when following the browser
-  setSum("cards", optText("setThumb") + " · " + optText("setOpen"));
+  setSum("cards", t(SIZE_NAMES[thumbNow()]) + " · " + optText("setOpen"));
+  setSum("start", cfg.start === "last" ? t("Last group") : t("Clean"));
 }
+const SIZE_NAMES = { xs: "Extra small", s: "Small", m: "Medium", l: "Large" };
+const SIZE_HELP = { xs: "A dense grid: favicon and title only. The ✎ button opens a link's settings, with favourite, group and delete.",
+  s: "Small cards with a small picture.", m: "The standard size.", l: "Large cards with big pictures." };
 (function () {
   let open = [];
   try { open = JSON.parse(localStorage.getItem("tm.openSec") || "[]"); } catch {}
   for (const d of document.querySelectorAll("details.sec")) {
     d.open = d.dataset.k === open[0];
     d.addEventListener("toggle", () => {
-      if (d.open) for (const o of document.querySelectorAll("details.sec[open]")) if (o !== d) o.open = false;
+      if (d.open) for (const o of d.closest("dialog").querySelectorAll("details.sec[open]")) if (o !== d) o.open = false;
       const now = [...document.querySelectorAll("details.sec[open]")].map(x => x.dataset.k);
       try { localStorage.setItem("tm.openSec", JSON.stringify(now)); } catch {}
     });
@@ -1066,10 +1199,62 @@ function sumPrefs() {
 })();
 
 $("newGroupBtn").onclick = () => openGroup(null);
-$("settingsBtn").onclick = () => {
+// ---------------------------------------------------------------- side panels
+// Your account and Settings slide in under the toolbar. They are non-modal dialogs, so the
+// toolbar stays usable (its button closes the panel again); the page behind is dimmed and
+// inert. A click beside the panel, ✕ or Esc closes it.
+let drawer = null, drawerTimer = null;
+const DRAWER_BTN = { accountDlg: "accountBtn", settingsDlg: "settingsBtn" };
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+// while recovery codes or the recovery key are on screen (shown only once), the panel stays open
+const mayCloseDrawer = d => !(d.id === "accountDlg" && !$("tfCodes").hidden) && !(d.id === "settingsDlg" && !$("ekKey").hidden);
+new ResizeObserver(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"))
+  .observe(document.querySelector("header"));
+function openDrawer(id) {
+  const d = $(id);
+  if (drawer === d) return closeDrawer();
+  const swap = !!drawer;
+  if (drawer) {  // switching panels: the other one goes at once, the new one appears in its place
+    if (!mayCloseDrawer(drawer)) return toast(t("First save what is shown, then confirm below."));
+    drawer.classList.remove("in"); drawer.close(); $(DRAWER_BTN[drawer.id]).setAttribute("aria-expanded", "false");
+  }
+  clearTimeout(drawerTimer);
+  drawer = d;
+  d.classList.toggle("instant", swap || reducedMotion()); if (swap) d.classList.add("in");
+  d.show();
+  $("dback").hidden = false; document.querySelector("main").inert = true;
+  $(DRAWER_BTN[id]).setAttribute("aria-expanded", "true");
+  d.querySelector(".dclose").focus({ preventScroll: true });
+  requestAnimationFrame(() => requestAnimationFrame(() => { d.classList.add("in"); $("dback").classList.add("in"); d.classList.remove("instant"); }));
+}
+function closeDrawer() {
+  const d = drawer; if (!d) return;
+  if (!mayCloseDrawer(d)) return toast(t("First save what is shown, then confirm below."));
+  drawer = null;
+  d.classList.remove("in"); $("dback").classList.remove("in");
+  document.querySelector("main").inert = false;
+  const b = $(DRAWER_BTN[d.id]); b.setAttribute("aria-expanded", "false");
+  if (d.contains(document.activeElement)) b.focus({ preventScroll: true });
+  clearTimeout(drawerTimer);
+  drawerTimer = setTimeout(() => { if (drawer !== d) d.close(); if (!drawer) $("dback").hidden = true; }, reducedMotion() ? 0 : 300);
+}
+for (const d of document.querySelectorAll("dialog.drawer")) d.querySelector(".dclose").onclick = closeDrawer;
+$("dback").onclick = closeDrawer;
+document.addEventListener("keydown", e => {  // first, before the other Esc uses
+  if (e.key !== "Escape" || !drawer || document.querySelector("dialog[open]:not(.drawer)")) return;  // a window on top closes first
+  e.preventDefault(); e.stopImmediatePropagation(); closeDrawer();
+}, true);
+
+$("accountBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); sumPrefs(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
-  $("setThumb").value = cfg.thumb; $("setThumb").onchange = e => { cfg.thumb = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
+  const showSize = () => { $("thumbHelp").textContent = t(SIZE_HELP[thumbNow()]); };
+  for (const r of document.querySelectorAll('input[name="thumb"]')) { r.checked = r.value === thumbNow(); r.onchange = () => {
+    devThumb = cfg.thumb = r.value; try { localStorage.setItem("tm.thumbDevice", devThumb); } catch {}
+    applySettings(); savePrefs(); render(); sumPrefs(); showSize(); }; }
+  showSize();
+  for (const r of document.querySelectorAll('input[name="start"]')) { r.checked = r.value === (cfg.start === "last" ? "last" : "empty");
+    r.onchange = () => { cfg.start = r.value; savePrefs(); sumPrefs(); }; }
   const sl = $("setLang");  // the languages come from pages/lang/languages.json
   if (sl.options.length === 1) for (const l of TM_LANG_LIST) sl.add(Object.assign(new Option(l.name, l.code), { lang: l.code, dir: l.dir || "auto" }));
   sl.value = storedLang(); sl.onchange = async e => {
@@ -1081,10 +1266,11 @@ $("settingsBtn").onclick = () => {
   fillSelect($("setDefGroup"), group(+cfg.defgroup) ? cfg.defgroup : "", t("No group"));
   $("setDefGroup").onchange = e => { cfg.defgroup = e.target.value; addGroupPicked = null; savePrefs(); render(); };
   sumPrefs();
-  $("settingsDlg").showModal();
+  openDrawer("accountDlg");
   showCheck();
   refreshAuth();
 };
+$("settingsBtn").onclick = () => { openDrawer("settingsDlg"); showCheck(); refreshAuth(); };
 async function refreshAuth() {
   let a; try { a = await api("GET", "api/auth"); } catch (e) { return; }
   $("authState").textContent = a.ha
@@ -1092,7 +1278,8 @@ async function refreshAuth() {
     : t(a.is_admin ? "Signed in as {name} (admin)." : "Signed in as {name}.", { name: a.username });
   $("auCurWrap").hidden = $("auOut").hidden = !!a.ha;
   $("auUser").value = a.username || ""; $("auPass").value = ""; $("auCur").value = "";
-  $("adminBox").hidden = !a.is_admin;
+  $("settingsBtn").hidden = !a.is_admin;
+  if (!a.is_admin && drawer === $("settingsDlg")) closeDrawer();
   setSum("account", a.username + (a.is_admin ? " · " + t("admin") : ""));
   setSum("save", a.has_key ? t("API key active") : "");
   showBackupHow(a);
@@ -1201,7 +1388,7 @@ $("rsGo").onclick = async () => {
   const fd = new FormData(); fd.append("file", f); fd.append("password", $("rsPass").value);
   $("rsGo").disabled = true;
   try { const r = await api("POST", "api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
-        $("settingsDlg").close(); toast(t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups })); load(); }
+        closeDrawer(); toast(t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups })); load(); }
   catch (e) { if (/password/i.test(e.message)) missingPassword(e.message); toast(e.message); } finally { $("rsGo").disabled = false; }
 };
 const GUIDE = "https://sevagjb.github.io/TileMark/guide.html";
@@ -1365,8 +1552,10 @@ document.addEventListener("keydown", e => {
   if (document.querySelector("dialog[open]") || e.ctrlKey || e.metaKey || e.altKey) return;
   const t = e.target, typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
   if (e.key === "Escape") {
+    if (e.defaultPrevented) return;  // already used: a menu or the selection was closed
     if (t === $("search") && $("search").value) { $("search").value = ""; q = ""; render(); }
     else if (typing) t.blur();
+    else if (cfg.layout === "panel" && filter && !q.trim()) setFilter("");  // close the open group
     return;
   }
   if (typing) return;
@@ -1503,8 +1692,8 @@ $("rtGo").onclick = async () => {
 // Except where closing would lose something: the import review (closing it discards the
 // duplicates) and Settings while the recovery codes are on screen (shown only once).
 const outsideBox = (d, e) => { const r = d.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
-const mayClose = d => d.id !== "reviewDlg" && !(d.id === "settingsDlg" && (!$("tfCodes").hidden || !$("ekKey").hidden));
-for (const d of document.querySelectorAll("dialog")) {
+const mayClose = d => d.id !== "reviewDlg";
+for (const d of document.querySelectorAll("dialog:not(.drawer)")) {  // the side panels close their own way
   let pressedOutside = false;  // a drag that starts inside (selecting text) and ends outside does not close it
   d.addEventListener("mousedown", e => { pressedOutside = e.target === d && outsideBox(d, e); });
   d.addEventListener("click", e => { if (pressedOutside && e.target === d && outsideBox(d, e) && mayClose(d)) d.close(); pressedOutside = false; });

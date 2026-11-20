@@ -8,13 +8,13 @@ You don't have to open TileMark to save a link. There are three ways to send a p
 | [Phone app](#phone) | Android, from any app's Share menu | TileMark on an HTTPS address |
 | [API key](#api-key) | Scripts, iPhone Shortcuts, automations | An API key from Settings |
 
-All three are found in **⚙ Settings → Save from anywhere**. Links saved this way show up in an open TileMark tab as soon as you switch back to it.
+All three are found in **👤 Your account → Save from anywhere**. Links saved this way show up in an open TileMark tab as soon as you switch back to it.
 
 > **Home Assistant app:** these need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
 
 ## Browser button
 
-1. Open **⚙ Settings → Save from anywhere**.
+1. Open **👤 Your account → Save from anywhere**.
 2. **Drag** the **🔖 Save to TileMark** button onto your browser's favorites/bookmarks bar. (Clicking it in Settings does nothing; it only works from the bar.)
 3. On any web page, click the button in your bar. A small window opens with the page's address and title filled in.
 4. Pick a **group**, add a **note** if you like, and press **Save**.
@@ -38,7 +38,7 @@ TileMark then opens full-screen from its own icon, like an app.
 
 An API key lets a script, a Shortcut or an automation add links to **your** account. It can only **add links** and **read your group names**: it cannot read, change or delete your links.
 
-1. In **⚙ Settings → Save from anywhere**, press **Create API key**.
+1. In **👤 Your account → Save from anywhere**, press **Create API key**.
 2. **Copy it now**: it is shown only once. If you lose it, press **Replace API key** for a new one (the old one stops working).
 3. **Remove API key** switches it off.
 

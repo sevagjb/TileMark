@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.8.0
+
+A new look: a calm start screen, side panels instead of the Settings window, and a fourth tile size. Nothing needs to be done after updating.
+
+### New
+- **A clean start screen.** In the Side panel layout no group is open when TileMark starts: the TileMark logo shows faintly in the middle, with *Choose a group, or press / to search* and how many links, groups and favourites you have. **Click the open group again** (or press **Esc**) to close it and go back to this screen; this works for Favourites, All links and the other lists too. Prefer the old way? **👤 Your account → Start screen → Reopen the last group**.
+- **Your account**, a new **👤** button next to ⚙. It holds everything that is yours: username and password, layout, appearance and language, cards and tile size, start screen, two-factor sign-in, passkeys, signed-in devices, save from anywhere, link check, your backup and restore, delete all my links, and Sign out.
+- **Extra small tiles.** The tile size now has four steps: **Extra small**, **Small**, **Medium** and **Large** (**👤 Your account → Cards and tile size**). Extra small is a dense grid with only the site's icon and the title, for long lists; its only card button is ✎, whose window has favourite, group and delete.
+
+### Changed
+- **Side panels instead of a window in the middle.** Your account and Settings slide in from the right, just under the toolbar, and slide back when closed: with ✕, **Esc**, a click beside the panel, or the same button again. In Arabic they come from the left. Confirmations such as *Delete all my links* stay in the middle of the screen.
+- **⚙ Settings is for admins only** and holds the installation's settings: People, Installation, Restore the whole installation, Home Assistant sensors and Reset TileMark. Other people no longer see the ⚙ button; everything they need is under 👤 Your account. As before, the server refuses admin changes from anyone who isn't an admin.
+- **The tile size is remembered per device**, so a phone and a computer can each have their own. A new device starts with the size you chose last; after updating, every device keeps the size it had.
+- The guide describes the start screen, the two panels and the tile sizes, with new pictures, and every path that moved now reads **👤 Your account → …**.
+
+### Fixed
+- On narrow phones (380 px or less) the import/export button is now the same size as the buttons next to it.
+
 ## 2.7.1
 
 A hardening update: it finishes the security review that started with 2.6.1. Nothing changes in how you use TileMark, and nothing needs to be done after updating.

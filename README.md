@@ -120,7 +120,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 <td width="50%"><img src="docs/images/import-review.webp" alt="Reviewing duplicates after an import"><br><sub><b>Import review</b>: duplicates are listed, never lost</sub></td>
 </tr>
 <tr>
-<td><img src="docs/images/settings.webp" alt="Settings as cards"><br><sub><b>Settings</b>: one card per topic, with its status</sub></td>
+<td><img src="docs/images/settings.webp" alt="Your account as a side panel with cards"><br><sub><b>Your account</b>: a side panel with one card per topic</sub></td>
 <td><img src="docs/images/arabic.webp" alt="TileMark in Arabic"><br><sub><b>Six languages</b>, including Arabic right to left</sub></td>
 </tr>
 </table>

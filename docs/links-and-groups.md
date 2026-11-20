@@ -15,13 +15,14 @@ Everything you do day to day happens on one page. This guide walks through it fr
 | **Import** | Brings in browser bookmarks, a list of links or a TileMark file. See [Import and export](import-export.md). |
 | **Export** | Downloads your links as a TileMark file or a bookmarks file. |
 | **Light bulb** | Opens this guide on the website. |
-| **⚙** | Opens [Settings](settings.md). |
+| **👤** | Opens [Your account](settings.md): your sign-in and your own choices, in a panel that slides in from the right. |
+| **⚙** | Opens [Settings](settings.md#-settings-admin), the settings of the whole installation. Only admins see this button. |
 
 ## Saving a link
 
 Paste an address into the field at the top and press **Enter**. The card appears at once; TileMark then fetches the page's **title**, a short **description** and a **picture** in the background, and the card fills in a moment later.
 
-- **Which group?** The list next to the field. It starts on the group you are looking at, or on the group set under **⚙ Settings → Cards → New links go to**.
+- **Which group?** The list next to the field. It starts on the group you are looking at, or on the group set under **👤 Your account → Cards and tile size → New links go to**.
 - **Several links at once:** paste several lines into the field. TileMark opens the import window with them filled in.
 - **No `http://`?** Addresses typed without it get `https://`. Local ones (`192.168.x.x`, `localhost`, `name.local`) get `http://`.
 - **Tracking removed:** parameters that only track you (`utm_…`, `fbclid`, `gclid`, YouTube's and Spotify's `si` …) are removed before saving.
@@ -56,7 +57,7 @@ A card can also show:
 - a **Broken** label, if the last link check could not reach it (see [Broken links](broken-links.md));
 - the **group's name**, in lists that mix groups (All links, Favourites, search results).
 
-Whether a click opens the link in a new tab or in the same tab is set in **⚙ Settings → Cards**. A middle-click or Ctrl-click always opens a new tab.
+Whether a click opens the link in a new tab or in the same tab is set in **👤 Your account → Cards and tile size**. A middle-click or Ctrl-click always opens a new tab.
 
 ### Editing a link
 
@@ -100,13 +101,21 @@ Below your groups, the left column has lists TileMark keeps for you:
 
 ## Two layouts
 
-Choose in **⚙ Settings → Layout**. The choice is saved with your account, so all your devices look the same.
+Choose in **👤 Your account → Layout**. The choice is saved with your account, so all your devices look the same.
 
 **Side panel** (shown above): groups in a column on the left; click one to list its links beside it. Compact, and quick with many groups.
+
+When TileMark opens, no group is open yet: you see the TileMark logo, a short hint and how many links, groups and favourites you have. Click a group to open it, and **click it again** (or press **Esc**) to close it and go back to that clean screen. Prefer to start where you left off? Choose **Reopen the last group** in **👤 Your account → Start screen**.
+
+![The start screen with no group open](images/start-screen.webp)
 
 **Sections:** all groups on one page as collapsible sections with large picture cards. **Collapse all** and **Expand all** fold every section at once; click a section's title to fold just that one.
 
 ![The Sections layout in dark mode](images/sections-dark.webp)
+
+## Tile size
+
+**👤 Your account → Cards and tile size → Tile size** has four steps: **Extra small**, **Small**, **Medium** and **Large**. **Extra small** is a dense grid with only the site's icon and the title, handy for long lists; its only card button is **✎**, which opens the link's window with favourite, group and delete. Each device remembers its own size, so your phone can show Extra small while your computer shows Medium.
 
 ## Ordering and sorting
 
@@ -137,11 +146,11 @@ On a phone, tap the magnifier next to the name to open the search field. It clos
 | --- | --- |
 | `/` | Jump to the search field |
 | `n` | Jump to the field for adding a link |
-| `Esc` | Clear the search, leave a field, or close a window |
+| `Esc` | Clear the search, leave a field, close a window or panel, or close the open group |
 
 ## Light, dark and languages
 
-**⚙ Settings → Appearance** chooses light, dark, or **Follow my device**, and the language: English, Nederlands (Dutch), Deutsch (German), Français (French), Español (Spanish) or العربية (Arabic, shown right to left). By default TileMark follows your browser's language. See [Settings](settings.md#appearance).
+**👤 Your account → Appearance** chooses light, dark, or **Follow my device**, and the language: English, Nederlands (Dutch), Deutsch (German), Français (French), Español (Spanish) or العربية (Arabic, shown right to left). By default TileMark follows your browser's language. See [Settings](settings.md#appearance).
 
 ## On a phone
 

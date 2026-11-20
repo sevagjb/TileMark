@@ -22,7 +22,7 @@ pages/lang/ar.json          Arabic
   ```
 
 - **An empty translation (`""`)** means "not translated yet", and that text is shown in English.
-- **`languages.json`** decides which languages exist and their order in **⚙ Settings → Appearance → Language**:
+- **`languages.json`** decides which languages exist and their order in **👤 Your account → Appearance → Language**:
 
   ```json
   { "code": "ar", "name": "العربية", "locale": "ar-u-nu-latn", "dir": "rtl" }
@@ -47,7 +47,7 @@ TileMark sends only the chosen language to the browser, so more languages don't 
 
    This creates `pages/lang/fr.json` with every text and an empty translation, and adds Français to the end of `languages.json`. For a right-to-left language, add `--rtl`.
 2. Translate the texts in `fr.json`. You can do this in steps: empty ones stay English.
-3. Restart TileMark (or rebuild the image) and choose the language in **⚙ Settings → Appearance → Language**.
+3. Restart TileMark (or rebuild the image) and choose the language in **👤 Your account → Appearance → Language**.
 4. See how far it is:
 
    ```

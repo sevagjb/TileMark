@@ -18,7 +18,7 @@ Yes. The admin adds each person in **⚙ Settings → People**. Everyone gets th
 Yes, in any phone browser. With HTTPS you can also install it as an app, and on Android share links to it from other apps. See [Save from anywhere](save-from-anywhere.md#phone).
 
 **Which languages?**
-English, Dutch, German, French, Spanish and Arabic. Want to add yours? See [Translating TileMark](translating.md). TileMark follows your browser's language; you can choose another in **⚙ Settings → Appearance**.
+English, Dutch, German, French, Spanish and Arabic. Want to add yours? See [Translating TileMark](translating.md). TileMark follows your browser's language; you can choose another in **👤 Your account → Appearance**.
 
 ## Setting up
 
@@ -29,7 +29,7 @@ In the container log: the stack's log in Dockge, or `docker logs tilemark`. Show
 Yes, with a passkey from your phone, computer or security key, on TileMark's HTTPS address. See [Passkeys](accounts-and-security.md#passkeys).
 
 **How do I start over?**
-To empty only your own library: **⚙ Settings → Your account → Delete all my links**. To reset the whole installation (admin): **⚙ Settings → Reset TileMark**. Both are explained in [Accounts and security](accounts-and-security.md#resetting-tilemark-admin).
+To empty only your own library: **👤 Your account → Delete all my links**. To reset the whole installation (admin): **⚙ Settings → Reset TileMark**. Both are explained in [Accounts and security](accounts-and-security.md#resetting-tilemark-admin).
 
 **I forgot my password.**
 Another admin can set a new one in **People**. If you are the only admin, run `docker exec tilemark python app.py reset-login` on the server. See [Forgot your password?](accounts-and-security.md#forgot-your-password)
@@ -47,7 +47,7 @@ As long as an admin still knows their password, nothing is lost: make a new one 
 Sign in with one of your recovery codes, or ask an admin to use **People → Turn off 2FA**.
 
 **Which version am I running?**
-It is shown under the TileMark name at the top left, and at the bottom of Settings.
+It is shown under the TileMark name at the top left, and at the bottom of **👤 Your account**.
 
 **The data folder's files now belong to user 1000.**
 That's expected since 2.7.1: TileMark runs as a normal user instead of root. See [Container user](accounts-and-security.md#container-user).
@@ -99,4 +99,4 @@ They share one device ID. Press **New ID** in one of them. See [Several TileMark
 
 ## Something else?
 
-Ask a question or report a problem in the [issues](https://github.com/sevagjb/tilemark/issues). Mention your TileMark version (bottom of **⚙ Settings**) and whether you use Docker or Home Assistant.
+Ask a question or report a problem in the [issues](https://github.com/sevagjb/tilemark/issues). Mention your TileMark version (bottom of **👤 Your account**) and whether you use Docker or Home Assistant.

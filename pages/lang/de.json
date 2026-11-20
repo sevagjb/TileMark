@@ -547,7 +547,6 @@
   "Settings for the whole installation. Only admins see them; your own choices are under Your account.": "Einstellungen für die ganze Installation. Nur Admins sehen sie; deine eigenen Optionen findest du unter Dein Konto.",
   "Last group": "Letzte Gruppe",
   "Clean": "Aufgeräumt",
-  "A dense grid: favicon and title only. The ✎ button opens a link's settings, with favourite, group and delete.": "Ein dichtes Raster: nur Favicon und Titel. Die Taste ✎ öffnet die Einstellungen eines Links, mit Favorit, Gruppe und Löschen.",
   "Small cards with a small picture.": "Kleine Karten mit einem kleinen Bild.",
   "The standard size.": "Die Standardgröße.",
   "Large cards with big pictures.": "Große Karten mit großen Bildern.",
@@ -557,5 +556,6 @@
   "{n} group": "{n} Gruppe",
   "{n} groups": "{n} Gruppen",
   "{n} favourite": "{n} Favorit",
-  "{n} favourites": "{n} Favoriten"
+  "{n} favourites": "{n} Favoriten",
+  "Side panel: a slim list, one link per line, with the address on the right. Sections: a dense grid of small tiles with only the icon and the title.": "Seitenleiste: eine schlanke Liste, ein Link pro Zeile, mit der Adresse rechts. Abschnitte: ein dichtes Raster kleiner Kacheln mit nur Symbol und Titel."
 }

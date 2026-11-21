@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.9.1
+
+### New
+- **Admins pick from a list when sharing.** In a group's **✎ → Share with**, admins get the list of accounts as they type (or with the arrow in the field). Admins already see every account under **People**, so this shows them nothing new.
+- **Show the list to everyone (admin setting, off by default).** **⚙ Settings → Installation → Show the list of accounts to everyone when sharing a group**. Off: everyone who isn't an admin types the exact username, as in 2.9.0, so the usernames on the server stay private. On: everyone picks from the list, handy in a household where everyone knows each other.
+
+### Changed
+- The README, the website's front page and the Home Assistant app's documentation now describe shared groups, and the guide explains the new setting in **Links and groups**, **Settings** and **Accounts and security**.
+
 ## 2.9.0
 
 Shared groups: show a group to someone else on the same TileMark. Nothing needs to be done after updating; nothing is shared until you share it.

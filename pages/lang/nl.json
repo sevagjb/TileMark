@@ -585,5 +585,8 @@
   "Copies are your own links: they stay when the sharing ends.": "Kopieën zijn je eigen links: ze blijven als het delen stopt.",
   "Leave this group": "Deze groep verlaten",
   "The copy is your own link: it stays when the sharing ends.": "De kopie is je eigen link: die blijft als het delen stopt.",
-  "Copy": "Kopiëren"
+  "Copy": "Kopiëren",
+  "Pick or type a username": "Kies of typ een gebruikersnaam",
+  "Show the list of accounts to everyone when sharing a group": "De lijst met accounts aan iedereen tonen bij het delen van een groep",
+  "Off by default: then only admins pick from the list, and everyone else types the exact username, so the usernames on this TileMark stay private. Turn it on when everyone with an account knows each other, such as a household.": "Standaard uit: dan kiezen alleen beheerders uit de lijst en typt iedereen anders de exacte gebruikersnaam, zodat de gebruikersnamen op deze TileMark privé blijven. Zet het aan als iedereen met een account elkaar kent, zoals in een huishouden."
 }

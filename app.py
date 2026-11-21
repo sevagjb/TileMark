@@ -621,6 +621,13 @@ def fetch_private():
     return get_setting("fetch_private", "off") == "on"
 
 
+def share_list_for(user):
+    """May this user pick from the list of accounts when sharing a group? Admins always
+    (they see every account under People anyway); everyone else only when an admin has
+    turned on "share_list" - off by default, so usernames stay private."""
+    return bool(user and (user["is_admin"] or get_setting("share_list", "off") == "on"))
+
+
 def safe_get(url, headers=UA, timeout=12, params=None):
     """Like requests.get(url, stream=True), with the rules above. The caller closes
     the response. Raises Blocked for a refused address."""
@@ -2583,9 +2590,11 @@ def state():
     check.update(enabled=get_setting("linkcheck", "on") == "on",
                  last=max(int(get_setting("linkcheck_last", "0")), int(get_user_setting(uid, "linkcheck_last", "0"))))
     out = dict(groups=groups, links=links, shared_groups=shared_groups, shared_links=shared_links, check=check, prefs=_prefs(uid), version=APP_VERSION,
-               me={"username": g.user["username"], "is_admin": bool(g.user["is_admin"])})
+               me={"username": g.user["username"], "is_admin": bool(g.user["is_admin"]),
+                   "share_list": share_list_for(g.user)})
     if g.user["is_admin"]:
-        out["admin"] = {"fetch_private": fetch_private(), "daily_backup": daily_backup_on(),
+        out["admin"] = {"fetch_private": fetch_private(), "share_list": get_setting("share_list", "off") == "on",
+                        "daily_backup": daily_backup_on(),
                         "backup_last": int(get_setting("backup_last", "0")), "backups": len(list_backups()),
                         "addon": HA_ADDON}
     return jsonify(out)
@@ -2623,6 +2632,8 @@ def save_settings():
         set_setting("fetch_private", "on" if d["fetch_private"] else "off")
     if "daily_backup" in d:
         set_setting("daily_backup", "on" if d["daily_backup"] else "off")
+    if "share_list" in d:
+        set_setting("share_list", "on" if d["share_list"] else "off")
     return jsonify(ok=True)
 
 
@@ -2915,6 +2926,17 @@ def _share_miss(uid):
         if len(_share_misses) > 5000:
             _share_misses.clear()
         _share_misses.setdefault(uid, []).append(time.time())
+
+
+@app.get("/api/share/accounts")
+def share_accounts():
+    """The other accounts' usernames, for picking who to share with: admins always,
+    everyone else only when the admin turned the list on. Usernames only."""
+    if not share_list_for(g.user):
+        return jsonify(error="Type the username of the account to share with."), 403
+    with db() as c:
+        rows = c.execute("SELECT username FROM users WHERE id != ? ORDER BY username COLLATE NOCASE", (me(),)).fetchall()
+    return jsonify(accounts=[r["username"] for r in rows])
 
 
 @app.get("/api/groups/<int:gid>/shares")

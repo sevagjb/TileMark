@@ -106,7 +106,9 @@ You can share a group with someone else who has an account on the same TileMark.
 ### Sharing (the owner)
 
 1. Press **✎** next to the group.
-2. Under **Share with**, type their **exact username** and press **Share**. There is no list to pick from, so nobody sees which other accounts exist.
+2. Under **Share with**, enter their **username** and press **Share**:
+   - **Admins** can pick it from the list of accounts that opens as you type (or with the arrow in the field).
+   - **Everyone else** types the **exact username**, so nobody learns which other accounts exist. An admin can show the list to everyone with **⚙ Settings → Installation → Show the list of accounts to everyone when sharing a group**, for a household where everyone knows each other.
 3. The group now shows **⇄** in your list. You can share one group with several people.
 
 To **stop sharing**, open **✎** again and press **Stop sharing** next to their name. The group and its links disappear from their TileMark straight away.

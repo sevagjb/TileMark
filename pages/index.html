@@ -436,7 +436,7 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
   <div id="gPosWrap"><label for="gPos">Place in the list</label><select id="gPos"></select></div>
   <div id="gShareWrap" hidden>
     <label for="gShareUser">Share with</label>
-    <div class="addrow"><input id="gShareUser" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Username of another account">
+    <div class="addrow"><input id="gShareUser" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Username of another account" list="gShareList"><datalist id="gShareList"></datalist>
       <button class="btn" type="button" id="gShareAdd">Share</button></div>
     <p class="hint">They can see this group's links, with their titles, notes and pictures, but can't change anything. Stop sharing at any time.</p>
     <div id="gShares"></div>
@@ -628,6 +628,8 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
     <p class="hint" id="dbState"></p>
     <label class="check"><input id="fpOn" type="checkbox"> Fetch titles and pictures for local network addresses (192.168.x.x, nas.local, …)</label>
     <p class="hint">Off by default. When on, anyone with an account can make TileMark open pages inside your network. Turn it on only if you trust everyone with an account. Local links can always be saved; without this they show only their address.</p>
+    <label class="check"><input id="slOn" type="checkbox"> Show the list of accounts to everyone when sharing a group</label>
+    <p class="hint">Off by default: then only admins pick from the list, and everyone else types the exact username, so the usernames on this TileMark stay private. Turn it on when everyone with an account knows each other, such as a household.</p>
   </div></details>
   <details class="sec" data-k="fullrestore"><summary><span class="st">Restore the whole installation</span><span class="sum" id="sum-fullrestore"></span></summary><div class="secb">
     <p class="hint">Daily backups hold every account. Restoring one puts the whole installation back to that day; everyone signs in again afterwards. A safety copy of the current state is made first and listed here as "before restore", so a restore can be undone.</p>
@@ -1183,8 +1185,8 @@ function openGroup(g) {
       b.style.setProperty("--c", c); b.setAttribute("aria-label", t("Colour {c}", { c })); b.onclick = () => { pickedColor = c; draw(); }; return b; }), wrap);
   };
   draw();
-  $("gShareWrap").hidden = !g; $("gShareUser").value = ""; $("gShares").replaceChildren();
-  if (g) refreshShares(g);
+  $("gShareWrap").hidden = !g; $("gShareUser").value = ""; $("gShares").replaceChildren(); $("gShareList").replaceChildren();
+  if (g) { refreshShares(g); fillShareList(); }
   $("groupDlg").showModal(); $("gName").focus();
 }
 
@@ -1203,6 +1205,15 @@ async function refreshShares(g) {
     return el("div", { className: "sess" }, el("div", {}, el("b", { textContent: sh.username }),
       el("small", { textContent: t("shared {date}", { date: fmtDate(sh.created_at) }) })), b);
   }));
+}
+// Admins (or everyone, when an admin turned it on) pick from the accounts on this TileMark;
+// others type the exact username. The server decides; this only fills the suggestions.
+async function fillShareList() {
+  const canPick = !!(S.me && S.me.share_list);
+  $("gShareUser").placeholder = t(canPick ? "Pick or type a username" : "Username of another account");
+  if (!canPick) return;
+  try { const r = await api("GET", "api/share/accounts");
+        $("gShareList").replaceChildren(...r.accounts.map(u => el("option", { value: u }))); } catch (e) {}
 }
 $("gShareAdd").onclick = async () => {
   const g = editingGroup, username = $("gShareUser").value.trim();
@@ -1269,7 +1280,7 @@ function showCheck() {
   const c = S.check || {}, n = S.links.filter(l => l.broken).length;
   $("ckOn").checked = !!c.enabled; $("ckNow").disabled = !!c.running;
   if (S.admin) {
-    $("fpOn").checked = !!S.admin.fetch_private; $("dbOn").checked = !!S.admin.daily_backup;
+    $("fpOn").checked = !!S.admin.fetch_private; $("dbOn").checked = !!S.admin.daily_backup; $("slOn").checked = !!S.admin.share_list;
     setSum("install", [c.enabled ? t("Weekly check") : "", S.admin.daily_backup ? t("Daily backups") : ""].filter(Boolean).join(" · ") || t("Off"));
     $("dbState").textContent = (S.admin.backup_last ? t("Last daily backup: {when} ({n} kept).", { when: fmtDate(S.admin.backup_last, true), n: S.admin.backups }) + " " : t("No daily backup yet.") + " ")
       + t("Each holds every account; to restore one, stop TileMark and unzip it into the data folder.") + (S.admin.addon ? " " + t("Home Assistant's own backups already include TileMark.") : "");
@@ -1287,6 +1298,7 @@ function showCheck() {
 }
 $("ckOn").onchange = async e => { try { await api("POST", "api/settings", { linkcheck: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("dbOn").onchange = async e => { try { await api("POST", "api/settings", { daily_backup: e.target.checked }); load(); } catch (err) { toast(err.message); } };
+$("slOn").onchange = async e => { try { await api("POST", "api/settings", { share_list: e.target.checked }); load(); } catch (err) { toast(err.message); } };
 $("fpOn").onchange = async e => {
   if (e.target.checked && !confirm(t("Allow TileMark to open addresses inside your network to fetch titles and pictures?\n\nEveryone with an account can then make TileMark reach devices on your network."))) { e.target.checked = false; return; }
   try { await api("POST", "api/settings", { fetch_private: e.target.checked }); toast(e.target.checked ? t("Local addresses will be fetched. Use ↻ to refresh existing local links.") : t("Local addresses will no longer be fetched.")); load(); }

@@ -165,6 +165,7 @@ More in [Accounts and security](accounts-and-security.md#adding-people-admin).
 | --- | --- | --- |
 | **Check everyone's links automatically once a week** | On | The weekly [link check](broken-links.md) for all accounts. |
 | **Keep a daily backup of the whole installation** | On (off in Home Assistant) | Daily copies of everything in `data/backups`, the last 7 kept. The status line shows the last one. See [Backups](backups.md#daily-backups-of-the-whole-installation). |
+| **Show the list of accounts to everyone when sharing a group** | Off | When off, only admins pick from the list of accounts when [sharing a group](links-and-groups.md#sharing-a-group); everyone else types the exact username, so the usernames on this TileMark stay private. Turn it on when everyone with an account knows each other. |
 | **Fetch titles and pictures for local network addresses** | Off | Lets TileMark visit addresses inside your network (`192.168.x.x`, `nas.local` …). Turn it on only if you trust everyone with an account. See [Local addresses](accounts-and-security.md#local-addresses). |
 
 ## Restore the whole installation

@@ -29,7 +29,7 @@
 - **Links you can see.** Every link gets the picture and title its site publishes, so you find things at a glance instead of reading a list of names.
 - **Organised your way.** Coloured groups in your own order, favourites on top, notes on cards, and two layouts to choose from.
 - **Everywhere you are.** One page in any browser, on any device. Save from a browser button, your phone's Share menu, or a script.
-- **Yours, and private.** Runs on your own server with one container and one data folder. No cloud service, no tracking. Each person in your home gets their own private links, and backups are encrypted with your login password.
+- **Yours, and private.** Runs on your own server with one container and one data folder. No cloud service, no tracking. Each person in your home gets their own private links, shares a group only when they choose to, and backups are encrypted with your login password.
 - **Tidy by itself.** Duplicates are recognised, tracking junk is stripped from addresses, and a weekly check finds links that stopped working.
 - **At home in Home Assistant.** Install it as an app with its own sidebar page, and get sensors and notifications through MQTT.
 
@@ -46,6 +46,7 @@
 - Select many links to move, refresh or delete together
 - Search across titles, addresses, notes and groups
 - Your own picture for any card (upload or paste)
+- Share a group with someone else on the same TileMark: they can view and copy, only you change it
 
 </td>
 <td width="50%" valign="top">
@@ -131,12 +132,12 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Install, first account, first links, updating, HTTPS |
 | [Home Assistant app](docs/home-assistant-add-on.md) | Sidebar, accounts, own address, backups |
-| [Links and groups](docs/links-and-groups.md) | Everything on the main page |
+| [Links and groups](docs/links-and-groups.md) | Everything on the main page, and sharing a group |
 | [Import and export](docs/import-export.md) | Bookmarks in, files out, duplicates |
 | [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API key |
 | [Broken links](docs/broken-links.md) | The weekly check |
 | [Accounts and security](docs/accounts-and-security.md) | People, what an admin can do, two-factor sign-in, passkeys, devices, passwords, reset, uploads, container user |
-| [Backups](docs/backups.md) | Your own, daily, restoring |
+| [Backups](docs/backups.md) | Your own, daily, restoring, and what happens to shared groups |
 | [Home Assistant sensors](docs/home-assistant-sensors.md) | Sensors and notifications over MQTT |
 | [Settings](docs/settings.md) | Every option, card by card |
 | [Questions and troubleshooting](docs/faq.md) | Common questions and fixes |

@@ -121,7 +121,7 @@ Two panels open from the top right and slide in from the side: **👤 Your accou
 | **Cards and tile size** | Extra small (a slim list in Side panel, small tiles in Sections), Small, Medium or Large (per device), open links in a new tab or this tab, the group new links go to. |
 | **Start screen** | Start with no group open (the clean screen with the logo), or reopen the last group. |
 | **Signed-in devices** | See and sign out the browsers signed in on TileMark's own address. |
-| **Save from anywhere** | The browser button, the phone app and the API key. |
+| **Save from anywhere** | The browser button, the phone app and your API keys. |
 | **Link check** | Check now, and refresh all titles and pictures. |
 | **Backup and restore** | Download a backup of your own links, or restore one. |
 | **Delete all my links** | Empties your own library. |

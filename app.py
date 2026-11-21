@@ -185,6 +185,24 @@ def init_db():
             pinned INTEGER NOT NULL DEFAULT 0,
             opened_at INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (user_id, link_id))""")
+        # 2.11: several API keys per account (one per phone, Shortcut, browser), each with a
+        # name, its own "last used" and its own Remove. Only a hash of each key is kept; the
+        # prefix ("tm_Ab12…") is the start of the key, so it can be recognised in the list.
+        c.execute("""CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            hash TEXT NOT NULL UNIQUE,
+            prefix TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            last_used INTEGER NOT NULL DEFAULT 0)""")
+        c.execute("CREATE INDEX IF NOT EXISTS api_keys_user ON api_keys(user_id)")
+        # The one key of 2.10 and earlier (also in an older backup that was just restored)
+        # becomes the account's first key, so Shortcuts and the extension keep working.
+        for r in c.execute("SELECT id, api_key_hash FROM users WHERE api_key_hash != ''").fetchall():
+            c.execute("INSERT OR IGNORE INTO api_keys (user_id, name, hash, created_at) VALUES (?,?,?,?)",
+                      (r["id"], OLD_KEY_NAME, r["api_key_hash"], int(time.time())))
+            c.execute("UPDATE users SET api_key_hash='' WHERE id=?", (r["id"],))
         for r in c.execute("SELECT id, url FROM links WHERE ukey = ''").fetchall():  # links saved before 2.1
             c.execute("UPDATE links SET ukey=? WHERE id=?", (url_key(r["url"]), r["id"]))
 
@@ -1519,15 +1537,25 @@ def current_user():
     return row
 
 
+def _key_hash(key):
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
 def key_user():
-    """The user whose API key this request carries ("Authorization: Bearer <key>")."""
+    """The user whose API key this request carries ("Authorization: Bearer <key>"). Any of
+    the account's keys will do; the key that was used gets its "last used" updated."""
     sent = request.headers.get("Authorization", "")
     if not sent.startswith("Bearer ") or not sent[7:].strip():
         return None
-    digest = hashlib.sha256(sent[7:].strip().encode()).hexdigest()
+    digest = _key_hash(sent[7:].strip())
     with db() as c:
-        row = c.execute("SELECT * FROM users WHERE api_key_hash=?", (digest,)).fetchone()
-    return row if row and secrets.compare_digest(row["api_key_hash"], digest) else None
+        k = c.execute("SELECT id, user_id, hash, last_used FROM api_keys WHERE hash=?", (digest,)).fetchone()
+        if not k or not secrets.compare_digest(k["hash"], digest):
+            return None
+        now = int(time.time())
+        if now - k["last_used"] > 60:
+            c.execute("UPDATE api_keys SET last_used=? WHERE id=?", (now, k["id"]))
+        return c.execute("SELECT * FROM users WHERE id=?", (k["user_id"],)).fetchone()
 
 
 def me():
@@ -1968,7 +1996,7 @@ def auth_status():
     u = g.user
     return jsonify(signed_in=bool(u), setup=not u and setup_needed(),
                    username=u["username"] if u else "", is_admin=bool(u and u["is_admin"]),
-                   has_key=bool(u and u["api_key_hash"]), ha=bool(u) and via_ingress(), addon=HA_ADDON,
+                   has_key=bool(u) and _key_count(u["id"]) > 0, api_keys=_key_count(u["id"]) if u else 0, ha=bool(u) and via_ingress(), addon=HA_ADDON,
                    totp=bool(u and u["totp_secret"]), recovery_left=_recovery_left(u) if u else 0, version=APP_VERSION,
                    personal_key=bool(u and u["uk_pub"]), passkeys=_passkey_count(u["id"]) if u else 0)
 
@@ -2213,6 +2241,11 @@ def _passkey_origin():
 NO_PASSKEY_HERE = "Passkeys only work on TileMark's HTTPS address with a name, not on an IP address or plain http."
 
 
+def _key_count(uid):
+    with db() as c:
+        return c.execute("SELECT COUNT(*) FROM api_keys WHERE user_id=?", (uid,)).fetchone()[0]
+
+
 def _passkey_count(uid):
     with db() as c:
         return c.execute("SELECT COUNT(*) FROM passkeys WHERE user_id=?", (uid,)).fetchone()[0]
@@ -2421,20 +2454,62 @@ def update_account():
     return jsonify(ok=True)
 
 
-@app.post("/api/apikey")
+# API keys: an account can have several, one for each thing that saves links (the iPhone
+# Shortcut, the browser extension on each computer, a script), so one can be removed
+# without breaking the others. Every key can do the same two things (add a link, read
+# group names); a key is shown once, and only its hash is stored.
+MAX_API_KEYS = 20
+OLD_KEY_NAME = "Default"  # name of a key made before 2.11, when there was only one
+
+
+def _key_name(d):
+    return re.sub(r"\s+", " ", str(d.get("name", ""))).strip()[:60]
+
+
+@app.get("/api/apikeys")
+def list_api_keys():
+    with db() as c:
+        rows = c.execute("SELECT id, name, prefix, created_at, last_used FROM api_keys WHERE user_id=? ORDER BY created_at, id",
+                         (me(),)).fetchall()
+    return jsonify(keys=[dict(r) for r in rows], max=MAX_API_KEYS)
+
+
+@app.post("/api/apikeys")
 def make_api_key():
-    """Create (or replace) your API key. It is shown once; only its hash is stored."""
+    """Create a new key next to the ones you have. It is shown once; only its hash is stored."""
+    d = request.get_json(force=True, silent=True) or {}
+    name = _key_name(d)
+    if not name:
+        return jsonify(error="Give the key a name, for example iPhone or Edge on the laptop."), 400
     key = "tm_" + secrets.token_urlsafe(32)
     with db() as c:
-        c.execute("UPDATE users SET api_key_hash=? WHERE id=?", (hashlib.sha256(key.encode()).hexdigest(), me()))
-    return jsonify(key=key)
+        if c.execute("SELECT COUNT(*) FROM api_keys WHERE user_id=?", (me(),)).fetchone()[0] >= MAX_API_KEYS:
+            return jsonify(error="You have the most API keys an account can have. Remove one you no longer use first."), 400
+        if c.execute("SELECT 1 FROM api_keys WHERE user_id=? AND name=? COLLATE NOCASE", (me(), name)).fetchone():
+            return jsonify(error="You already have a key with that name."), 409
+        kid = c.execute("INSERT INTO api_keys (user_id, name, hash, prefix, created_at) VALUES (?,?,?,?,?)",
+                        (me(), name, _key_hash(key), key[:7], int(time.time()))).lastrowid
+    return jsonify(key=key, id=kid, name=name)
 
 
-@app.delete("/api/apikey")
-def drop_api_key():
+@app.patch("/api/apikeys/<int:kid>")
+def rename_api_key(kid):
+    name = _key_name(request.get_json(force=True, silent=True) or {})
+    if not name:
+        return jsonify(error="Give the key a name, for example iPhone or Edge on the laptop."), 400
     with db() as c:
-        c.execute("UPDATE users SET api_key_hash='' WHERE id=?", (me(),))
-    return jsonify(ok=True)
+        if c.execute("SELECT 1 FROM api_keys WHERE user_id=? AND name=? COLLATE NOCASE AND id != ?", (me(), name, kid)).fetchone():
+            return jsonify(error="You already have a key with that name."), 409
+        n = c.execute("UPDATE api_keys SET name=? WHERE id=? AND user_id=?", (name, kid, me())).rowcount
+    return (jsonify(ok=True), 200) if n else (jsonify(error="Not found"), 404)
+
+
+@app.delete("/api/apikeys/<int:kid>")
+def drop_api_key(kid):
+    """Removes one key: whatever uses it stops working, the other keys keep working."""
+    with db() as c:
+        n = c.execute("DELETE FROM api_keys WHERE id=? AND user_id=?", (kid, me())).rowcount
+    return (jsonify(ok=True), 200) if n else (jsonify(error="Not found"), 404)
 
 
 @app.post("/api/account/clear")
@@ -3979,7 +4054,7 @@ RESET_KEEP = ("schema", "wall_titles_fixed", "cookie_key_v2")  # facts about the
 def wipe_installation(delete_backups=False):
     mqtt.forget()  # the device leaves Home Assistant while the connection is still there
     with db() as c:
-        for table in ("links", "groups", "passkeys", "bk_grants", "sessions", "user_settings", "users"):
+        for table in ("links", "groups", "passkeys", "api_keys", "bk_grants", "sessions", "user_settings", "users"):
             c.execute(f"DELETE FROM {table}")
         c.execute(f"DELETE FROM settings WHERE key NOT IN ({','.join('?' * len(RESET_KEEP))})", RESET_KEEP)
         key = secrets.token_hex(32)  # every cookie, and every "known device", stops working

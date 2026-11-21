@@ -55,7 +55,7 @@
 - Import bookmarks from Edge, Chrome, Firefox, Brave or Safari
 - Duplicates are listed for review, never dropped silently
 - Export to a TileMark file or a browser bookmarks file
-- Browser button, Android Share menu, and an API key
+- Browser button, Android Share menu, and API keys (one per device or app)
 - Browser extension for Microsoft Edge: toolbar button, right-click menu and keyboard shortcut
 - Recently added and recently opened lists
 
@@ -135,7 +135,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | [Home Assistant app](docs/home-assistant-add-on.md) | Sidebar, accounts, own address, backups |
 | [Links and groups](docs/links-and-groups.md) | Everything on the main page, and sharing a group |
 | [Import and export](docs/import-export.md) | Bookmarks in, files out, duplicates |
-| [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API key |
+| [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API keys |
 | [Browser extension](docs/browser-extension.md) | Toolbar button and right-click menu for Edge |
 | [Broken links](docs/broken-links.md) | The weekly check |
 | [Accounts and security](docs/accounts-and-security.md) | People, what an admin can do, two-factor sign-in, passkeys, devices, passwords, reset, uploads, container user |

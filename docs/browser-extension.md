@@ -23,7 +23,7 @@ It works with your **own** TileMark: the extension stores nothing itself and tal
 
 The settings page opens by itself after installing. Later you find it with **⚙** in the extension's window, or by right-clicking the toolbar icon → **Extension options**.
 
-1. In TileMark, open **👤 Your account → Save from anywhere** and press **Create API key**. Copy the key (it is shown only once).
+1. In TileMark, open **👤 Your account → Save from anywhere** and press **Create API key**. Name it after this browser (for example *Edge on the laptop*) and copy the key (it is shown only once).
 2. In the extension's settings, fill in:
    - **TileMark address**: the address you open TileMark at, for example `https://tilemark.example.com`. Typing just `192.168.1.20:8080` works too: an IP address, `localhost` or a name ending in `.local`, `.lan`, `.home` or `.internal` is taken as `http://`, anything else as `https://`.
    - **API key**: paste the key.
@@ -31,7 +31,7 @@ The settings page opens by itself after installing. Later you find it with **⚙
 
 > **Home Assistant app:** use TileMark's **own address** (its direct port), not the Home Assistant sidebar. The sidebar needs a Home Assistant sign-in that the extension doesn't have. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
 
-> **One API key per account.** The extension, an iPhone Shortcut and your scripts share it. **Replace API key** in TileMark makes the old key stop working everywhere; paste the new one in each place.
+> **One key per browser.** Since TileMark 2.11 an account can have several API keys. Give the extension in each browser its own key, separate from your iPhone Shortcut and scripts: removing one key in TileMark then stops only that browser, and the list in TileMark shows when each key was last used. With TileMark 2.10 or earlier there is one key per account, shared by everything that uses it.
 
 ## Saving
 
@@ -56,7 +56,7 @@ To change the keyboard shortcut, use **Change it** in the extension's settings (
 | Message | What to do |
 | --- | --- |
 | Can't reach TileMark at … | Check the address, and that this computer can reach it (open it in a tab). |
-| TileMark did not accept the API key | The key was replaced or removed in TileMark. Create a new one and paste it in the settings. |
+| TileMark did not accept the API key | The key was removed in TileMark (or, before 2.11, replaced). Create a new one and paste it in the settings. |
 | TileMark answered with a redirect | Something in front of TileMark sends the extension to a login page: an Authelia/Authentik/basic-auth rule on your reverse proxy, or the Home Assistant sidebar address. Use TileMark's own address, and let `/api/` through without that login (the API key protects it). |
 | That address answered, but not like TileMark | The address points at something else. Use the address you open TileMark at. |
 | TileMark refused this request | A proxy or firewall rule blocks the request, or the TileMark version is old. Let `/api/` through, or update TileMark. |

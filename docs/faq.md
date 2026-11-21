@@ -94,7 +94,7 @@ The owner stopped sharing it, deleted it, or restored a backup without it. Links
 **The update doesn't show up in Home Assistant.**
 Home Assistant checks for updates now and then. Force it: **Settings → Apps → App store → ⋮ → Check for updates**.
 
-**The browser button or API key doesn't work in Home Assistant.**
+**The browser button or an API key doesn't work in Home Assistant.**
 They need TileMark's own address, not the sidebar. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
 
 **TileMark stays empty in a Webpage card on my dashboard.**

@@ -183,12 +183,12 @@ actions:
 
 ## TileMark's own address (optional)
 
-Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button** (save the page you are on with one click), the **phone app** (install TileMark and share links to it from other apps) and the **API key** (for scripts and iPhone Shortcuts). To use them:
+Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button** (save the page you are on with one click), the **phone app** (install TileMark and share links to it from other apps) and **API keys** (for the browser extension, iPhone Shortcuts and scripts, one key per device). To use them:
 
 1. On this app's **Configuration** tab, under **Network**, enter a port for TileMark (for example `8080`), save, and restart the app.
 2. In TileMark (from the sidebar), open **👤 Your account → Username and password** and **set a password**. Accounts made through Home Assistant have none until you set one.
 3. Open `http://<your-home-assistant>:<port>` and sign in with your TileMark username and that password.
-4. Set up the browser button, the phone app or the API key from **👤 Your account → Save from anywhere** on that page.
+4. Set up the browser button, the phone app or your API keys from **👤 Your account → Save from anywhere** on that page.
 
 Leave the port empty if you only use the sidebar; TileMark can then only be reached through Home Assistant. For the **phone app** the address must be **HTTPS**, for example through a reverse proxy. Step by step: <https://sevagjb.github.io/TileMark/save-from-anywhere.html>
 

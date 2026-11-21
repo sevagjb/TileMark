@@ -2436,3 +2436,239 @@ def test_privacy_wording_is_honest():
         if f.endswith((".html", ".md", ".json")):
             text = open(os.path.join(ROOT, f), encoding="utf-8").read()
             assert "the admin included" not in text and "can't see anyone else's links" not in text, f
+
+
+# ------------------------------------------------------------- shared groups (2.9)
+@pytest.fixture
+def shared(two):
+    """The `two` fixture, with admin's group ga shared with bob (view only), plus carol
+    who has nothing shared with her."""
+    A, admin, bob, ga, gb, la, lb = two
+    add_user(admin, "carol")
+    carol = sign_in(A, "carol", "userpass11")
+    admin.patch(f"/api/links/{la}", json={"note": "admin's note"})
+    r = admin.post(f"/api/groups/{ga}/shares", json={"username": "bob"})
+    assert r.status_code == 201 and r.get_json()["username"] == "bob"
+    return A, admin, bob, carol, ga, gb, la, lb
+
+
+def _row(A, link_id):
+    with A.db() as c:
+        r = c.execute("SELECT * FROM links WHERE id=?", (link_id,)).fetchone()
+        return dict(r) if r else None
+
+
+def test_shared_group_is_visible_to_member(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    sb = bob.get("/api/state").get_json()
+    assert [g["id"] for g in sb["groups"]] == [gb] and [l["id"] for l in sb["links"]] == [lb]  # own lists unchanged
+    assert [(g["id"], g["owner"]) for g in sb["shared_groups"]] == [(ga, "admin")]
+    [sl] = sb["shared_links"]
+    assert sl["id"] == la and sl["shared"] == 1 and sl["note"] == "admin's note"
+    assert "user_id" not in sl and "custom_thumb" not in sl and sl["pinned"] == 0
+    assert bob.get(f"/thumbs/{la}-a.webp").status_code == 200  # the picture of a shared link
+    sa = admin.get("/api/state").get_json()
+    assert sa["groups"][0]["shares"] == 1 and sa["shared_groups"] == [] and sa["shared_links"] == []
+    assert admin.get(f"/api/groups/{ga}/shares").get_json()["shares"][0]["username"] == "bob"
+
+
+def test_stranger_sees_nothing_of_a_shared_group(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    sc = carol.get("/api/state").get_json()
+    assert sc["shared_groups"] == [] and sc["shared_links"] == [] and sc["links"] == []
+    assert carol.get(f"/thumbs/{la}-a.webp").status_code == 404
+    assert carol.post(f"/api/shared/links/{la}/pin", json={"pinned": True}).status_code == 404
+    assert carol.post("/api/links/copy", json={"ids": [la]}).status_code == 400
+    assert carol.delete(f"/api/shared/{ga}").status_code == 404
+    carol.post(f"/api/links/{la}/opened")
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM link_marks").fetchone()[0] == 0
+
+
+def test_member_cannot_change_a_shared_group(shared):
+    """Every way of changing a link or a group refuses someone the group is shared with."""
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    before, group_before = _row(A, la), admin.get("/api/state").get_json()["groups"][0]
+    assert bob.patch(f"/api/links/{la}", json={"title": "hacked", "note": "x", "pinned": True}).status_code == 404
+    assert bob.patch(f"/api/links/{lb}", json={"group_id": ga}).status_code == 404  # can't move own links into it
+    assert bob.post(f"/api/links/{la}/refresh").status_code == 404
+    assert bob.delete(f"/api/links/{la}/thumb").status_code == 404
+    assert bob.post(f"/api/links/{la}/thumb", data={"file": (io.BytesIO(b"x"), "a.png")}).status_code == 404
+    bob.delete(f"/api/links/{la}")
+    for body in ({"ids": [la], "delete": True}, {"ids": [la], "group_id": gb}, {"ids": [la], "refresh": True},
+                 {"ids": [lb], "group_id": ga}):
+        bob.post("/api/links/bulk", json=body)
+    bob.post("/api/links/order", json={"ids": [la, lb]})
+    assert bob.post("/api/duplicates/merge", json={"keep": lb, "remove": [la]}).status_code in (400, 404)
+    assert bob.post("/api/duplicates/merge", json={"keep": la, "remove": [lb]}).status_code in (400, 404)
+    assert bob.patch(f"/api/groups/{ga}", json={"name": "taken", "color": "#000000"}).status_code == 404
+    assert bob.delete(f"/api/groups/{ga}?links=1").status_code == 404
+    bob.post("/api/groups/order", json={"ids": [ga, gb]})
+    r = bob.post("/api/links", json={"url": "https://sneak.example", "group_id": ga})
+    assert r.status_code in (200, 201) and _row(A, r.get_json()["id"])["group_id"] is None  # saved ungrouped, as bob's
+    bob.post("/api/import", data={"file": (io.BytesIO(b"https://sneak2.example"), "l.txt"), "group_id": str(ga)})
+    assert bob.get(f"/api/groups/{ga}/shares").status_code == 404
+    assert bob.post(f"/api/groups/{ga}/shares", json={"username": "carol"}).status_code == 404
+    assert bob.delete(f"/api/groups/{ga}/shares/2").status_code == 404
+    after = _row(A, la)
+    assert after == before
+    assert admin.get("/api/state").get_json()["groups"][0] == group_before
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM links WHERE group_id=?", (ga,)).fetchone()[0] == 1
+        assert c.execute("SELECT COUNT(*) FROM group_shares").fetchone()[0] == 1
+
+
+def test_member_favourites_and_opened_are_personal(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    assert bob.post(f"/api/shared/links/{la}/pin", json={"pinned": True}).status_code == 200
+    assert bob.post(f"/api/links/{la}/opened").status_code == 200
+    sl = bob.get("/api/state").get_json()["shared_links"][0]
+    assert sl["pinned"] == 1 and sl["opened_at"] > 0
+    assert _row(A, la)["pinned"] == 0 and _row(A, la)["opened_at"] == 0  # the owner's link is untouched
+    al = admin.get("/api/state").get_json()["links"][0]
+    assert al["pinned"] == 0 and al["opened_at"] == 0
+    assert bob.post(f"/api/shared/links/{lb}/pin", json={"pinned": True}).status_code == 404  # own links: the normal way
+    bob.post(f"/api/shared/links/{la}/pin", json={"pinned": False})
+    assert bob.get("/api/state").get_json()["shared_links"][0]["pinned"] == 0
+
+
+def test_share_by_exact_username(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    assert admin.post(f"/api/groups/{ga}/shares", json={"username": "nobody"}).status_code == 404
+    assert admin.post(f"/api/groups/{ga}/shares", json={"username": ""}).status_code == 400
+    assert admin.post(f"/api/groups/{ga}/shares", json={"username": "admin"}).status_code == 400
+    assert admin.post(f"/api/groups/{ga}/shares", json={"username": "BOB"}).status_code == 201  # again: no double
+    assert admin.post(f"/api/groups/{ga}/shares", json={"username": "Carol"}).status_code == 201
+    assert sorted(s["username"] for s in admin.get(f"/api/groups/{ga}/shares").get_json()["shares"]) == ["bob", "carol"]
+    assert admin.post(f"/api/groups/{gb}/shares", json={"username": "carol"}).status_code == 404  # bob's group
+    for i in range(10):  # guessing usernames is slowed down
+        admin.post(f"/api/groups/{ga}/shares", json={"username": f"guess{i}"})
+    assert admin.post(f"/api/groups/{ga}/shares", json={"username": "guess"}).status_code == 429
+    assert sign_in(A, "admin", "adminpass1")  # signing in is not affected
+
+
+def test_stop_sharing_and_leave(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    bob.post(f"/api/shared/links/{la}/pin", json={"pinned": True})
+    bob_id = admin.get(f"/api/groups/{ga}/shares").get_json()["shares"][0]["id"]
+    assert admin.delete(f"/api/groups/{ga}/shares/{bob_id}").status_code == 200
+    sb = bob.get("/api/state").get_json()
+    assert sb["shared_groups"] == [] and sb["shared_links"] == [] and [l["id"] for l in sb["links"]] == [lb]
+    assert bob.get(f"/thumbs/{la}-a.webp").status_code == 404
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM link_marks").fetchone()[0] == 0  # bob's marks went with it
+    admin.post(f"/api/groups/{ga}/shares", json={"username": "bob"})
+    assert bob.delete(f"/api/shared/{ga}").status_code == 200
+    assert bob.get("/api/state").get_json()["shared_groups"] == []
+    assert bob.delete(f"/api/shared/{ga}").status_code == 404
+    assert admin.get("/api/state").get_json()["groups"][0]["shares"] == 0
+
+
+def test_copy_to_my_links(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    r = bob.post("/api/links/copy", json={"ids": [la], "group_id": gb}).get_json()
+    assert r["copied"] == 0 and r["already"] == 1  # bob already has that page: said, not dropped silently
+    new = admin.post("/api/links", json={"url": "https://only-admin.example", "group_id": ga, "note": "n"}).get_json()["id"]
+    with A.db() as c:
+        c.execute("UPDATE links SET thumb=?, thumb_kind='image', status='ok', title='Only admin' WHERE id=?", (f"{new}-x.webp", new))
+    with open(os.path.join(A.THUMB_DIR, f"{new}-x.webp"), "wb") as f:
+        f.write(b"pic2")
+    assert bob.post("/api/links/copy", json={"ids": [new], "group_id": ga}).status_code == 404  # only into own groups
+    r = bob.post("/api/links/copy", json={"ids": [new, la], "group_id": gb}).get_json()
+    assert r["copied"] == 1 and r["already"] == 1
+    mine = next(l for l in bob.get("/api/state").get_json()["links"] if l["url"] == "https://only-admin.example")
+    assert mine["group_id"] == gb and mine["note"] == "n" and mine["title"] == "Only admin"
+    assert mine["thumb"] and mine["thumb"] != f"{new}-x.webp" and bob.get("/thumbs/" + mine["thumb"]).status_code == 200
+    admin.delete(f"/api/groups/{ga}?links=1")  # the owner deletes everything: bob's copy stays his
+    sb = bob.get("/api/state").get_json()
+    assert sb["shared_groups"] == [] and any(l["id"] == mine["id"] for l in sb["links"])
+    assert bob.get("/thumbs/" + mine["thumb"]).status_code == 200
+    assert carol.post("/api/links/copy", json={"ids": [mine["id"]]}).status_code == 400  # bob's own link: not carol's
+
+
+def test_deleting_group_or_account_ends_sharing(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    admin.post(f"/api/groups/{ga}/shares", json={"username": "carol"})
+    bob.post(f"/api/shared/links/{la}/pin", json={"pinned": True})
+    bob_id = admin.get(f"/api/groups/{ga}/shares").get_json()["shares"][0]["id"]
+    assert admin.delete(f"/api/users/{bob_id}").status_code == 200
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM group_shares").fetchone()[0] == 1  # only carol's is left
+        assert c.execute("SELECT COUNT(*) FROM link_marks").fetchone()[0] == 0
+    admin.delete(f"/api/groups/{ga}")  # links stay (ungrouped), the sharing ends
+    assert carol.get("/api/state").get_json()["shared_links"] == []
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM group_shares").fetchone()[0] == 0
+
+
+def test_delete_all_my_links_ends_own_shares_only(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    bob.post("/api/account/clear", json={"current_password": "userpass11"})
+    assert bob.get("/api/state").get_json()["shared_groups"][0]["id"] == ga  # someone else's group is not bob's to delete
+    admin.post("/api/account/clear", json={"current_password": "adminpass1"})
+    assert bob.get("/api/state").get_json()["shared_groups"] == []
+
+
+def test_personal_backup_holds_no_sharing(shared):
+    """A member's backup and export hold only their own links; an owner's backup holds the
+    shared group's links but not who it was shared with."""
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    plain = bob.post("/api/backup", json={"plain": True}).get_data()
+    db_bytes = zipfile.ZipFile(io.BytesIO(plain)).read("tilemark.db")
+    p = os.path.join(A.DATA_DIR, "check.db")
+    open(p, "wb").write(db_bytes)
+    con = sqlite3.connect(p)
+    assert [r[0] for r in con.execute("SELECT id FROM links")] == [lb]
+    tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "group_shares" not in tables and "link_marks" not in tables
+    con.close()
+    exp = bob.get("/api/export?format=json").get_data(as_text=True)
+    assert "admin's note" not in exp and len(json.loads(exp)["links"]) == 1  # only bob's own link
+    assert "admin's note" not in bob.get("/api/export").get_data(as_text=True)
+    plain = admin.post("/api/backup", json={"plain": True}).get_data()
+    open(p, "wb").write(zipfile.ZipFile(io.BytesIO(plain)).read("tilemark.db"))
+    con = sqlite3.connect(p)
+    assert [r[0] for r in con.execute("SELECT name FROM groups")] == ["Shared name"]
+    assert "group_shares" not in {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    con.close()
+
+
+def test_owner_restore_keeps_sharing_by_group_name(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    data = admin.post("/api/backup", json={"plain": True}).get_data()
+    tmp = admin.post("/api/groups", json={"name": "Later"}).get_json()["id"]
+    admin.post(f"/api/groups/{tmp}/shares", json={"username": "carol"})
+    r = admin.post("/api/restore", data={"file": (io.BytesIO(data), "b.zip")})
+    assert r.status_code == 200, r.get_json()
+    assert r.get_json()["shares_kept"] == ["Shared name"] and r.get_json()["shares_ended"] == ["Later"]
+    [g] = bob.get("/api/state").get_json()["shared_groups"]
+    assert g["name"] == "Shared name" and g["id"] != ga  # the group came back with a new id, still shared
+    assert bob.get("/api/state").get_json()["shared_links"][0]["url"] == "https://admin.example"
+    assert carol.get("/api/state").get_json()["shared_groups"] == []
+    # restored into another account (or another server): nothing is shared by the file
+    add_user(admin, "dave")
+    dave = sign_in(A, "dave", "userpass11")
+    assert "shares_kept" not in dave.post("/api/restore", data={"file": (io.BytesIO(data), "b.zip")}).get_json()
+    with A.db() as c:
+        dave_id = c.execute("SELECT id FROM users WHERE username='dave'").fetchone()[0]
+        assert c.execute("SELECT COUNT(*) FROM group_shares s JOIN groups g ON g.id=s.group_id WHERE g.user_id=?",
+                         (dave_id,)).fetchone()[0] == 0
+
+
+def test_member_restore_does_not_touch_shared_groups(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    data = bob.post("/api/backup", json={"plain": True}).get_data()
+    assert bob.post("/api/restore", data={"file": (io.BytesIO(data), "b.zip")}).status_code == 200
+    assert [g["id"] for g in bob.get("/api/state").get_json()["shared_groups"]] == [ga]
+
+
+def test_installation_backup_brings_sharing_back(shared):
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    assert admin.post("/api/backups").status_code == 200
+    daily = next(b for b in admin.get("/api/backups").get_json()["backups"] if b["kind"] == "daily")
+    bob_id = admin.get(f"/api/groups/{ga}/shares").get_json()["shares"][0]["id"]
+    admin.delete(f"/api/groups/{ga}/shares/{bob_id}")
+    r = admin.post("/api/backups/restore", json={"name": daily["name"], "confirm": daily["date"]})
+    assert r.status_code == 200, r.get_json()
+    bob = sign_in(A, "bob", "userpass11")
+    assert [g["id"] for g in bob.get("/api/state").get_json()["shared_groups"]] == [ga]

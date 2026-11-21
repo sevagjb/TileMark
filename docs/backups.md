@@ -4,7 +4,7 @@ TileMark has two kinds of backup. Use both, and your links are safe from a broke
 
 | | Your own backup | Daily backups of the installation |
 | --- | --- | --- |
-| **Holds** | Your links, groups, order, notes and pictures | Every account, with all links and settings |
+| **Holds** | Your links, groups, order, notes and pictures | Every account, with all links and settings, and who each group is shared with |
 | **Made by** | You, when you press **Download backup** | TileMark, automatically every day |
 | **Stored** | Wherever you save the download | The `data/backups` folder on the server |
 | **Encrypted** | Yes, with your login password (by default) | When an admin turns it on |
@@ -43,6 +43,18 @@ Only web addresses (`http://` and `https://`, local ones like `http://192.168.1.
 You can restore into another TileMark or another account, as long as you know the password. Older files work too, including unencrypted ones and backups from LinkBoard (TileMark's earlier name).
 
 > Just want your links in another format? [Export](import-export.md#export) makes a readable TileMark or bookmarks file instead.
+
+## Backups and shared groups
+
+Who may see a [shared group](links-and-groups.md#sharing-a-group) is decided by its owner, never by a backup file. So the two kinds of backup treat sharing differently:
+
+| Situation | What happens |
+| --- | --- |
+| **Your own backup**, when someone shared a group with you | Their group is **not** in your backup: those links are theirs. Restoring your backup never changes what is shared with you. Links you copied to your own links are in it. |
+| **Your own backup**, of a group you share | The group and its links **are** in it, but **not who it was shared with**. |
+| **Restoring your own backup on the same TileMark** | Sharing is **kept** for every group that comes back with the **same name**. Sharing of a group that isn't in the backup ends, and TileMark tells you which. |
+| **Restoring your own backup on another TileMark, or into another account** | Nothing is shared: on another server the same username can belong to someone else. Share the groups again yourself. |
+| **Restoring the whole installation** (admin) | Everything comes back as it was on that day, **sharing included**: every account comes back together, so every share still points to the right person. |
 
 ## Daily backups of the whole installation
 

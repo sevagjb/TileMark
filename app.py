@@ -166,6 +166,25 @@ def init_db():
             user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             uk_pub TEXT NOT NULL,
             sealed TEXT NOT NULL)""")
+        # 2.9: shared groups. A group stays its owner's (and so do its links); this only
+        # says who else may look at it. can_edit is kept for a possible later "may change"
+        # level and is always 0 for now: people a group is shared with can only view it.
+        c.execute("""CREATE TABLE IF NOT EXISTS group_shares (
+            group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            can_edit INTEGER NOT NULL DEFAULT 0,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            PRIMARY KEY (group_id, user_id))""")
+        c.execute("CREATE INDEX IF NOT EXISTS group_shares_user ON group_shares(user_id)")
+        # Favourite and "recently opened" of someone a group is shared with, on the owner's
+        # links: personal, so they never change what the owner (or anyone else) sees.
+        c.execute("""CREATE TABLE IF NOT EXISTS link_marks (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            link_id INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+            pinned INTEGER NOT NULL DEFAULT 0,
+            opened_at INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, link_id))""")
         for r in c.execute("SELECT id, url FROM links WHERE ukey = ''").fetchall():  # links saved before 2.1
             c.execute("UPDATE links SET ukey=? WHERE id=?", (url_key(r["url"]), r["id"]))
 
@@ -404,6 +423,58 @@ def own_group(c, uid, gid):
     except (TypeError, ValueError):
         return None
     return gid if c.execute("SELECT 1 FROM groups WHERE id=? AND user_id=?", (gid, uid)).fetchone() else None
+
+
+# Shared groups (2.9). Every change to a group or a link still goes through own_group,
+# own_link and _own_ids, which only ever match the user's own rows: someone a group is
+# shared with can look, open, copy, mark a favourite for themselves and leave - nothing
+# else. The functions below are the only ways a user reaches another user's links.
+SHARED_LINK_COLS = ("id", "url", "title", "description", "thumb", "thumb_kind", "group_id", "status",
+                    "created_at", "position", "note", "broken", "checked_at", "ukey", "final_key")
+
+
+def shared_group(c, uid, gid):
+    """The group id if it is someone else's group shared with this user, else None."""
+    try:
+        gid = int(gid)
+    except (TypeError, ValueError):
+        return None
+    return gid if c.execute("SELECT 1 FROM group_shares WHERE group_id=? AND user_id=?", (gid, uid)).fetchone() else None
+
+
+def shared_link(c, uid, link_id):
+    """The link if it lies in a group shared with this user, else None."""
+    return c.execute("SELECT l.* FROM links l JOIN group_shares s ON s.group_id = l.group_id "
+                     "JOIN groups g ON g.id = l.group_id AND g.user_id = l.user_id "
+                     "WHERE l.id=? AND s.user_id=? AND l.user_id != ?", (link_id, uid, uid)).fetchone()
+
+
+def visible_link(c, uid, link_id):
+    """The user's own link, or one in a group shared with them (to read or copy only)."""
+    return (c.execute("SELECT * FROM links WHERE id=? AND user_id=?", (link_id, uid)).fetchone()
+            or shared_link(c, uid, link_id))
+
+
+def shared_with_me(c, uid):
+    """(groups, links) shared with this user, with their own favourites and opened times."""
+    groups = [dict(r) for r in c.execute(
+        "SELECT g.id, g.name, g.color, u.username AS owner, s.position AS share_position, s.created_at AS shared_at "
+        "FROM group_shares s JOIN groups g ON g.id = s.group_id JOIN users u ON u.id = g.user_id "
+        "WHERE s.user_id=? AND g.user_id != ? ORDER BY s.position, g.name COLLATE NOCASE, g.id", (uid, uid))]
+    cols = ", ".join("l." + k for k in SHARED_LINK_COLS)
+    links = [dict(r) | {"shared": 1} for r in c.execute(
+        f"SELECT {cols}, COALESCE(m.pinned, 0) AS pinned, COALESCE(m.opened_at, 0) AS opened_at "
+        "FROM links l JOIN group_shares s ON s.group_id = l.group_id AND s.user_id = ? "
+        "JOIN groups g ON g.id = l.group_id AND g.user_id = l.user_id AND g.user_id != ? "
+        "LEFT JOIN link_marks m ON m.link_id = l.id AND m.user_id = ? "
+        "ORDER BY l.position, l.id DESC", (uid, uid, uid))]
+    return groups, links
+
+
+def end_share(c, gid, uid):
+    """Stop sharing group gid with user uid, and drop that user's marks on its links."""
+    c.execute("DELETE FROM link_marks WHERE user_id=? AND link_id IN (SELECT id FROM links WHERE group_id=?)", (uid, gid))
+    return c.execute("DELETE FROM group_shares WHERE group_id=? AND user_id=?", (gid, uid)).rowcount
 
 
 def get_or_create_group(c, uid, name):
@@ -2467,7 +2538,10 @@ def index():
 def thumbs(name):
     name = os.path.basename(name)
     with db() as c:
-        mine = c.execute("SELECT 1 FROM links WHERE thumb=? AND user_id=?", (name, me())).fetchone()
+        mine = c.execute("SELECT 1 FROM links WHERE thumb=? AND user_id=?", (name, me())).fetchone() or c.execute(
+            "SELECT 1 FROM links l JOIN group_shares s ON s.group_id = l.group_id "
+            "JOIN groups g ON g.id = l.group_id AND g.user_id = l.user_id WHERE l.thumb=? AND s.user_id=?",
+            (name, me())).fetchone()  # a picture of a link in a group shared with this user
     if not mine:
         return jsonify(error="Not found"), 404
     resp = send_from_directory(THUMB_DIR, name, max_age=31536000)
@@ -2493,8 +2567,11 @@ def _prefs(uid):
 def state():
     uid = me()
     with db() as c:
-        groups = [dict(r) for r in c.execute("SELECT * FROM groups WHERE user_id=? ORDER BY position, id", (uid,))]
+        groups = [dict(r) for r in c.execute(
+            "SELECT g.*, (SELECT COUNT(*) FROM group_shares s WHERE s.group_id = g.id) AS shares "
+            "FROM groups g WHERE g.user_id=? ORDER BY g.position, g.id", (uid,))]
         links = [dict(r) for r in c.execute("SELECT * FROM links WHERE user_id=? ORDER BY position, id DESC", (uid,))]
+        shared_groups, shared_links = shared_with_me(c, uid)
     with _check_lock:
         check = dict(_check)
     if not (check["uid"] == uid or (check["uid"] is None and g.user["is_admin"])):
@@ -2505,7 +2582,7 @@ def state():
         check.pop(key)
     check.update(enabled=get_setting("linkcheck", "on") == "on",
                  last=max(int(get_setting("linkcheck_last", "0")), int(get_user_setting(uid, "linkcheck_last", "0"))))
-    out = dict(groups=groups, links=links, check=check, prefs=_prefs(uid), version=APP_VERSION,
+    out = dict(groups=groups, links=links, shared_groups=shared_groups, shared_links=shared_links, check=check, prefs=_prefs(uid), version=APP_VERSION,
                me={"username": g.user["username"], "is_admin": bool(g.user["is_admin"])})
     if g.user["is_admin"]:
         out["admin"] = {"fetch_private": fetch_private(), "daily_backup": daily_backup_on(),
@@ -2631,7 +2708,11 @@ def list_groups():
 @app.post("/api/links/<int:link_id>/opened")
 def opened_link(link_id):
     with db() as c:
-        c.execute("UPDATE links SET opened_at=? WHERE id=? AND user_id=?", (int(time.time()), link_id, me()))
+        n = c.execute("UPDATE links SET opened_at=? WHERE id=? AND user_id=?", (int(time.time()), link_id, me())).rowcount
+        if not n and shared_link(c, me(), link_id):  # someone else's link: the time is kept for this user only
+            c.execute("INSERT INTO link_marks (user_id, link_id, opened_at) VALUES (?,?,?) "
+                      "ON CONFLICT(user_id, link_id) DO UPDATE SET opened_at=excluded.opened_at",
+                      (me(), link_id, int(time.time())))
     return jsonify(ok=True)
 
 
@@ -2811,6 +2892,137 @@ def delete_group(gid):
             c.execute("DELETE FROM links WHERE group_id=? AND user_id=?", (gid, me()))
         c.execute("DELETE FROM groups WHERE id=? AND user_id=?", (gid, me()))
     return jsonify(ok=True)
+
+
+# ------------------------------------------------------------ shared groups (2.9)
+# The owner shares a group with another account by typing its exact username (there is
+# no list of accounts to pick from, so nobody learns the other usernames on the server).
+# People it is shared with can only view it; every change stays with the owner.
+SHARE_MISSES, SHARE_WINDOW = 10, 600  # unknown usernames allowed per account per 10 minutes
+_share_misses, _share_lock = {}, threading.Lock()
+
+
+def _share_wait(uid):
+    now = time.time()
+    with _share_lock:
+        recent = [t for t in _share_misses.get(uid, []) if now - t < SHARE_WINDOW]
+        _share_misses[uid] = recent
+    return int(recent[0] + SHARE_WINDOW - now) + 1 if len(recent) >= SHARE_MISSES else 0
+
+
+def _share_miss(uid):
+    with _share_lock:
+        if len(_share_misses) > 5000:
+            _share_misses.clear()
+        _share_misses.setdefault(uid, []).append(time.time())
+
+
+@app.get("/api/groups/<int:gid>/shares")
+def list_shares(gid):
+    with db() as c:
+        if own_group(c, me(), gid) is None:
+            return jsonify(error="Not found"), 404
+        rows = c.execute("SELECT u.id, u.username, s.created_at FROM group_shares s JOIN users u ON u.id = s.user_id "
+                         "WHERE s.group_id=? ORDER BY u.username COLLATE NOCASE", (gid,)).fetchall()
+    return jsonify(shares=[dict(r) for r in rows])
+
+
+@app.post("/api/groups/<int:gid>/shares")
+def add_share(gid):
+    d = request.get_json(force=True, silent=True) or {}
+    name = str(d.get("username") or "").strip()
+    if not name:
+        return jsonify(error="Type the username of the account to share with."), 400
+    wait = _share_wait(me())
+    if wait:  # trying many names to find out which accounts exist is slowed down
+        return jsonify(error=f"Too many attempts. Try again in {wait} seconds."), 429
+    with db() as c:
+        if own_group(c, me(), gid) is None:
+            return jsonify(error="Not found"), 404
+        row = c.execute("SELECT id, username FROM users WHERE username=?", (name[:60],)).fetchone()
+        if not row:
+            _share_miss(me())
+            return jsonify(error="There is no account with that username."), 404
+        if row["id"] == me():
+            return jsonify(error="This group is already yours."), 400
+        last = c.execute("SELECT COALESCE(MAX(position), 0) FROM group_shares WHERE user_id=?", (row["id"],)).fetchone()[0]
+        c.execute("INSERT INTO group_shares (group_id, user_id, can_edit, position, created_at) VALUES (?,?,0,?,?) "
+                  "ON CONFLICT(group_id, user_id) DO NOTHING", (gid, row["id"], last + 1, int(time.time())))
+    return jsonify(ok=True, id=row["id"], username=row["username"]), 201
+
+
+@app.delete("/api/groups/<int:gid>/shares/<int:uid>")
+def remove_share(gid, uid):
+    """The owner stops sharing: the group and its links disappear for that person."""
+    with db() as c:
+        if own_group(c, me(), gid) is None:
+            return jsonify(error="Not found"), 404
+        end_share(c, gid, uid)
+    return jsonify(ok=True)
+
+
+@app.delete("/api/shared/<int:gid>")
+def leave_share(gid):
+    """Someone a group is shared with leaves it. Their copies stay theirs."""
+    with db() as c:
+        if not end_share(c, gid, me()):
+            return jsonify(error="Not found"), 404
+    return jsonify(ok=True)
+
+
+@app.post("/api/shared/links/<int:link_id>/pin")
+def pin_shared(link_id):
+    """A favourite on a link someone shared with you: yours only, the owner never sees it."""
+    d = request.get_json(force=True, silent=True) or {}
+    with db() as c:
+        if not shared_link(c, me(), link_id):
+            return jsonify(error="Not found"), 404
+        c.execute("INSERT INTO link_marks (user_id, link_id, pinned) VALUES (?,?,?) "
+                  "ON CONFLICT(user_id, link_id) DO UPDATE SET pinned=excluded.pinned",
+                  (me(), link_id, 1 if d.get("pinned") else 0))
+    return jsonify(ok=True)
+
+
+@app.post("/api/links/copy")
+def copy_links():
+    """Body: {"ids": [...], "group_id": 3 or null}. Copies links (your own, or ones in a
+    group shared with you) into your own links. A page you already have is not copied
+    again; how many were left out is returned, never dropped without saying so."""
+    d = request.get_json(force=True, silent=True) or {}
+    uid, copied, already, fetch = me(), 0, [], []
+    with db() as c:
+        gid = None
+        if d.get("group_id"):
+            gid = own_group(c, uid, d["group_id"])
+            if gid is None:
+                return jsonify(error="That group no longer exists."), 404
+        rows = [r for r in (visible_link(c, uid, i) for i in _ids(d)[:MAX_REVIEW]) if r]
+        if not rows:
+            return jsonify(error="Nothing selected."), 400
+        for r in rows:
+            if find_duplicate(c, uid, url_key(r["url"])) or c.execute(
+                    "SELECT 1 FROM links WHERE user_id=? AND url=?", (uid, r["url"])).fetchone():
+                already.append(r["title"] or r["url"])
+                continue
+            new_id = add_link(c, uid, r["url"], gid, r["title"])
+            if new_id is None:
+                already.append(r["title"] or r["url"])
+                continue
+            thumb = ""
+            src = os.path.join(THUMB_DIR, os.path.basename(r["thumb"])) if r["thumb"] else ""
+            if src and os.path.isfile(src):  # its own copy of the picture: the owner may change or delete theirs
+                thumb = f"{new_id}-{int(time.time() * 1000)}-{secrets.token_hex(3)}{os.path.splitext(src)[1]}"
+                shutil.copyfile(src, os.path.join(THUMB_DIR, thumb))
+            c.execute("UPDATE links SET description=?, note=?, custom_title=?, thumb=?, thumb_kind=?, "
+                      "custom_thumb=?, status=? WHERE id=?",
+                      (r["description"], r["note"], r["custom_title"], thumb, r["thumb_kind"] if thumb else "",
+                       r["custom_thumb"] if thumb else 0, r["status"] if thumb else "pending", new_id))
+            if not thumb:
+                fetch.append(new_id)
+            copied += 1
+    for link_id in fetch:
+        queue(link_id)
+    return jsonify(ok=True, copied=copied, already=len(already), already_titles=already[:20])
 
 
 # Import never drops a duplicate silently. Links that are new are added; links that
@@ -3259,9 +3471,14 @@ def _open_personal_backup(uid, data, password):
         raise RestoreError("Wrong password, or the backup file is damaged.")
 
 
-def restore_backup(uid, data, password=""):
+def restore_backup(uid, data, password="", report=None):
     """Replace this user's links and groups with the ones in the backup. Ids are
-    given anew (other users' ids may be taken), so groups and pictures are mapped."""
+    given anew (other users' ids may be taken), so groups and pictures are mapped.
+
+    A personal backup never holds who a group was shared with: a file can be restored
+    on any server, into any account, and must not hand out access by itself. Sharing
+    that exists on this server right now is kept for every group that comes back
+    with the same name; for the others it ends. `report` (a dict) gets the names."""
     if data.startswith(MAGIC2):
         data = _open_personal_backup(uid, data, password)
     magic = next((m for m in (MAGIC, LEGACY_MAGIC) if data.startswith(m)), None)
@@ -3306,6 +3523,8 @@ def restore_backup(uid, data, password=""):
             l_cols = [r["name"] for r in c.execute("PRAGMA table_info(links)")
                       if r["name"] not in ("id", "user_id", "group_id", "thumb")]
             old_thumbs = [r["thumb"] for r in c.execute("SELECT thumb FROM links WHERE user_id=? AND thumb != ''", (uid,))]
+            shares = c.execute("SELECT g.name, s.user_id, s.can_edit, s.position, s.created_at FROM group_shares s "
+                               "JOIN groups g ON g.id = s.group_id WHERE g.user_id=?", (uid,)).fetchall()
             c.execute("DELETE FROM links WHERE user_id=?", (uid,))
             c.execute("DELETE FROM groups WHERE user_id=?", (uid,))
             gmap = {}
@@ -3347,6 +3566,17 @@ def restore_backup(uid, data, password=""):
                 elif thumb:
                     c.execute("UPDATE links SET thumb='', thumb_kind='', custom_thumb=0 WHERE id=?", (new_id,))
             c.execute("UPDATE links SET status='error' WHERE status='pending' AND user_id=?", (uid,))
+            kept, ended = set(), set()
+            for sh in shares:
+                back = c.execute("SELECT id FROM groups WHERE user_id=? AND name=?", (uid, sh["name"])).fetchone()
+                if back:
+                    c.execute("INSERT OR IGNORE INTO group_shares (group_id, user_id, can_edit, position, created_at) "
+                              "VALUES (?,?,?,?,?)", (back["id"], sh["user_id"], sh["can_edit"], sh["position"], sh["created_at"]))
+                    kept.add(sh["name"])
+                else:
+                    ended.add(sh["name"])
+            if report is not None and shares:
+                report.update(shares_kept=sorted(kept, key=str.lower), shares_ended=sorted(ended, key=str.lower))
             for path, new_name in moves:  # inside the transaction: a failed copy undoes the restore
                 shutil.move(path, os.path.join(THUMB_DIR, new_name))
         for name in old_thumbs:
@@ -3799,10 +4029,11 @@ def api_restore():
     if not f:
         return jsonify(error="Choose a backup file."), 400
     try:
-        links, groups, skipped = restore_backup(me(), f.read(), request.form.get("password", ""))
+        report = {}
+        links, groups, skipped = restore_backup(me(), f.read(), request.form.get("password", ""), report)
     except RestoreError as e:
         return jsonify(error=str(e)), 400
-    return jsonify(ok=True, links=links, groups=groups, skipped=skipped)
+    return jsonify(ok=True, links=links, groups=groups, skipped=skipped, **report)
 
 
 # -------------------------------------------------------------------- start

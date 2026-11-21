@@ -120,6 +120,12 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .gitem.on .edit { display: inline; }
 .gitem.ghost { color: var(--muted); border: 1px dashed var(--line); margin-top: 8px; justify-content: center; }
 .side hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; width: auto; align-self: stretch; }
+.slabel { color: var(--muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 10px 10px 2px; }
+.gitem .shr, .sec-head .shr { color: var(--muted); font-size: 12px; font-weight: 400; flex: none; }
+.gitem .owner { color: var(--muted); font-size: 12px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+.ptitle small { color: var(--muted); font-weight: 400; font-size: 13.5px; }
+.selecting .card.ro .tick { display: none; } .selecting .card.ro { cursor: default; opacity: .6; }
+.addrow { display: flex; gap: 8px; margin-top: 6px; } .addrow input { flex: 1; min-width: 0; }
 .ptitle { font-weight: 650; font-size: 17px; color: var(--text); display: inline-flex; align-items: center; gap: 8px; }
 .ptitle i { width: 11px; height: 11px; border-radius: 50%; background: var(--c); }
 .list { display: flex; flex-direction: column; gap: 10px; }
@@ -149,7 +155,7 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
   .tools { flex-wrap: wrap; row-gap: 8px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .side { position: static; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 6px; }
-  .side hr { display: none; }
+  .side hr, .slabel { display: none; }
   .gitem { flex: none; } .gitem.ghost { margin-top: 0; }
   .list .thumb { flex-basis: 104px; }
 }
@@ -428,8 +434,33 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
   <label for="gName">Name</label><input id="gName" type="text" maxlength="60">
   <label>Colour</label><div class="swatches" id="gColors"></div>
   <div id="gPosWrap"><label for="gPos">Place in the list</label><select id="gPos"></select></div>
+  <div id="gShareWrap" hidden>
+    <label for="gShareUser">Share with</label>
+    <div class="addrow"><input id="gShareUser" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Username of another account">
+      <button class="btn" type="button" id="gShareAdd">Share</button></div>
+    <p class="hint">They can see this group's links, with their titles, notes and pictures, but can't change anything. Stop sharing at any time.</p>
+    <div id="gShares"></div>
+  </div>
   <div class="row"><button class="btn danger left" type="button" id="gDelete">Delete group</button>
     <button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="gSave">Save</button></div>
+</form></dialog>
+
+<dialog id="sharedDlg"><form method="dialog">
+  <h2 id="sgHead"></h2>
+  <p class="hint" id="sgOwner" style="font-size:14px"></p>
+  <label for="sgGroup">Copy all its links to</label>
+  <div class="addrow"><select id="sgGroup" style="flex:1"></select><button class="btn" type="button" id="sgCopy">Copy all</button></div>
+  <p class="hint">Copies are your own links: they stay when the sharing ends.</p>
+  <div class="row"><button class="btn danger left" type="button" id="sgLeave">Leave this group</button>
+    <button class="btn primary" value="close">Close</button></div>
+</form></dialog>
+
+<dialog id="copyDlg"><form method="dialog">
+  <h2>Copy to my links</h2>
+  <p class="hint" id="cWhat" style="font-size:14px"></p>
+  <label for="cGroup">Group</label><select id="cGroup"></select>
+  <p class="hint">The copy is your own link: it stays when the sharing ends.</p>
+  <div class="row"><button class="btn" value="cancel">Cancel</button><button class="btn primary" type="button" id="cGo">Copy</button></div>
 </form></dialog>
 
 <dialog id="exportDlg"><form method="dialog">
@@ -687,7 +718,7 @@ let sorts = {}; try { sorts = JSON.parse(localStorage.getItem("tm.sort") || "{}"
 const sortMode = () => sorts[filter] || "manual";
 const isGroupView = () => filter === "none" || !!group(+filter);
 let selecting = false, selected = new Set(), dragIds = [];
-let S = { groups: [], links: [] }, filter = localStorage.getItem("tm.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
+let S = { groups: [], links: [], shared_groups: [], shared_links: [] }, filter = localStorage.getItem("tm.filter") || "", q = "", timer = null, editing = null, editingGroup = null, pickedColor = COLORS[0];
 
 async function api(method, path, body) {
   const opt = { method };
@@ -707,7 +738,12 @@ function toast(msg) {
   t._h = setTimeout(() => { t.classList.remove("show"); setTimeout(() => { if (!t.classList.contains("show") && t.hidePopover) try { t.hidePopover(); } catch {} }, 250); }, 3200);
 }
 const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
-const group = id => S.groups.find(g => g.id === id);
+// Your own groups and links are in S.groups and S.links. Groups other people shared with
+// you, and their links, are in S.shared_groups and S.shared_links: you can open, search,
+// copy and mark them as favourites (for yourself), but never change them.
+const ownGroup = id => S.groups.find(g => g.id === id);
+const group = id => ownGroup(id) || (S.shared_groups || []).find(g => g.id === id);
+const allLinks = () => S.links.concat(S.shared_links || []);
 
 // Layout, appearance and sorting are kept on the server per user (localStorage is only
 // a cache so the page does not flash). The first time, this browser's own choices are
@@ -730,6 +766,7 @@ function takePrefs(p) {
 async function load() {
   lastLoad = Date.now();
   try { S = await api("GET", "api/state"); } catch (e) { toast(e.message); return; }
+  S.shared_groups = S.shared_groups || []; S.shared_links = S.shared_links || [];
   if (S.version) {  // the version under the name (and on hover), so nobody has to open Settings for it
     $("brandVer").textContent = /^\d/.test(S.version) ? "v" + S.version : S.version;
     document.querySelector(".brand").title = "TileMark " + S.version;
@@ -762,13 +799,13 @@ function setFilter(f) {
 
 function visible() {
   const needle = q.trim().toLowerCase();
-  if (needle) return S.links.filter(l => { const g = group(l.group_id);
+  if (needle) return allLinks().filter(l => { const g = group(l.group_id);
     return (l.title + " " + l.url + " " + l.description + " " + (l.note || "") + " " + (g ? g.name : "")).toLowerCase().includes(needle); });
-  if (cfg.layout === "sections") return S.links;
+  if (cfg.layout === "sections") return allLinks();
   const byNew = (a, b) => b.created_at - a.created_at || b.id - a.id;
-  if (filter === "recent") return [...S.links].sort(byNew).slice(0, 30);
-  if (filter === "opened") return S.links.filter(l => l.opened_at).sort((a, b) => b.opened_at - a.opened_at).slice(0, 30);
-  const list = S.links.filter(l => filter === "all" || (filter === "broken" ? l.broken : filter === "fav" ? l.pinned : filter === "none" ? l.group_id === null : l.group_id === +filter));
+  if (filter === "recent") return allLinks().sort(byNew).slice(0, 30);
+  if (filter === "opened") return allLinks().filter(l => l.opened_at).sort((a, b) => b.opened_at - a.opened_at).slice(0, 30);
+  const list = allLinks().filter(l => filter === "all" || (filter === "broken" ? l.broken : filter === "fav" ? l.pinned : filter === "none" ? l.group_id === null : l.group_id === +filter));
   const mode = sortMode(), name = l => (l.title || host(l.url)).toLowerCase();
   if (mode === "newest") list.sort(byNew);
   else if (mode === "oldest") list.sort((a, b) => -byNew(a, b));
@@ -780,8 +817,13 @@ function visible() {
 function sideItem(label, key, color, n, g) {
   const c = el("div", { className: "gitem" + (filter === String(key) && !q.trim() ? " on" : ""), tabIndex: 0, role: "button" });
   if (color) c.style.setProperty("--c", color);
-  c.append(el("span", { className: "dot" }), el("span", { className: "gname", textContent: label }), el("span", { className: "n", textContent: n }));
-  if (g) { const b = el("button", { className: "edit", title: t("Edit group"), textContent: "✎" });
+  c.append(el("span", { className: "dot" }), el("span", { className: "gname", textContent: label }));
+  if (g && g.owner) c.append(el("span", { className: "owner", textContent: g.owner, title: t("Shared with you by {owner}", { owner: g.owner }) }));
+  if (g && g.shares) c.append(el("span", { className: "shr", textContent: "⇄", title: t("Shared with others") }));
+  c.append(el("span", { className: "n", textContent: n }));
+  if (g && g.owner) { const b = el("button", { className: "edit", title: t("About this shared group"), textContent: "ⓘ" });
+           b.onclick = e => { e.stopPropagation(); openShared(g); }; c.append(b); }
+  else if (g) { const b = el("button", { className: "edit", title: t("Edit group"), textContent: "✎" });
            b.onclick = e => { e.stopPropagation(); openGroup(g); }; c.append(b); dragGroup(c, g); }
   // clicking the open group (or list) again closes it, back to the start screen
   const pick = () => {
@@ -790,7 +832,7 @@ function sideItem(label, key, color, n, g) {
   };
   c.onclick = pick;
   c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
-  if (key === "none" || typeof key === "number") makeDrop(c, key);
+  if (key === "none" || (typeof key === "number" && !(g && g.owner))) makeDrop(c, key);  // nothing is dropped on a shared group
   return c;
 }
 function makeDrop(c, key) {  // drop a card on a group to move it; drop a group on a group to reorder
@@ -852,7 +894,7 @@ let addGroupPicked = null;
 function addGroupValue(current) {
   if (current) return current;
   if (addGroupPicked !== null) return addGroupPicked;
-  return group(+cfg.defgroup) ? cfg.defgroup : "";
+  return ownGroup(+cfg.defgroup) ? cfg.defgroup : "";
 }
 function fillSelect(sel, value, noneLabel) {
   sel.replaceChildren(el("option", { value: "", textContent: noneLabel }), ...S.groups.map(g => el("option", { value: g.id, textContent: g.name })));
@@ -883,11 +925,12 @@ async function shareLink(l) {
 }
 function card(l) {
   const g = group(l.group_id);
-  const a = el("a", { className: "card", href: isWeb(l.url) ? l.url : "#", target: cfg.open === "same" ? "_top" : "_blank", rel: "noopener noreferrer", draggable: true, title: l.description || l.url });
+  const ro = !!l.shared;  // a link in a group someone shared with you: view, copy and your own favourite only
+  const a = el("a", { className: "card" + (ro ? " ro" : ""), href: isWeb(l.url) ? l.url : "#", target: cfg.open === "same" ? "_top" : "_blank", rel: "noopener noreferrer", draggable: !ro, title: l.description || l.url });
   if (g) a.style.setProperty("--c", g.color);
   if (selected.has(l.id)) a.classList.add("sel");
   a.append(el("span", { className: "tick", textContent: selected.has(l.id) ? "✓" : "" }));
-  a.ondragstart = e => {  // dragging a selected card takes the whole selection along
+  if (!ro) a.ondragstart = e => {  // dragging a selected card takes the whole selection along
     dragIds = selected.has(l.id) ? [...selected] : [l.id];
     e.dataTransfer.setData("text/tilemark", dragIds.join(",")); e.dataTransfer.effectAllowed = "move";
   };
@@ -907,7 +950,7 @@ function card(l) {
     try { await api("POST", "api/links/order", { ids: rest }); load(); } catch (err) { toast(err.message); }
   };
   a.onclick = e => {  // plain click: open a fresh, independent tab
-    if (selecting) { e.preventDefault(); selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); return; }
+    if (selecting) { e.preventDefault(); if (!ro) { selected.has(l.id) ? selected.delete(l.id) : selected.add(l.id); render(); } return; }
     try { navigator.sendBeacon("api/links/" + l.id + "/opened"); l.opened_at = Math.floor(Date.now() / 1000); setTimeout(render, 0); } catch {}
     if (!isWeb(l.url)) { e.preventDefault(); return; }
     if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || cfg.open === "same") return;
@@ -927,12 +970,18 @@ function card(l) {
   const btn = (txt, tip, fn) => { const b = el("button", { type: "button", textContent: txt, title: tip }); b.setAttribute("aria-label", tip);
     b.onclick = e => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
   const star = btn(l.pinned ? "★" : "☆", l.pinned ? t("Remove from favourites") : t("Add to favourites"),
-    async () => { try { await api("PATCH", "api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
+    async () => { try { if (ro) await api("POST", "api/shared/links/" + l.id + "/pin", { pinned: !l.pinned });
+                         else await api("PATCH", "api/links/" + l.id, { pinned: !l.pinned }); load(); } catch (e) { toast(e.message); } });
   if (l.pinned) star.classList.add("on");
-  const ed = btn("✎", t("Edit"), () => openLink(l)); ed.classList.add("ed");  // the only button shown at Extra small
-  act.append(star, btn("↗", t("Share"), () => shareLink(l)), ed,
-             btn("↻", t("Refresh thumbnail"), async () => { await api("POST", "api/links/" + l.id + "/refresh"); load(); }),
-             btn("✕", t("Delete"), () => removeLink(l)));
+  if (ro) {
+    const cp = btn("⧉", t("Copy to my links"), () => openCopy([l])); cp.classList.add("ed");  // the only button shown at Extra small
+    act.append(star, btn("↗", t("Share"), () => shareLink(l)), cp);
+  } else {
+    const ed = btn("✎", t("Edit"), () => openLink(l)); ed.classList.add("ed");  // the only button shown at Extra small
+    act.append(star, btn("↗", t("Share"), () => shareLink(l)), ed,
+               btn("↻", t("Refresh thumbnail"), async () => { await api("POST", "api/links/" + l.id + "/refresh"); load(); }),
+               btn("✕", t("Delete"), () => removeLink(l)));
+  }
   if (g && cfg.layout === "panel" && (!isGroupView() || q.trim())) meta.append(el("span", { className: "tag" }, el("i"), g.name));
   const ttl = el("div", { className: "title" }); if (l.pinned) ttl.append(el("span", { className: "pin", textContent: "★", title: t("Favourite") }));
   ttl.append(l.title || host(l.url));
@@ -949,8 +998,13 @@ function section(key, name, color, links, g) {
   const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color);
   const head = el("div", { className: "sec-head", tabIndex: 0, role: "button", title: isC ? t("Expand") : t("Collapse") },
     el("span", { className: "chev", textContent: "▾" }), el("span", { className: "dot" }),
-    el("span", { className: "sec-name", textContent: name }), el("span", { className: "n", textContent: links.length }));
-  if (g) { const b = el("button", { className: "edit", type: "button", title: t("Edit group"), textContent: "✎" });
+    el("span", { className: "sec-name", textContent: name }));
+  if (g && g.owner) head.append(el("span", { className: "shr", textContent: t("shared by {owner}", { owner: g.owner }) }));
+  else if (g && g.shares) head.append(el("span", { className: "shr", textContent: "⇄", title: t("Shared with others") }));
+  head.append(el("span", { className: "n", textContent: links.length }));
+  if (g && g.owner) { const b = el("button", { className: "edit", type: "button", title: t("About this shared group"), textContent: "ⓘ" });
+           b.onclick = e => { e.stopPropagation(); openShared(g); }; head.append(b); }
+  else if (g) { const b = el("button", { className: "edit", type: "button", title: t("Edit group"), textContent: "✎" });
            b.onclick = e => { e.stopPropagation(); openGroup(g); }; head.append(b); dragGroup(head, g); }
   const open = el("button", { className: "open", type: "button", textContent: t("Open all"), title: t("Open all links of this group in tabs") });
   open.onclick = e => { e.stopPropagation(); openMany(links); };
@@ -959,7 +1013,7 @@ function section(key, name, color, links, g) {
   const toggle = () => { expanded.has(k) ? expanded.delete(k) : expanded.add(k); saveExpanded(); render(); };
   head.onclick = toggle;
   head.onkeydown = e => { if (e.target === head && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } };
-  makeDrop(head, key);
+  if (!(g && g.owner)) makeDrop(head, key);
   sec.append(head, el("div", { className: "grid" }, ...links.map(card)));
   return sec;
 }
@@ -969,14 +1023,16 @@ function renderSections(list) {
   for (const g of S.groups) { const ls = list.filter(l => l.group_id === g.id);
     if (ls.length || !searching) { secs.push(section(g.id, g.name, g.color, ls, g)); keys.push(String(g.id)); } }
   const un = list.filter(l => l.group_id === null);
-  if (un.length) { if (S.groups.length) { secs.push(section("none", t("Ungrouped"), "#9aa3b2", un)); keys.push("none"); }
+  if (un.length) { if (S.groups.length || S.shared_groups.length) { secs.push(section("none", t("Ungrouped"), "#9aa3b2", un)); keys.push("none"); }
                    else secs.push(el("div", { className: "grid" }, ...un.map(card))); }
+  for (const g of S.shared_groups) { const ls = list.filter(l => l.group_id === g.id);
+    if (ls.length || !searching) { secs.push(section(g.id, g.name, g.color, ls, g)); keys.push(String(g.id)); } }
   $("board").replaceChildren(...secs);
   $("foldAll").disabled = $("unfoldAll").disabled = searching || !keys.length;
   $("foldAll").onclick = () => { expanded.clear(); saveExpanded(); render(); };
   $("unfoldAll").onclick = () => { for (const k of keys) expanded.add(k); saveExpanded(); render(); };
   $("count").textContent = (list.length === 1 ? t("{n} link", {n: list.length}) : t("{n} links", {n: list.length}));
-  const empty = $("empty"); empty.hidden = list.length > 0 || S.groups.length > 0;
+  const empty = $("empty"); empty.hidden = list.length > 0 || S.groups.length > 0 || S.shared_groups.length > 0;
   if (!empty.hidden) empty.replaceChildren(el("b", { textContent: t("No links yet") }), t("Paste a link above, or use Import to bring in your bookmarks all at once."));
 }
 function renderSelection() {
@@ -990,12 +1046,12 @@ function renderSelection() {
 }
 // The start screen of the Side panel layout: the logo as a watermark, a hint and a short overview
 function renderHome() {
-  const hint = $("homeHint"), n = S.links.length;
+  const hint = $("homeHint"), n = allLinks().length;
   if (!n) hint.replaceChildren(el("b", { textContent: t("No links yet") }), t("Paste a link above, or use Import to bring in your bookmarks all at once."));
   else if (matchMedia("(hover: none)").matches) hint.replaceChildren(t("Choose a group to see its links."));
   else { const [a, b] = t("Choose a group, or press {key} to search.").split("{key}");
          hint.replaceChildren(a, el("kbd", { textContent: "/" }), b || ""); }
-  const g = S.groups.length, f = S.links.filter(l => l.pinned).length;
+  const g = S.groups.length + S.shared_groups.length, f = allLinks().filter(l => l.pinned).length;
   $("homeStats").textContent = !n ? "" : [n === 1 ? t("{n} link", { n }) : t("{n} links", { n }),
     g ? (g === 1 ? t("{n} group", { n: g }) : t("{n} groups", { n: g })) : "",
     f ? (f === 1 ? t("{n} favourite", { n: f }) : t("{n} favourites", { n: f })) : ""].filter(Boolean).join(" · ");
@@ -1012,38 +1068,44 @@ function render() {
   const side = $("side"), ungrouped = S.links.filter(l => l.group_id === null).length, searching = !!q.trim();
   side.replaceChildren();
   for (const g of S.groups) side.append(sideItem(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
-  if (ungrouped && S.groups.length) side.append(sideItem(t("Ungrouped"), "none", "#9aa3b2", ungrouped));
-  if (S.groups.length) side.append(el("hr"));
-  const favs = S.links.filter(l => l.pinned).length, opened = S.links.filter(l => l.opened_at).length;
-  const broken = S.links.filter(l => l.broken).length;
+  if (ungrouped && (S.groups.length || S.shared_groups.length)) side.append(sideItem(t("Ungrouped"), "none", "#9aa3b2", ungrouped));
+  if (S.shared_groups.length) {
+    side.append(el("div", { className: "slabel", textContent: t("Shared with me") }));
+    for (const g of S.shared_groups) side.append(sideItem(g.name, g.id, g.color, S.shared_links.filter(l => l.group_id === g.id).length, g));
+  }
+  if (S.groups.length || S.shared_groups.length) side.append(el("hr"));
+  const every = allLinks(), favs = every.filter(l => l.pinned).length, opened = every.filter(l => l.opened_at).length;
+  const broken = every.filter(l => l.broken).length;
   if (broken) side.append(sideItem(t(SPECIAL.broken), "broken", "#e5534b", broken));
   const dups = dupSets().length;
   if (dups) { const d = sideItem(t("Duplicates"), "dups", "#e0a31b", dups); d.onclick = () => $("dupBtn").click(); d.onkeydown = e => { if (e.key === "Enter") $("dupBtn").click(); }; side.append(d); }
   if (favs) side.append(sideItem(t(SPECIAL.fav), "fav", "#f5b83d", favs));
-  side.append(sideItem(t(SPECIAL.all), "all", null, S.links.length));
-  if (S.links.length) side.append(sideItem(t(SPECIAL.recent), "recent", null, Math.min(30, S.links.length)));
+  side.append(sideItem(t(SPECIAL.all), "all", null, every.length));
+  if (every.length) side.append(sideItem(t(SPECIAL.recent), "recent", null, Math.min(30, every.length)));
   side.append(sideItem(t(SPECIAL.opened), "opened", null, Math.min(30, opened)));
   const add = el("div", { className: "gitem ghost", textContent: t("+ New group"), tabIndex: 0, role: "button" });
   add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
   side.append(add);
 
-  fillSelect($("addGroup"), addGroupValue(group(+filter) ? filter : null), t("No group"));
+  fillSelect($("addGroup"), addGroupValue(ownGroup(+filter) ? filter : null), t("No group"));
   if (home) { $("board").replaceChildren(); $("empty").hidden = true; renderHome(); return; }
 
   const list = visible(), g = group(+filter), pt = $("ptitle");
   pt.replaceChildren();
   if (searching) pt.append(t("Search results"));
-  else if (g) { pt.style.setProperty("--c", g.color); pt.append(el("i"), g.name); }
+  else if (g) { pt.style.setProperty("--c", g.color); pt.append(el("i"), g.name);
+                if (g.owner) pt.append(el("small", { textContent: t("shared by {owner}", { owner: g.owner }) })); }
   else pt.append(t(SPECIAL[filter] || "All links"));
   const ss = $("sortSel"); ss.hidden = searching || filter === "recent" || filter === "opened"; ss.value = sortMode();
   ss.onchange = () => { sorts[filter] = ss.value; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} savePrefs(); render(); };
   $("board").replaceChildren(el("div", { className: "list" }, ...list.map(card)));
   $("count").textContent = (list.length === 1 ? t("{n} link", {n: list.length}) : t("{n} links", {n: list.length}));
   $("openAll").hidden = list.length < 2;
+  $("refreshAll").hidden = $("selBtn").hidden = !!(g && g.owner);  // nothing to refresh or move in someone else's group
   const empty = $("empty"); empty.hidden = list.length > 0;
-  if (!list.length) empty.replaceChildren(el("b", { textContent: S.links.length ? t("Nothing here") : t("No links yet") }),
-    searching ? t("No link matches your search.") : filter === "broken" ? t("No broken links.") : filter === "fav" ? t("No favourites yet. Use the ☆ on a card.")
-      : filter === "opened" ? t("Links you open will be listed here.") : S.links.length ? t("This group is empty. Paste a link above, or drag a card onto the group.")
+  if (!list.length) empty.replaceChildren(el("b", { textContent: every.length ? t("Nothing here") : t("No links yet") }),
+    searching ? t("No link matches your search.") : g && g.owner ? t("This shared group is empty.") : filter === "broken" ? t("No broken links.") : filter === "fav" ? t("No favourites yet. Use the ☆ on a card.")
+      : filter === "opened" ? t("Links you open will be listed here.") : every.length ? t("This group is empty. Paste a link above, or drag a card onto the group.")
       : t("Paste a link above, or use Import to bring in your bookmarks all at once."));
 }
 
@@ -1073,7 +1135,7 @@ document.addEventListener("click", e => { if (!$("ioMenu").hidden && !e.target.c
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("ioMenu").hidden) { e.preventDefault(); showIo(false); $("ioBtn").focus(); } });
 $("searchBtn").onclick = () => showSearch(!document.querySelector(".bar").classList.contains("searching"));
 $("search").addEventListener("blur", () => { if (!$("search").value) setTimeout(() => { if (document.activeElement !== $("searchBtn")) showSearch(false); }, 150); });
-$("addGroup").addEventListener("change", e => { if (!group(+filter)) addGroupPicked = e.target.value; });
+$("addGroup").addEventListener("change", e => { if (!ownGroup(+filter)) addGroupPicked = e.target.value; });
 $("openAll").onclick = () => openMany(visible());
 
 // edit link
@@ -1120,7 +1182,70 @@ function openGroup(g) {
     $("gColors").replaceChildren(...COLORS.map(c => { const b = el("button", { type: "button", className: c === pickedColor ? "on" : "" });
       b.style.setProperty("--c", c); b.setAttribute("aria-label", t("Colour {c}", { c })); b.onclick = () => { pickedColor = c; draw(); }; return b; }), wrap);
   };
-  draw(); $("groupDlg").showModal(); $("gName").focus();
+  draw();
+  $("gShareWrap").hidden = !g; $("gShareUser").value = ""; $("gShares").replaceChildren();
+  if (g) refreshShares(g);
+  $("groupDlg").showModal(); $("gName").focus();
+}
+
+// ---------------------------------------------------------------- shared groups
+// Sharing: the owner types the username of another account. That account can then view the
+// group and its links, copy them and mark favourites for itself; only the owner changes them.
+async function refreshShares(g) {
+  let r; try { r = await api("GET", "api/groups/" + g.id + "/shares"); } catch (e) { return; }
+  if (editingGroup !== g) return;  // another group was opened meanwhile
+  $("gShares").replaceChildren(...r.shares.map(sh => {
+    const b = el("button", { className: "btn danger", type: "button", textContent: t("Stop sharing") });
+    b.onclick = async () => {
+      if (!confirm(t("Stop sharing “{name}” with {user}? The group and its links disappear from their TileMark. Copies they made stay theirs.", { name: g.name, user: sh.username }))) return;
+      try { await api("DELETE", "api/groups/" + g.id + "/shares/" + sh.id); refreshShares(g); load(); } catch (e) { toast(e.message); }
+    };
+    return el("div", { className: "sess" }, el("div", {}, el("b", { textContent: sh.username }),
+      el("small", { textContent: t("shared {date}", { date: fmtDate(sh.created_at) }) })), b);
+  }));
+}
+$("gShareAdd").onclick = async () => {
+  const g = editingGroup, username = $("gShareUser").value.trim();
+  if (!g || !username) return toast(t("Type the username of the account to share with."));
+  try { const r = await api("POST", "api/groups/" + g.id + "/shares", { username });
+        $("gShareUser").value = ""; toast(t("“{name}” is now shared with {user}.", { name: g.name, user: r.username })); refreshShares(g); load(); }
+  catch (e) { toast(e.message); }
+};
+$("gShareUser").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("gShareAdd").click(); } };
+
+let sharedOpen = null;
+function openShared(g) {
+  sharedOpen = g; $("sgHead").textContent = g.name;
+  $("sgOwner").textContent = t("Shared with you by {owner}. You can open and copy its links; only {owner} can change them.", { owner: g.owner });
+  fillSelect($("sgGroup"), addGroupValue(null), t("No group"));
+  $("sgCopy").disabled = !S.shared_links.some(l => l.group_id === g.id);
+  $("sharedDlg").showModal();
+}
+$("sgCopy").onclick = () => copyLinks(S.shared_links.filter(l => l.group_id === sharedOpen.id), +$("sgGroup").value || null, $("sharedDlg"));
+$("sgLeave").onclick = async () => {
+  const g = sharedOpen;
+  if (!confirm(t("Leave “{name}”? Its links disappear from your TileMark; links you copied stay. Only {owner} can share it with you again.", { name: g.name, owner: g.owner }))) return;
+  try { await api("DELETE", "api/shared/" + g.id); $("sharedDlg").close(); if (filter === String(g.id)) setFilter(""); load(); }
+  catch (e) { toast(e.message); }
+};
+
+let copying = [];
+function openCopy(list) {
+  copying = list;
+  $("cWhat").textContent = list.length === 1 ? (list[0].title || host(list[0].url)) : t("{n} links", { n: list.length });
+  fillSelect($("cGroup"), addGroupValue(null), t("No group"));
+  $("copyDlg").showModal();
+}
+$("cGo").onclick = () => copyLinks(copying, +$("cGroup").value || null, $("copyDlg"));
+async function copyLinks(list, group_id, dlg) {
+  if (!list.length) return;
+  try {
+    const r = await api("POST", "api/links/copy", { ids: list.map(l => l.id), group_id });
+    dlg.close();
+    const parts = [t("Copied to your links: {n}", { n: r.copied })];
+    if (r.already) parts.push(t("Already in your links, not copied: {n}", { n: r.already }));
+    toast(parts.join(" · ")); load();
+  } catch (e) { toast(e.message); }
 }
 $("gSave").onclick = async () => {
   const name = $("gName").value.trim(); if (!name) return toast(t("Give the group a name."));
@@ -1175,13 +1300,13 @@ async function refreshMany(list, what) {
   catch (e) { toast(e.message); }
 }
 $("rfAll").onclick = () => refreshMany(S.links, "");
-$("refreshAll").onclick = () => refreshMany(visible(), " shown here");
+$("refreshAll").onclick = () => refreshMany(visible().filter(l => !l.shared), " shown here");  // only the owner refreshes a shared link
 $("selRefresh").onclick = () => refreshMany(S.links.filter(l => selected.has(l.id)), "");
 
 // select several links, then move or delete them together
 $("selBtn").onclick = () => { selecting = true; render(); };
 $("selDone").onclick = () => { selecting = false; selected.clear(); render(); };
-$("selAll").onclick = () => { const v = visible(); const all = v.every(l => selected.has(l.id)); for (const l of v) all ? selected.delete(l.id) : selected.add(l.id); render(); };
+$("selAll").onclick = () => { const v = visible().filter(l => !l.shared); const all = v.every(l => selected.has(l.id)); for (const l of v) all ? selected.delete(l.id) : selected.add(l.id); render(); };
 $("selMove").onchange = async e => {
   const v = e.target.value; if (!v || !selected.size) return;
   try { const r = await api("POST", "api/links/bulk", { ids: [...selected], group_id: v === "none" ? null : +v });
@@ -1409,7 +1534,10 @@ $("rsGo").onclick = async () => {
   const fd = new FormData(); fd.append("file", f); fd.append("password", $("rsPass").value);
   $("rsGo").disabled = true;
   try { const r = await api("POST", "api/restore", fd); $("rsFile").value = ""; $("rsPass").value = ""; filter = ""; selected.clear();
-        closeDrawer(); toast(t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups })); load(); }
+        closeDrawer();
+        let msg = t("Restored {links} links in {groups} groups.", { links: r.links, groups: r.groups });
+        if ((r.shares_ended || []).length) msg += " " + t("Sharing ended for groups that are not in the backup: {names}", { names: r.shares_ended.join(", ") });
+        toast(msg); load(); }
   catch (e) { if (/password/i.test(e.message)) missingPassword(e.message); toast(e.message); } finally { $("rsGo").disabled = false; }
 };
 const GUIDE = "https://sevagjb.github.io/TileMark/guide.html";

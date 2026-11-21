@@ -4,7 +4,7 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Next (medium)
 
-- [ ] **Shared groups:** share a group with another account, read-only or editable.
+- [ ] **Shared groups, later steps** (after testing 2.9.0): a "may change" level next to view only (the database already has room for it), your own order for groups shared with you, and whether notes on shared links stay visible.
 
 ## Parked (larger)
 
@@ -19,6 +19,9 @@ What is planned next, and what each release brought. Changes per version in deta
 - Sync between two installations (for example the add-on and a Docker one), one-way mirror first. For now: use one installation from everywhere (the add-on's own port), or move links with Backup or Export and Import.
 
 ## Done
+
+### 2.9.0
+- [x] Shared groups: share a group with another account by username, view only. Copy to my links, leave, personal favourites and Recently opened; sharing kept or left out of backups as explained in the guide.
 
 ### 2.7.1
 - [x] Hardening: runs as a normal user instead of root, browser security rules (CSP, frames, `nosniff`), upload limits, web picture formats only, NAT64/6to4 addresses checked by their IPv4 address, and honest wording about what an admin can do.

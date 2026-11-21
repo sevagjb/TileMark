@@ -99,6 +99,35 @@ Below your groups, the left column has lists TileMark keeps for you:
 | **Recently added** | Your 30 newest links. |
 | **Recently opened** | The 30 links you opened last. |
 
+## Sharing a group
+
+You can share a group with someone else who has an account on the same TileMark. They can **look, not change**: the group stays yours, and so do its links.
+
+### Sharing (the owner)
+
+1. Press **✎** next to the group.
+2. Under **Share with**, type their **exact username** and press **Share**. There is no list to pick from, so nobody sees which other accounts exist.
+3. The group now shows **⇄** in your list. You can share one group with several people.
+
+To **stop sharing**, open **✎** again and press **Stop sharing** next to their name. The group and its links disappear from their TileMark straight away.
+
+Everything you change in the group (adding, editing, moving or deleting links, renaming the group) they see the next time their page loads. If you delete the group, it disappears for them too.
+
+> They see each link's **title, address, note and picture**. Keep private reminders out of the notes of links in a shared group.
+
+### A group shared with you
+
+Groups other people share with you are listed under **Shared with me**, with the owner's name next to them. You can:
+
+- **open** and **search** their links, and use **Open all in tabs**;
+- mark a link as a **favourite ★** for yourself. The owner doesn't see your favourites, and your **Recently opened** list stays your own;
+- **copy** a link to your own links with **⧉** on the card, or copy them all with **ⓘ → Copy all**. A copy is **your own link**: you can change it, and it stays when the sharing ends;
+- **leave** the group with **ⓘ → Leave this group**. Only the owner can share it with you again.
+
+You can't add, edit, move or delete links in someone else's group, and nothing can be dragged onto it. Their links count in **All links**, **Favourites**, **Recently added** and **Recently opened**, but never in your duplicates, your exports or your backup.
+
+What happens to sharing when a backup is restored: see [Backups and shared groups](backups.md#backups-and-shared-groups).
+
 ## Two layouts
 
 Choose in **👤 Your account → Layout**. The choice is saved with your account, so all your devices look the same.

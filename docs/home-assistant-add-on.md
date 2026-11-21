@@ -27,12 +27,12 @@ There is no setup code and no separate password: Home Assistant has already sign
 
 ## TileMark's own address (optional)
 
-Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button**, the **phone app** and the **API key**. To use them:
+Inside the sidebar the address changes every session. Three features need a fixed address: the **browser button**, the **phone app** and **API keys** (for the browser extension, iPhone Shortcuts and scripts). To use them:
 
 1. In Home Assistant, open **Settings → Apps → TileMark → Configuration → Network**, enter a port for TileMark (for example `8080`) and restart TileMark.
 2. In TileMark (from the sidebar), open **👤 Your account → Username and password** and **set a password**. Accounts made through Home Assistant have none until you set one.
 3. Open `http://<your-home-assistant>:<port>` and sign in with your TileMark username and that password.
-4. Set up the browser button, the phone app or the API key from that page. See [Save from anywhere](save-from-anywhere.md).
+4. Set up the browser button, the phone app or your API keys from that page. See [Save from anywhere](save-from-anywhere.md).
 
 Leave the port empty if you only use the sidebar. TileMark can then only be reached through Home Assistant. For the phone app the address must be HTTPS, for example through a reverse proxy.
 

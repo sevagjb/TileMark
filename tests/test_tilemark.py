@@ -97,7 +97,7 @@ def test_upgrade_from_v1_with_login(tmp_path):
     assert c.get("/api/state").status_code == 401  # old sessions end; sign in again
     c = sign_in(A, "sevag", "secret123")  # username stays case-insensitive
     s = c.get("/api/state").get_json()
-    assert s["me"] == {"username": "Sevag", "is_admin": True}
+    assert s["me"] == {"username": "Sevag", "is_admin": True, "share_list": True}
     assert {l["url"] for l in s["links"]} == {"https://proxmox.com", "http://192.168.1.10", "https://nos.nl"}
     assert {g["name"] for g in s["groups"]} == {"HomeLab", "News"}
     p = next(l for l in s["links"] if l["id"] == 1)
@@ -479,14 +479,14 @@ def test_ingress_signs_in_and_creates_accounts(tmp_path):
     A = load_app(tmp_path, addon=True)
     c, h = ha_client(A, groups="system-users")  # first visitor: admin even without HA admin rights
     s = c.get("/api/state", headers=h).get_json()
-    assert s["me"] == {"username": "sevag", "is_admin": True}
+    assert s["me"] == {"username": "sevag", "is_admin": True, "share_list": True}
     assert c.get("/api/auth", headers=h).get_json()["ha"] is True
     assert not A.setup_needed() and A.get_setting("setup_code") is None
     c.post("/api/links", json={"url": "https://mine.example"}, headers=h)
     # a second HA user, not an HA admin: own empty account, no admin rights
     c2, h2 = ha_client(A, uid="ha-2", name="sevag", groups="system-users")
     s2 = c2.get("/api/state", headers=h2).get_json()
-    assert s2["me"] == {"username": "sevag-2", "is_admin": False} and s2["links"] == []
+    assert s2["me"] == {"username": "sevag-2", "is_admin": False, "share_list": False} and s2["links"] == []
     assert c2.get("/api/users", headers=h2).status_code == 403
     # an HA admin becomes a TileMark admin
     c3, h3 = ha_client(A, uid="ha-3", name="mama", groups="system-users,system-admin")
@@ -2672,3 +2672,21 @@ def test_installation_backup_brings_sharing_back(shared):
     assert r.status_code == 200, r.get_json()
     bob = sign_in(A, "bob", "userpass11")
     assert [g["id"] for g in bob.get("/api/state").get_json()["shared_groups"]] == [ga]
+
+
+def test_account_list_for_sharing(shared):
+    """2.9.1: admins pick from the list of accounts; everyone else types the exact name,
+    unless an admin turns the list on for everyone."""
+    A, admin, bob, carol, ga, gb, la, lb = shared
+    assert admin.get("/api/state").get_json()["me"]["share_list"] is True
+    assert admin.get("/api/share/accounts").get_json()["accounts"] == ["bob", "carol"]  # not the admin themself
+    assert bob.get("/api/state").get_json()["me"]["share_list"] is False
+    assert bob.get("/api/share/accounts").status_code == 403
+    assert admin.get("/api/state").get_json()["admin"]["share_list"] is False
+    assert bob.post("/api/settings", json={"share_list": True}).status_code == 403  # admins only
+    assert admin.post("/api/settings", json={"share_list": True}).status_code == 200
+    assert admin.get("/api/state").get_json()["admin"]["share_list"] is True
+    assert bob.get("/api/state").get_json()["me"]["share_list"] is True
+    assert bob.get("/api/share/accounts").get_json()["accounts"] == ["admin", "carol"]
+    admin.post("/api/settings", json={"share_list": False})
+    assert bob.get("/api/share/accounts").status_code == 403

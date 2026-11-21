@@ -62,6 +62,7 @@ Groups are like folders, or like the tab groups in your browser: each has a **na
 - **Drag** a card onto a group to move it, drag groups to reorder them, and drag cards inside a group to put them in your own order.
 - **Select** (top right) lets you tick several links and move, refresh or delete them together.
 - **Open all in tabs** opens every link of a group at once.
+- **Share a group** with someone else on the same TileMark: **✎** → **Share with** → their username → **Share**. They see it under **Shared with me** and can open, search and copy its links (**⧉**, or **ⓘ → Copy all**), set favourites for themselves and leave it; only you change it. Admins pick the username from a list; everyone else types it exactly, unless an admin turns on the list for everyone in **⚙ Settings → Installation**. Details: [Sharing a group](https://sevagjb.github.io/TileMark/links-and-groups.html#sharing-a-group).
 
 Below your groups, TileMark keeps lists for you: **Ungrouped**, **Favourites**, **All links**, **Recently added**, **Recently opened**, and, when there are any, **Broken links** and **Duplicates**.
 
@@ -125,7 +126,7 @@ Two panels open from the top right and slide in from the side: **👤 Your accou
 | **Backup and restore** | Download a backup of your own links, or restore one. |
 | **Delete all my links** | Empties your own library. |
 | **People** *(admin)* | Everyone with an account, their number of links, admin rights, remove an account. |
-| **Installation** *(admin)* | The weekly link check, TileMark's own daily backup, fetching local addresses. |
+| **Installation** *(admin)* | The weekly link check, TileMark's own daily backup, showing the list of accounts to everyone when sharing, fetching local addresses. |
 | **Restore the whole installation** *(admin)* | TileMark's own daily backups: encrypt them, download, restore, make one now. |
 | **Home Assistant sensors** *(admin)* | The MQTT device; see **Sensors and notifications** below. |
 | **Reset TileMark** *(admin)* | Deletes every account, link and setting, so TileMark starts again as if just installed. A copy is kept unless you choose otherwise. |
@@ -138,6 +139,7 @@ Everything TileMark stores is in the app's data folder, so **Home Assistant back
 
 - TileMark's own **daily backup** is **off** in the app, because Home Assistant already covers it (and Home Assistant can encrypt its own backups). An admin can switch it on in **⚙ Settings → Installation** to have both, and encrypt it under **Restore the whole installation**.
 - Each person can always **download a backup of their own links** in **👤 Your account → Backup and restore**. It is encrypted with their TileMark password; accounts made by Home Assistant have none until one is set in **Your account**, so until then use **More options → A different password** (it can't be recovered if forgotten).
+- **Shared groups:** your own backup never holds who a group is shared with. Restoring it on the same TileMark keeps sharing for groups that come back with the same name; a Home Assistant backup (or TileMark's daily backup) brings everything back as it was, sharing included. See [Backups and shared groups](https://sevagjb.github.io/TileMark/backups.html#backups-and-shared-groups).
 
 ## Sensors and notifications
 

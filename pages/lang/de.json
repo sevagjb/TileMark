@@ -585,5 +585,8 @@
   "Copies are your own links: they stay when the sharing ends.": "Kopien sind deine eigenen Links: Sie bleiben, wenn das Teilen endet.",
   "Leave this group": "Diese Gruppe verlassen",
   "The copy is your own link: it stays when the sharing ends.": "Die Kopie ist dein eigener Link: Er bleibt, wenn das Teilen endet.",
-  "Copy": "Kopieren"
+  "Copy": "Kopieren",
+  "Pick or type a username": "Benutzernamen wählen oder eingeben",
+  "Show the list of accounts to everyone when sharing a group": "Die Liste der Konten beim Teilen einer Gruppe allen zeigen",
+  "Off by default: then only admins pick from the list, and everyone else types the exact username, so the usernames on this TileMark stay private. Turn it on when everyone with an account knows each other, such as a household.": "Standardmäßig aus: Dann wählen nur Admins aus der Liste, alle anderen geben den genauen Benutzernamen ein, sodass die Benutzernamen in diesem TileMark privat bleiben. Schalte es ein, wenn sich alle mit einem Konto kennen, etwa in einem Haushalt."
 }

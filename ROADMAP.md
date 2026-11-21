@@ -20,6 +20,9 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.9.1
+- [x] Sharing: admins pick the username from a list; an admin setting shows the list to everyone (off by default).
+
 ### 2.9.0
 - [x] Shared groups: share a group with another account by username, view only. Copy to my links, leave, personal favourites and Recently opened; sharing kept or left out of backups as explained in the guide.
 

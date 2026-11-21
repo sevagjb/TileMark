@@ -9,6 +9,7 @@ Everything TileMark can do, explained step by step. New here? Start with **Getti
 | [Links and groups](links-and-groups.md) | Saving links, cards and their buttons, groups, sharing a group, layouts, sorting, selecting, search, shortcuts. |
 | [Import and export](import-export.md) | Browser bookmarks in, files out, and how duplicates are handled. |
 | [Save from anywhere](save-from-anywhere.md) | The browser button, the phone app and the API key. |
+| [Browser extension](browser-extension.md) | The TileMark extension for Edge: toolbar button, right-click menu, setup and troubleshooting. Its [privacy policy](extension-privacy.md). |
 | [Broken links](broken-links.md) | The weekly check and what to do with broken links. |
 | [Accounts and security](accounts-and-security.md) | People, what an admin can do, two-factor sign-in, passkeys, devices, forgotten passwords, resetting, uploads, local addresses, the container user. |
 | [Backups](backups.md) | Your own backups, daily backups of the installation, restoring. |

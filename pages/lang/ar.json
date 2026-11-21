@@ -311,6 +311,7 @@
   "Language": "اللغة",
   "Follow my browser": "اتباع المتصفح",
   "Please sign in.": "يُرجى تسجيل الدخول.",
+  "This API key is not valid. Create a new one in Your account → Save from anywhere.": "مفتاح API هذا غير صالح. أنشئ مفتاحًا جديدًا من حسابك ← الحفظ من أي مكان.",
   "Something went wrong ({code}).": "حدث خطأ ما ({code}).",
   "Edit group": "تعديل المجموعة",
   "Open {n} tabs?": {

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TileMark</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body class="popup">
+<main>
+  <header>
+    <span class="brand"><img src="icons/icon-48.png" alt="">TileMark</span>
+    <button id="settings" type="button" data-i18n-title="settings" data-i18n-aria="settings">⚙</button>
+  </header>
+
+  <section id="setup" hidden>
+    <p class="message" data-i18n="err_setup"></p>
+    <div class="actions"><button id="openSettings" class="primary" type="button" data-i18n="openSettings"></button></div>
+  </section>
+
+  <p id="cannot" class="message muted" data-i18n="cannotSave" hidden></p>
+
+  <form id="form" hidden>
+    <label for="title" data-i18n="title"></label>
+    <input id="title" maxlength="300">
+    <p id="url" class="url"></p>
+
+    <label for="group" data-i18n="group"></label>
+    <select id="group"></select>
+    <input id="newGroup" maxlength="80" data-i18n-placeholder="newGroupName" hidden>
+
+    <label for="note" data-i18n="note"></label>
+    <textarea id="note" maxlength="2000" rows="3" data-i18n-placeholder="notePlaceholder"></textarea>
+
+    <div class="actions">
+      <button id="save" class="primary" type="submit" data-i18n="save"></button>
+    </div>
+  </form>
+
+  <section id="result" hidden>
+    <p id="resultText" class="message" role="status"></p>
+    <div class="actions">
+      <button id="saveAnyway" type="button" data-i18n="saveAnyway" hidden></button>
+      <button id="openTileMark" type="button" data-i18n="openTileMark"></button>
+    </div>
+  </section>
+
+  <p id="error" class="message error" role="alert" hidden></p>
+</main>
+</body>
+</html>

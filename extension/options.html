@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TileMark</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="options.js"></script>
+</head>
+<body class="options">
+<main>
+  <h1 class="brand"><img src="icons/icon-48.png" alt=""><span data-i18n="optTitle"></span></h1>
+  <p class="muted" data-i18n="optIntro"></p>
+
+  <section>
+    <form id="form" novalidate>
+      <label for="server" data-i18n="serverLabel"></label>
+      <input id="server" type="url" autocomplete="url" spellcheck="false" placeholder="https://tilemark.example.com">
+      <p class="hint" data-i18n="serverHint"></p>
+      <p id="serverWarn" class="warn" hidden></p>
+
+      <label for="apiKey" data-i18n="apiKeyLabel"></label>
+      <div class="row">
+        <input id="apiKey" class="key grow" type="password" autocomplete="off" spellcheck="false" placeholder="tm_…">
+        <button id="showKey" type="button" data-i18n="show"></button>
+      </div>
+      <p class="hint" data-i18n="apiKeyHint"></p>
+
+      <div class="actions">
+        <button id="save" class="primary" type="submit" data-i18n="saveAndTest"></button>
+        <span id="status" role="status"></span>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <label for="menuGroup" data-i18n="menuGroupLabel"></label>
+    <select id="menuGroup"></select>
+
+    <label for="language" data-i18n="languageLabel"></label>
+    <select id="language"></select>
+
+    <h2 data-i18n="shortcutTitle"></h2>
+    <p class="hint"><span data-i18n="shortcutHint"></span> <a id="shortcuts" href="#" data-i18n="shortcutChange"></a></p>
+  </section>
+
+  <section>
+    <div class="actions">
+      <button id="forget" class="danger" type="button" data-i18n="forget"></button>
+      <span id="forgotten" class="muted" role="status"></span>
+    </div>
+  </section>
+
+  <footer>
+    <a href="https://sevagjb.github.io/TileMark/browser-extension.html" target="_blank" rel="noopener" data-i18n="guide"></a>
+    <a href="https://sevagjb.github.io/TileMark/extension-privacy.html" target="_blank" rel="noopener" data-i18n="privacy"></a>
+    <span id="version"></span>
+  </footer>
+</main>
+</body>
+</html>

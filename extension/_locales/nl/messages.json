@@ -1,0 +1,179 @@
+{
+  "extName": {
+    "message": "TileMark"
+  },
+  "extDescription": {
+    "message": "Sla elke pagina met één klik op in je eigen, zelf gehoste TileMark."
+  },
+  "actionTitle": {
+    "message": "Opslaan in TileMark"
+  },
+  "commandOpen": {
+    "message": "Het venster Opslaan in TileMark openen"
+  },
+  "menuSavePage": {
+    "message": "Pagina opslaan in TileMark"
+  },
+  "menuSaveLink": {
+    "message": "Link opslaan in TileMark"
+  },
+  "settings": {
+    "message": "Instellingen"
+  },
+  "title": {
+    "message": "Titel"
+  },
+  "group": {
+    "message": "Groep"
+  },
+  "noGroup": {
+    "message": "Geen groep"
+  },
+  "newGroup": {
+    "message": "+ Nieuwe groep…"
+  },
+  "newGroupName": {
+    "message": "Naam van de nieuwe groep"
+  },
+  "note": {
+    "message": "Notitie"
+  },
+  "notePlaceholder": {
+    "message": "Optioneel"
+  },
+  "save": {
+    "message": "Opslaan"
+  },
+  "saving": {
+    "message": "Opslaan…"
+  },
+  "loadingGroups": {
+    "message": "Groepen laden…"
+  },
+  "savedTo": {
+    "message": "Opgeslagen in {group}"
+  },
+  "saved": {
+    "message": "Opgeslagen"
+  },
+  "alreadyIn": {
+    "message": "Al opgeslagen in {group}: {title}"
+  },
+  "already": {
+    "message": "Al opgeslagen: {title}"
+  },
+  "saveAnyway": {
+    "message": "Toch opslaan"
+  },
+  "openTileMark": {
+    "message": "TileMark openen"
+  },
+  "cannotSave": {
+    "message": "Deze pagina kan niet opgeslagen worden. Alleen webpagina's (http en https) kunnen dat."
+  },
+  "openSettings": {
+    "message": "Instellingen openen"
+  },
+  "err_setup": {
+    "message": "Koppel de extensie eerst aan je TileMark."
+  },
+  "err_noPermission": {
+    "message": "De extensie mag {server} nog niet bereiken. Open de instellingen en druk op Opslaan en testen."
+  },
+  "err_offline": {
+    "message": "TileMark op {server} is niet bereikbaar. Controleer het adres en of TileMark draait."
+  },
+  "err_redirect": {
+    "message": "TileMark antwoordde met een doorverwijzing: meestal een inlogpagina ervoor (Authelia, Authentik, basic auth) of het adres van de Home Assistant-zijbalk. Gebruik het eigen adres van TileMark en laat /api/ door."
+  },
+  "err_notTileMark": {
+    "message": "Dat adres antwoordde, maar niet zoals TileMark. Controleer het adres."
+  },
+  "err_badKey": {
+    "message": "TileMark accepteerde de API-sleutel niet. Maak er een aan in TileMark onder Je account → Overal vandaan opslaan en plak hem in de instellingen van de extensie."
+  },
+  "err_refused": {
+    "message": "TileMark weigerde dit verzoek. Staat er een proxy of firewallregel voor TileMark, laat /api/ dan door; werk anders TileMark bij naar de nieuwste versie."
+  },
+  "err_server": {
+    "message": "TileMark meldt: {message}"
+  },
+  "optTitle": {
+    "message": "Instellingen van de TileMark-extensie"
+  },
+  "optIntro": {
+    "message": "Koppel deze browser aan je TileMark. Het adres en de API-sleutel blijven alleen in deze browser."
+  },
+  "serverLabel": {
+    "message": "Adres van TileMark"
+  },
+  "serverHint": {
+    "message": "Het adres waarop je TileMark opent. Gebruik voor de Home Assistant-app het eigen adres van TileMark (de directe poort), niet de zijbalk."
+  },
+  "apiKeyLabel": {
+    "message": "API-sleutel"
+  },
+  "apiKeyHint": {
+    "message": "In TileMark: Je account → Overal vandaan opslaan → API-sleutel maken. Elk account heeft één sleutel: API-sleutel vervangen in TileMark zet de oude overal uit, ook in een iPhone-opdracht."
+  },
+  "show": {
+    "message": "Tonen"
+  },
+  "hide": {
+    "message": "Verbergen"
+  },
+  "saveAndTest": {
+    "message": "Opslaan en testen"
+  },
+  "testing": {
+    "message": "Testen…"
+  },
+  "connected": {
+    "message": "Verbonden. Gevonden groepen: {count}."
+  },
+  "invalidAddress": {
+    "message": "Dat lijkt geen webadres."
+  },
+  "permissionDenied": {
+    "message": "De browser gaf geen toegang tot {server}. De extensie heeft die nodig om daar links op te slaan."
+  },
+  "warnHttp": {
+    "message": "Dit adres gebruikt gewoon http, dus de API-sleutel gaat onversleuteld over het netwerk. Thuis op je eigen netwerk is dat prima; gebruik van buitenaf HTTPS."
+  },
+  "warnHomeAssistant": {
+    "message": "Dit lijkt het eigen adres van Home Assistant. De extensie kan niet via de Home Assistant-zijbalk: gebruik het eigen adres van TileMark (de directe poort)."
+  },
+  "menuGroupLabel": {
+    "message": "Rechtsklikken slaat op in"
+  },
+  "menuGroupLast": {
+    "message": "De groep die je het laatst in het Opslaan-venster koos"
+  },
+  "languageLabel": {
+    "message": "Taal"
+  },
+  "languageAuto": {
+    "message": "Zelfde als de browser"
+  },
+  "shortcutTitle": {
+    "message": "Sneltoets"
+  },
+  "shortcutHint": {
+    "message": "Alt+Shift+S opent het Opslaan-venster."
+  },
+  "shortcutChange": {
+    "message": "Wijzigen"
+  },
+  "forget": {
+    "message": "Adres en sleutel uit deze browser verwijderen"
+  },
+  "forgotten": {
+    "message": "Verwijderd."
+  },
+  "guide": {
+    "message": "Handleiding"
+  },
+  "privacy": {
+    "message": "Privacy"
+  }
+}

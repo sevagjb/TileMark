@@ -1,0 +1,179 @@
+{
+  "extName": {
+    "message": "TileMark"
+  },
+  "extDescription": {
+    "message": "Enregistrez n'importe quelle page dans votre propre TileMark auto-hébergé, en un clic."
+  },
+  "actionTitle": {
+    "message": "Enregistrer dans TileMark"
+  },
+  "commandOpen": {
+    "message": "Ouvrir la fenêtre Enregistrer dans TileMark"
+  },
+  "menuSavePage": {
+    "message": "Enregistrer la page dans TileMark"
+  },
+  "menuSaveLink": {
+    "message": "Enregistrer le lien dans TileMark"
+  },
+  "settings": {
+    "message": "Paramètres"
+  },
+  "title": {
+    "message": "Titre"
+  },
+  "group": {
+    "message": "Groupe"
+  },
+  "noGroup": {
+    "message": "Aucun groupe"
+  },
+  "newGroup": {
+    "message": "+ Nouveau groupe…"
+  },
+  "newGroupName": {
+    "message": "Nom du nouveau groupe"
+  },
+  "note": {
+    "message": "Note"
+  },
+  "notePlaceholder": {
+    "message": "Facultatif"
+  },
+  "save": {
+    "message": "Enregistrer"
+  },
+  "saving": {
+    "message": "Enregistrement…"
+  },
+  "loadingGroups": {
+    "message": "Chargement des groupes…"
+  },
+  "savedTo": {
+    "message": "Enregistré dans {group}"
+  },
+  "saved": {
+    "message": "Enregistré"
+  },
+  "alreadyIn": {
+    "message": "Déjà enregistré dans {group} : {title}"
+  },
+  "already": {
+    "message": "Déjà enregistré : {title}"
+  },
+  "saveAnyway": {
+    "message": "Enregistrer quand même"
+  },
+  "openTileMark": {
+    "message": "Ouvrir TileMark"
+  },
+  "cannotSave": {
+    "message": "Cette page ne peut pas être enregistrée. Seules les pages web (http et https) le peuvent."
+  },
+  "openSettings": {
+    "message": "Ouvrir les paramètres"
+  },
+  "err_setup": {
+    "message": "Connectez d'abord l'extension à votre TileMark."
+  },
+  "err_noPermission": {
+    "message": "L'extension n'a pas encore accès à {server}. Ouvrez les paramètres et appuyez sur Enregistrer et tester."
+  },
+  "err_offline": {
+    "message": "Impossible de joindre TileMark à {server}. Vérifiez l'adresse et que TileMark fonctionne."
+  },
+  "err_redirect": {
+    "message": "TileMark a répondu par une redirection : en général une page de connexion placée devant (Authelia, Authentik, authentification basique) ou l'adresse de la barre latérale de Home Assistant. Utilisez l'adresse propre de TileMark et laissez passer /api/."
+  },
+  "err_notTileMark": {
+    "message": "Cette adresse a répondu, mais pas comme TileMark. Vérifiez l'adresse."
+  },
+  "err_badKey": {
+    "message": "TileMark n'a pas accepté la clé API. Créez-en une dans TileMark sous Votre compte → Enregistrer depuis n'importe où et collez-la dans les paramètres de l'extension."
+  },
+  "err_refused": {
+    "message": "TileMark a refusé cette requête. Si un proxy ou une règle de pare-feu se trouve devant TileMark, laissez passer /api/ ; sinon, mettez TileMark à jour vers la dernière version."
+  },
+  "err_server": {
+    "message": "TileMark indique : {message}"
+  },
+  "optTitle": {
+    "message": "Paramètres de l'extension TileMark"
+  },
+  "optIntro": {
+    "message": "Connectez ce navigateur à votre TileMark. L'adresse et la clé API restent uniquement dans ce navigateur."
+  },
+  "serverLabel": {
+    "message": "Adresse de TileMark"
+  },
+  "serverHint": {
+    "message": "L'adresse à laquelle vous ouvrez TileMark. Pour l'application Home Assistant, utilisez l'adresse propre de TileMark (son port direct), pas la barre latérale."
+  },
+  "apiKeyLabel": {
+    "message": "Clé API"
+  },
+  "apiKeyHint": {
+    "message": "Dans TileMark : Votre compte → Enregistrer depuis n'importe où → Créer une clé API. Chaque compte a une seule clé : Remplacer la clé API dans TileMark désactive l'ancienne partout, y compris dans un raccourci iPhone."
+  },
+  "show": {
+    "message": "Afficher"
+  },
+  "hide": {
+    "message": "Masquer"
+  },
+  "saveAndTest": {
+    "message": "Enregistrer et tester"
+  },
+  "testing": {
+    "message": "Test en cours…"
+  },
+  "connected": {
+    "message": "Connecté. Groupes trouvés : {count}."
+  },
+  "invalidAddress": {
+    "message": "Cela ne ressemble pas à une adresse web."
+  },
+  "permissionDenied": {
+    "message": "Le navigateur n'a pas autorisé l'accès à {server}. L'extension en a besoin pour y enregistrer des liens."
+  },
+  "warnHttp": {
+    "message": "Cette adresse utilise http simple : la clé API circule donc sans chiffrement. C'est acceptable chez vous sur votre propre réseau ; depuis l'extérieur, utilisez HTTPS."
+  },
+  "warnHomeAssistant": {
+    "message": "Cela ressemble à l'adresse propre de Home Assistant. L'extension ne peut pas passer par la barre latérale de Home Assistant : utilisez l'adresse propre de TileMark (son port direct)."
+  },
+  "menuGroupLabel": {
+    "message": "Le clic droit enregistre dans"
+  },
+  "menuGroupLast": {
+    "message": "Le dernier groupe choisi dans la fenêtre Enregistrer"
+  },
+  "languageLabel": {
+    "message": "Langue"
+  },
+  "languageAuto": {
+    "message": "Comme le navigateur"
+  },
+  "shortcutTitle": {
+    "message": "Raccourci clavier"
+  },
+  "shortcutHint": {
+    "message": "Alt+Maj+S ouvre la fenêtre Enregistrer."
+  },
+  "shortcutChange": {
+    "message": "Le modifier"
+  },
+  "forget": {
+    "message": "Supprimer l'adresse et la clé de ce navigateur"
+  },
+  "forgotten": {
+    "message": "Supprimé."
+  },
+  "guide": {
+    "message": "Guide"
+  },
+  "privacy": {
+    "message": "Confidentialité"
+  }
+}

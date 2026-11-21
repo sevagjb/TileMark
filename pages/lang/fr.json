@@ -255,6 +255,7 @@
   "Language": "Langue",
   "Follow my browser": "Suivre mon navigateur",
   "Please sign in.": "Veuillez vous connecter.",
+  "This API key is not valid. Create a new one in Your account → Save from anywhere.": "Cette clé API n'est pas valide. Créez-en une nouvelle dans Votre compte → Enregistrer depuis n'importe où.",
   "Something went wrong ({code}).": "Une erreur s'est produite ({code}).",
   "Edit group": "Modifier le groupe",
   "Open {n} tabs?": "Ouvrir {n} onglets ?",

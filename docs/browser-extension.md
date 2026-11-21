@@ -1,0 +1,64 @@
+# Browser extension
+
+The TileMark extension adds a **Save to TileMark** button to your browser's toolbar. One click on any page opens a small window with the page's title and address; pick a group, add a note if you like, and press **Save**. It also adds **Save page to TileMark** and **Save link to TileMark** to the right-click menu.
+
+It works with your **own** TileMark: the extension stores nothing itself and talks only to the address you give it.
+
+| | |
+| --- | --- |
+| Browsers | Microsoft Edge (Chrome, Brave, Vivaldi and Firefox later) |
+| Needs | A TileMark you can reach from that browser, and an [API key](save-from-anywhere.md#api-key) |
+| Languages | English, Nederlands, Deutsch, Français, Español, العربية |
+| Privacy | See [Extension privacy](extension-privacy.md) |
+
+> **Browser button or extension?** The [browser button](save-from-anywhere.md#browser-button) (a bookmark you drag to the bar) needs no installing, but needs you to be signed in to TileMark in that browser. The extension uses an API key instead, so it keeps working when your TileMark session has ended, and adds the right-click menu and a keyboard shortcut.
+
+## Install
+
+**Microsoft Edge:** install **TileMark** from Microsoft Edge Add-ons. *(The listing link is added here once the store has approved it.)*
+
+**To try a version before it's in the store:** download `tilemark-extension-<version>.zip` from the [releases on GitHub](https://github.com/sevagjb/TileMark/releases), unzip it, open `edge://extensions`, turn on **Developer mode**, press **Load unpacked** and choose the unzipped folder.
+
+## Connect it to your TileMark
+
+The settings page opens by itself after installing. Later you find it with **⚙** in the extension's window, or by right-clicking the toolbar icon → **Extension options**.
+
+1. In TileMark, open **👤 Your account → Save from anywhere** and press **Create API key**. Copy the key (it is shown only once).
+2. In the extension's settings, fill in:
+   - **TileMark address**: the address you open TileMark at, for example `https://tilemark.example.com`. Typing just `192.168.1.20:8080` works too: an IP address, `localhost` or a name ending in `.local`, `.lan`, `.home` or `.internal` is taken as `http://`, anything else as `https://`.
+   - **API key**: paste the key.
+3. Press **Save and test**. The browser asks whether the extension may reach that one address; allow it. *Connected. Groups found: …* means it works.
+
+> **Home Assistant app:** use TileMark's **own address** (its direct port), not the Home Assistant sidebar. The sidebar needs a Home Assistant sign-in that the extension doesn't have. See [TileMark's own address](home-assistant-add-on.md#tilemarks-own-address-optional).
+
+> **One API key per account.** The extension, an iPhone Shortcut and your scripts share it. **Replace API key** in TileMark makes the old key stop working everywhere; paste the new one in each place.
+
+## Saving
+
+- **Toolbar button** (or **Alt+Shift+S**): the window shows the page's title (you can change it), its address, a **Group** list with the group you used last already chosen, and a **Note**. Choose **+ New group…** to make a group on the spot. **Ctrl+Enter** in the note saves.
+- **Right-click** on a page → **Save page to TileMark**, or on a link → **Save link to TileMark**. This saves straight away, without the window, to the group set under **Right-click saves to** (by default the group you last used in the window). A mark on the toolbar icon shows how it went: **✓** saved, **=** already in TileMark, **!** something went wrong (hover over the icon to read what).
+- **Already saved?** TileMark never keeps the same page twice. The window then says which group it is in. If the address only *looks* the same (another tracking code, `http` instead of `https`), **Save anyway** keeps both.
+
+To change the keyboard shortcut, use **Change it** in the extension's settings (or open `edge://extensions/shortcuts`).
+
+## Settings
+
+| Setting | What it does |
+| --- | --- |
+| TileMark address | Where links are sent. Changing it asks again for permission and drops the old one. |
+| API key | Your key from TileMark. Kept in this browser only, never synced to other devices. |
+| Right-click saves to | The group last used in the window (default), no group, or a fixed group. |
+| Language | Same as the browser (default), or one of TileMark's languages. |
+| Remove the address and key from this browser | Forgets everything the extension stored and gives back the permission. |
+
+## When something doesn't work
+
+| Message | What to do |
+| --- | --- |
+| Can't reach TileMark at … | Check the address, and that this computer can reach it (open it in a tab). |
+| TileMark did not accept the API key | The key was replaced or removed in TileMark. Create a new one and paste it in the settings. |
+| TileMark answered with a redirect | Something in front of TileMark sends the extension to a login page: an Authelia/Authentik/basic-auth rule on your reverse proxy, or the Home Assistant sidebar address. Use TileMark's own address, and let `/api/` through without that login (the API key protects it). |
+| That address answered, but not like TileMark | The address points at something else. Use the address you open TileMark at. |
+| TileMark refused this request | A proxy or firewall rule blocks the request, or the TileMark version is old. Let `/api/` through, or update TileMark. |
+| The extension may not reach … yet | Open the settings and press **Save and test**, then allow access when the browser asks. |
+| This page can't be saved | Only web pages (`http` and `https`) can be saved, not the browser's own pages such as `edge://` or the new-tab page. |

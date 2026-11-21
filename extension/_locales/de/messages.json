@@ -1,0 +1,179 @@
+{
+  "extName": {
+    "message": "TileMark"
+  },
+  "extDescription": {
+    "message": "Speichere jede Seite mit einem Klick in deinem eigenen, selbst gehosteten TileMark."
+  },
+  "actionTitle": {
+    "message": "In TileMark speichern"
+  },
+  "commandOpen": {
+    "message": "Fenster „In TileMark speichern“ öffnen"
+  },
+  "menuSavePage": {
+    "message": "Seite in TileMark speichern"
+  },
+  "menuSaveLink": {
+    "message": "Link in TileMark speichern"
+  },
+  "settings": {
+    "message": "Einstellungen"
+  },
+  "title": {
+    "message": "Titel"
+  },
+  "group": {
+    "message": "Gruppe"
+  },
+  "noGroup": {
+    "message": "Keine Gruppe"
+  },
+  "newGroup": {
+    "message": "+ Neue Gruppe…"
+  },
+  "newGroupName": {
+    "message": "Name der neuen Gruppe"
+  },
+  "note": {
+    "message": "Notiz"
+  },
+  "notePlaceholder": {
+    "message": "Optional"
+  },
+  "save": {
+    "message": "Speichern"
+  },
+  "saving": {
+    "message": "Wird gespeichert…"
+  },
+  "loadingGroups": {
+    "message": "Gruppen werden geladen…"
+  },
+  "savedTo": {
+    "message": "Gespeichert in {group}"
+  },
+  "saved": {
+    "message": "Gespeichert"
+  },
+  "alreadyIn": {
+    "message": "Bereits gespeichert in {group}: {title}"
+  },
+  "already": {
+    "message": "Bereits gespeichert: {title}"
+  },
+  "saveAnyway": {
+    "message": "Trotzdem speichern"
+  },
+  "openTileMark": {
+    "message": "TileMark öffnen"
+  },
+  "cannotSave": {
+    "message": "Diese Seite kann nicht gespeichert werden. Nur Webseiten (http und https) gehen."
+  },
+  "openSettings": {
+    "message": "Einstellungen öffnen"
+  },
+  "err_setup": {
+    "message": "Verbinde die Erweiterung zuerst mit deinem TileMark."
+  },
+  "err_noPermission": {
+    "message": "Die Erweiterung darf {server} noch nicht erreichen. Öffne die Einstellungen und drücke Speichern und testen."
+  },
+  "err_offline": {
+    "message": "TileMark unter {server} ist nicht erreichbar. Prüfe die Adresse und ob TileMark läuft."
+  },
+  "err_redirect": {
+    "message": "TileMark antwortete mit einer Weiterleitung: meist eine Anmeldeseite davor (Authelia, Authentik, Basic Auth) oder die Adresse der Home-Assistant-Seitenleiste. Verwende die eigene Adresse von TileMark und lass /api/ durch."
+  },
+  "err_notTileMark": {
+    "message": "Die Adresse antwortet, aber nicht wie TileMark. Prüfe die Adresse."
+  },
+  "err_badKey": {
+    "message": "TileMark hat den API-Schlüssel nicht angenommen. Erstelle einen in TileMark unter Dein Konto → Von überall speichern und füge ihn in den Einstellungen der Erweiterung ein."
+  },
+  "err_refused": {
+    "message": "TileMark hat diese Anfrage abgelehnt. Steht ein Proxy oder eine Firewall-Regel vor TileMark, lass /api/ durch; sonst aktualisiere TileMark auf die neueste Version."
+  },
+  "err_server": {
+    "message": "TileMark meldet: {message}"
+  },
+  "optTitle": {
+    "message": "Einstellungen der TileMark-Erweiterung"
+  },
+  "optIntro": {
+    "message": "Verbinde diesen Browser mit deinem TileMark. Adresse und API-Schlüssel bleiben nur in diesem Browser."
+  },
+  "serverLabel": {
+    "message": "Adresse von TileMark"
+  },
+  "serverHint": {
+    "message": "Die Adresse, unter der du TileMark öffnest. Für die Home-Assistant-App die eigene Adresse von TileMark (direkter Port) verwenden, nicht die Seitenleiste."
+  },
+  "apiKeyLabel": {
+    "message": "API-Schlüssel"
+  },
+  "apiKeyHint": {
+    "message": "In TileMark: Dein Konto → Von überall speichern → API-Schlüssel erstellen. Jedes Konto hat einen Schlüssel: API-Schlüssel ersetzen in TileMark schaltet den alten überall ab, auch in einem iPhone-Kurzbefehl."
+  },
+  "show": {
+    "message": "Anzeigen"
+  },
+  "hide": {
+    "message": "Verbergen"
+  },
+  "saveAndTest": {
+    "message": "Speichern und testen"
+  },
+  "testing": {
+    "message": "Wird getestet…"
+  },
+  "connected": {
+    "message": "Verbunden. Gefundene Gruppen: {count}."
+  },
+  "invalidAddress": {
+    "message": "Das sieht nicht wie eine Webadresse aus."
+  },
+  "permissionDenied": {
+    "message": "Der Browser hat den Zugriff auf {server} nicht erlaubt. Die Erweiterung braucht ihn, um dort Links zu speichern."
+  },
+  "warnHttp": {
+    "message": "Diese Adresse nutzt einfaches http, der API-Schlüssel wird also unverschlüsselt übertragen. Zu Hause im eigenen Netz ist das in Ordnung; von außen bitte HTTPS verwenden."
+  },
+  "warnHomeAssistant": {
+    "message": "Das sieht nach der eigenen Adresse von Home Assistant aus. Die Erweiterung kann nicht über die Home-Assistant-Seitenleiste gehen: Verwende die eigene Adresse von TileMark (direkter Port)."
+  },
+  "menuGroupLabel": {
+    "message": "Rechtsklick speichert in"
+  },
+  "menuGroupLast": {
+    "message": "Die zuletzt im Speichern-Fenster gewählte Gruppe"
+  },
+  "languageLabel": {
+    "message": "Sprache"
+  },
+  "languageAuto": {
+    "message": "Wie der Browser"
+  },
+  "shortcutTitle": {
+    "message": "Tastenkürzel"
+  },
+  "shortcutHint": {
+    "message": "Alt+Umschalt+S öffnet das Speichern-Fenster."
+  },
+  "shortcutChange": {
+    "message": "Ändern"
+  },
+  "forget": {
+    "message": "Adresse und Schlüssel aus diesem Browser entfernen"
+  },
+  "forgotten": {
+    "message": "Entfernt."
+  },
+  "guide": {
+    "message": "Anleitung"
+  },
+  "privacy": {
+    "message": "Datenschutz"
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "extName": {
+    "message": "TileMark"
+  },
+  "extDescription": {
+    "message": "احفظ أي صفحة في TileMark الخاص بك والمستضاف ذاتيًا بنقرة واحدة."
+  },
+  "actionTitle": {
+    "message": "حفظ في TileMark"
+  },
+  "commandOpen": {
+    "message": "فتح نافذة الحفظ في TileMark"
+  },
+  "menuSavePage": {
+    "message": "حفظ الصفحة في TileMark"
+  },
+  "menuSaveLink": {
+    "message": "حفظ الرابط في TileMark"
+  },
+  "settings": {
+    "message": "الإعدادات"
+  },
+  "title": {
+    "message": "العنوان"
+  },
+  "group": {
+    "message": "المجموعة"
+  },
+  "noGroup": {
+    "message": "بلا مجموعة"
+  },
+  "newGroup": {
+    "message": "+ مجموعة جديدة…"
+  },
+  "newGroupName": {
+    "message": "اسم المجموعة الجديدة"
+  },
+  "note": {
+    "message": "ملاحظة"
+  },
+  "notePlaceholder": {
+    "message": "اختياري"
+  },
+  "save": {
+    "message": "حفظ"
+  },
+  "saving": {
+    "message": "جارٍ الحفظ…"
+  },
+  "loadingGroups": {
+    "message": "جارٍ تحميل المجموعات…"
+  },
+  "savedTo": {
+    "message": "تم الحفظ في {group}"
+  },
+  "saved": {
+    "message": "تم الحفظ"
+  },
+  "alreadyIn": {
+    "message": "محفوظ مسبقًا في {group}: {title}"
+  },
+  "already": {
+    "message": "محفوظ مسبقًا: {title}"
+  },
+  "saveAnyway": {
+    "message": "احفظ على أي حال"
+  },
+  "openTileMark": {
+    "message": "فتح TileMark"
+  },
+  "cannotSave": {
+    "message": "لا يمكن حفظ هذه الصفحة. يمكن حفظ صفحات الويب فقط (http و https)."
+  },
+  "openSettings": {
+    "message": "فتح الإعدادات"
+  },
+  "err_setup": {
+    "message": "اربط الإضافة بـ TileMark الخاص بك أولًا."
+  },
+  "err_noPermission": {
+    "message": "لا يُسمح للإضافة بالوصول إلى {server} بعد. افتح الإعدادات واضغط حفظ واختبار."
+  },
+  "err_offline": {
+    "message": "تعذّر الوصول إلى TileMark على {server}. تحقّق من العنوان ومن أن TileMark يعمل."
+  },
+  "err_redirect": {
+    "message": "ردّ TileMark بإعادة توجيه: غالبًا صفحة تسجيل دخول أمامه (Authelia أو Authentik أو basic auth) أو عنوان الشريط الجانبي في Home Assistant. استخدم عنوان TileMark الخاص به واسمح بمرور ‎/api/‎."
+  },
+  "err_notTileMark": {
+    "message": "ردّ هذا العنوان، لكن ليس كما يردّ TileMark. تحقّق من العنوان."
+  },
+  "err_badKey": {
+    "message": "لم يقبل TileMark مفتاح API. أنشئ مفتاحًا في TileMark من حسابك ← الحفظ من أي مكان، والصقه في إعدادات الإضافة."
+  },
+  "err_refused": {
+    "message": "رفض TileMark هذا الطلب. إذا كان أمام TileMark وكيل (proxy) أو قاعدة جدار حماية، فاسمح بمرور ‎/api/‎؛ وإلا فحدّث TileMark إلى أحدث إصدار."
+  },
+  "err_server": {
+    "message": "رسالة TileMark: {message}"
+  },
+  "optTitle": {
+    "message": "إعدادات إضافة TileMark"
+  },
+  "optIntro": {
+    "message": "اربط هذا المتصفح بـ TileMark الخاص بك. يبقى العنوان ومفتاح API في هذا المتصفح فقط."
+  },
+  "serverLabel": {
+    "message": "عنوان TileMark"
+  },
+  "serverHint": {
+    "message": "العنوان الذي تفتح به TileMark. لتطبيق Home Assistant استخدم عنوان TileMark الخاص به (المنفذ المباشر)، وليس الشريط الجانبي."
+  },
+  "apiKeyLabel": {
+    "message": "مفتاح API"
+  },
+  "apiKeyHint": {
+    "message": "في TileMark: حسابك ← الحفظ من أي مكان ← إنشاء مفتاح API. لكل حساب مفتاح واحد: استبدال مفتاح API في TileMark يوقف المفتاح القديم في كل مكان، بما في ذلك اختصار iPhone."
+  },
+  "show": {
+    "message": "إظهار"
+  },
+  "hide": {
+    "message": "إخفاء"
+  },
+  "saveAndTest": {
+    "message": "حفظ واختبار"
+  },
+  "testing": {
+    "message": "جارٍ الاختبار…"
+  },
+  "connected": {
+    "message": "تم الاتصال. عدد المجموعات: {count}."
+  },
+  "invalidAddress": {
+    "message": "هذا لا يبدو عنوان ويب."
+  },
+  "permissionDenied": {
+    "message": "لم يسمح المتصفح بالوصول إلى {server}. تحتاج الإضافة إلى ذلك لحفظ الروابط هناك."
+  },
+  "warnHttp": {
+    "message": "يستخدم هذا العنوان http العادي، لذا يُرسَل مفتاح API دون تشفير. لا بأس بذلك في المنزل على شبكتك الخاصة؛ أما من الخارج فاستخدم HTTPS."
+  },
+  "warnHomeAssistant": {
+    "message": "يبدو هذا عنوان Home Assistant نفسه. لا تستطيع الإضافة المرور عبر الشريط الجانبي في Home Assistant: استخدم عنوان TileMark الخاص به (المنفذ المباشر)."
+  },
+  "menuGroupLabel": {
+    "message": "النقر بالزر الأيمن يحفظ في"
+  },
+  "menuGroupLast": {
+    "message": "آخر مجموعة استُخدمت في نافذة الحفظ"
+  },
+  "languageLabel": {
+    "message": "اللغة"
+  },
+  "languageAuto": {
+    "message": "مثل المتصفح"
+  },
+  "shortcutTitle": {
+    "message": "اختصار لوحة المفاتيح"
+  },
+  "shortcutHint": {
+    "message": "‏Alt+Shift+S يفتح نافذة الحفظ."
+  },
+  "shortcutChange": {
+    "message": "تغييره"
+  },
+  "forget": {
+    "message": "إزالة العنوان والمفتاح من هذا المتصفح"
+  },
+  "forgotten": {
+    "message": "تمت الإزالة."
+  },
+  "guide": {
+    "message": "الدليل"
+  },
+  "privacy": {
+    "message": "الخصوصية"
+  }
+}

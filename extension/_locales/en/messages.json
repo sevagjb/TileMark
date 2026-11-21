@@ -1,0 +1,181 @@
+{
+  "extName": {
+    "message": "TileMark",
+    "description": "Name of the extension (keep TileMark)"
+  },
+  "extDescription": {
+    "message": "Save any page to your own self-hosted TileMark in one click.",
+    "description": "Store and manifest description, at most 132 characters"
+  },
+  "actionTitle": {
+    "message": "Save to TileMark"
+  },
+  "commandOpen": {
+    "message": "Open the Save to TileMark window"
+  },
+  "menuSavePage": {
+    "message": "Save page to TileMark"
+  },
+  "menuSaveLink": {
+    "message": "Save link to TileMark"
+  },
+  "settings": {
+    "message": "Settings"
+  },
+  "title": {
+    "message": "Title"
+  },
+  "group": {
+    "message": "Group"
+  },
+  "noGroup": {
+    "message": "No group"
+  },
+  "newGroup": {
+    "message": "+ New group…"
+  },
+  "newGroupName": {
+    "message": "Name of the new group"
+  },
+  "note": {
+    "message": "Note"
+  },
+  "notePlaceholder": {
+    "message": "Optional"
+  },
+  "save": {
+    "message": "Save"
+  },
+  "saving": {
+    "message": "Saving…"
+  },
+  "loadingGroups": {
+    "message": "Loading groups…"
+  },
+  "savedTo": {
+    "message": "Saved to {group}"
+  },
+  "saved": {
+    "message": "Saved"
+  },
+  "alreadyIn": {
+    "message": "Already saved in {group}: {title}"
+  },
+  "already": {
+    "message": "Already saved: {title}"
+  },
+  "saveAnyway": {
+    "message": "Save anyway"
+  },
+  "openTileMark": {
+    "message": "Open TileMark"
+  },
+  "cannotSave": {
+    "message": "This page can't be saved. Only web pages (http and https) can."
+  },
+  "openSettings": {
+    "message": "Open settings"
+  },
+  "err_setup": {
+    "message": "Connect the extension to your TileMark first."
+  },
+  "err_noPermission": {
+    "message": "The extension may not reach {server} yet. Open the settings and press Save and test."
+  },
+  "err_offline": {
+    "message": "Can't reach TileMark at {server}. Check the address and that TileMark is running."
+  },
+  "err_redirect": {
+    "message": "TileMark answered with a redirect: usually a login page in front of it (Authelia, Authentik, basic auth) or the Home Assistant sidebar address. Use TileMark's own address and let /api/ through."
+  },
+  "err_notTileMark": {
+    "message": "That address answered, but not like TileMark. Check the address."
+  },
+  "err_badKey": {
+    "message": "TileMark did not accept the API key. Create one in TileMark under Your account → Save from anywhere and paste it in the extension's settings."
+  },
+  "err_refused": {
+    "message": "TileMark refused this request. If a proxy or firewall rule sits in front of TileMark, let /api/ through; otherwise update TileMark to the latest version."
+  },
+  "err_server": {
+    "message": "TileMark said: {message}"
+  },
+  "optTitle": {
+    "message": "TileMark extension settings"
+  },
+  "optIntro": {
+    "message": "Connect this browser to your TileMark. The address and the API key stay in this browser only."
+  },
+  "serverLabel": {
+    "message": "TileMark address"
+  },
+  "serverHint": {
+    "message": "The address you open TileMark at. For the Home Assistant app, use TileMark's own address (its direct port), not the sidebar."
+  },
+  "apiKeyLabel": {
+    "message": "API key"
+  },
+  "apiKeyHint": {
+    "message": "In TileMark: Your account → Save from anywhere → Create API key. Every account has one key: Replace API key in TileMark stops the old key everywhere, also in an iPhone Shortcut."
+  },
+  "show": {
+    "message": "Show"
+  },
+  "hide": {
+    "message": "Hide"
+  },
+  "saveAndTest": {
+    "message": "Save and test"
+  },
+  "testing": {
+    "message": "Testing…"
+  },
+  "connected": {
+    "message": "Connected. Groups found: {count}."
+  },
+  "invalidAddress": {
+    "message": "That doesn't look like a web address."
+  },
+  "permissionDenied": {
+    "message": "The browser did not allow access to {server}. The extension needs it to save links there."
+  },
+  "warnHttp": {
+    "message": "This address uses plain http, so the API key travels unencrypted. That's fine at home on your own network; from outside, use HTTPS."
+  },
+  "warnHomeAssistant": {
+    "message": "This looks like Home Assistant's own address. The extension can't go through the Home Assistant sidebar: use TileMark's own address (its direct port)."
+  },
+  "menuGroupLabel": {
+    "message": "Right-click saves to"
+  },
+  "menuGroupLast": {
+    "message": "The group last used in the Save window"
+  },
+  "languageLabel": {
+    "message": "Language"
+  },
+  "languageAuto": {
+    "message": "Same as the browser"
+  },
+  "shortcutTitle": {
+    "message": "Keyboard shortcut"
+  },
+  "shortcutHint": {
+    "message": "Alt+Shift+S opens the Save window."
+  },
+  "shortcutChange": {
+    "message": "Change it"
+  },
+  "forget": {
+    "message": "Remove the address and key from this browser"
+  },
+  "forgotten": {
+    "message": "Removed."
+  },
+  "guide": {
+    "message": "Guide"
+  },
+  "privacy": {
+    "message": "Privacy"
+  }
+}

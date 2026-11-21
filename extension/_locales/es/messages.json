@@ -1,0 +1,179 @@
+{
+  "extName": {
+    "message": "TileMark"
+  },
+  "extDescription": {
+    "message": "Guarda cualquier página en tu propio TileMark autoalojado con un clic."
+  },
+  "actionTitle": {
+    "message": "Guardar en TileMark"
+  },
+  "commandOpen": {
+    "message": "Abrir la ventana Guardar en TileMark"
+  },
+  "menuSavePage": {
+    "message": "Guardar página en TileMark"
+  },
+  "menuSaveLink": {
+    "message": "Guardar enlace en TileMark"
+  },
+  "settings": {
+    "message": "Ajustes"
+  },
+  "title": {
+    "message": "Título"
+  },
+  "group": {
+    "message": "Grupo"
+  },
+  "noGroup": {
+    "message": "Ningún grupo"
+  },
+  "newGroup": {
+    "message": "+ Nuevo grupo…"
+  },
+  "newGroupName": {
+    "message": "Nombre del nuevo grupo"
+  },
+  "note": {
+    "message": "Nota"
+  },
+  "notePlaceholder": {
+    "message": "Opcional"
+  },
+  "save": {
+    "message": "Guardar"
+  },
+  "saving": {
+    "message": "Guardando…"
+  },
+  "loadingGroups": {
+    "message": "Cargando grupos…"
+  },
+  "savedTo": {
+    "message": "Guardado en {group}"
+  },
+  "saved": {
+    "message": "Guardado"
+  },
+  "alreadyIn": {
+    "message": "Ya guardado en {group}: {title}"
+  },
+  "already": {
+    "message": "Ya guardado: {title}"
+  },
+  "saveAnyway": {
+    "message": "Guardar de todos modos"
+  },
+  "openTileMark": {
+    "message": "Abrir TileMark"
+  },
+  "cannotSave": {
+    "message": "Esta página no se puede guardar. Solo las páginas web (http y https) se pueden guardar."
+  },
+  "openSettings": {
+    "message": "Abrir ajustes"
+  },
+  "err_setup": {
+    "message": "Primero conecta la extensión a tu TileMark."
+  },
+  "err_noPermission": {
+    "message": "La extensión aún no puede acceder a {server}. Abre los ajustes y pulsa Guardar y probar."
+  },
+  "err_offline": {
+    "message": "No se puede conectar con TileMark en {server}. Comprueba la dirección y que TileMark esté en marcha."
+  },
+  "err_redirect": {
+    "message": "TileMark respondió con una redirección: normalmente una página de inicio de sesión delante (Authelia, Authentik, autenticación básica) o la dirección de la barra lateral de Home Assistant. Usa la dirección propia de TileMark y deja pasar /api/."
+  },
+  "err_notTileMark": {
+    "message": "Esa dirección respondió, pero no como TileMark. Comprueba la dirección."
+  },
+  "err_badKey": {
+    "message": "TileMark no aceptó la clave API. Crea una en TileMark en Tu cuenta → Guardar desde cualquier lugar y pégala en los ajustes de la extensión."
+  },
+  "err_refused": {
+    "message": "TileMark rechazó esta solicitud. Si hay un proxy o una regla de cortafuegos delante de TileMark, deja pasar /api/; si no, actualiza TileMark a la última versión."
+  },
+  "err_server": {
+    "message": "TileMark dice: {message}"
+  },
+  "optTitle": {
+    "message": "Ajustes de la extensión TileMark"
+  },
+  "optIntro": {
+    "message": "Conecta este navegador a tu TileMark. La dirección y la clave API se quedan solo en este navegador."
+  },
+  "serverLabel": {
+    "message": "Dirección de TileMark"
+  },
+  "serverHint": {
+    "message": "La dirección con la que abres TileMark. Para la app de Home Assistant, usa la dirección propia de TileMark (su puerto directo), no la barra lateral."
+  },
+  "apiKeyLabel": {
+    "message": "Clave API"
+  },
+  "apiKeyHint": {
+    "message": "En TileMark: Tu cuenta → Guardar desde cualquier lugar → Crear clave API. Cada cuenta tiene una clave: Sustituir clave API en TileMark desactiva la antigua en todas partes, también en un atajo del iPhone."
+  },
+  "show": {
+    "message": "Mostrar"
+  },
+  "hide": {
+    "message": "Ocultar"
+  },
+  "saveAndTest": {
+    "message": "Guardar y probar"
+  },
+  "testing": {
+    "message": "Probando…"
+  },
+  "connected": {
+    "message": "Conectado. Grupos encontrados: {count}."
+  },
+  "invalidAddress": {
+    "message": "Eso no parece una dirección web."
+  },
+  "permissionDenied": {
+    "message": "El navegador no permitió el acceso a {server}. La extensión lo necesita para guardar enlaces allí."
+  },
+  "warnHttp": {
+    "message": "Esta dirección usa http sin cifrar, así que la clave API viaja sin cifrado. En casa, en tu propia red, está bien; desde fuera, usa HTTPS."
+  },
+  "warnHomeAssistant": {
+    "message": "Parece la dirección propia de Home Assistant. La extensión no puede pasar por la barra lateral de Home Assistant: usa la dirección propia de TileMark (su puerto directo)."
+  },
+  "menuGroupLabel": {
+    "message": "El clic derecho guarda en"
+  },
+  "menuGroupLast": {
+    "message": "El último grupo usado en la ventana Guardar"
+  },
+  "languageLabel": {
+    "message": "Idioma"
+  },
+  "languageAuto": {
+    "message": "Igual que el navegador"
+  },
+  "shortcutTitle": {
+    "message": "Atajo de teclado"
+  },
+  "shortcutHint": {
+    "message": "Alt+Mayús+S abre la ventana Guardar."
+  },
+  "shortcutChange": {
+    "message": "Cambiarlo"
+  },
+  "forget": {
+    "message": "Quitar la dirección y la clave de este navegador"
+  },
+  "forgotten": {
+    "message": "Quitado."
+  },
+  "guide": {
+    "message": "Guía"
+  },
+  "privacy": {
+    "message": "Privacidad"
+  }
+}

@@ -1,0 +1,89 @@
+/* TileMark's own colours, light and dark. */
+:root {
+  --bg: #f3f4f7;
+  --panel: #ffffff;
+  --line: #dfe2e8;
+  --text: #1b1f27;
+  --muted: #667085;
+  --accent: #2f6fe4;
+  --danger: #d6453d;
+  --good: #2f9e5b;
+  --warn: #b7791f;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --panel: #1d2028;
+    --line: #2c313c;
+    --text: #e8eaf0;
+    --muted: #98a1b3;
+    --accent: #6ea0ff;
+    --danger: #f0736b;
+    --good: #5cc98a;
+    --warn: #e3b25a;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+label { display: block; font-weight: 600; margin: 12px 0 4px; }
+input, select, textarea {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+textarea { resize: vertical; min-height: 56px; }
+button {
+  font: inherit;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.danger { color: var(--danger); }
+button:disabled { opacity: 0.6; cursor: default; }
+.muted { color: var(--muted); }
+.hint { color: var(--muted); font-size: 12.5px; margin: 4px 0 0; }
+.error { color: var(--danger); }
+.good { color: var(--good); }
+.warn { color: var(--warn); font-size: 12.5px; margin: 6px 0 0; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > .grow { flex: 1; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.brand img { width: 24px; height: 24px; }
+
+/* The toolbar window */
+body.popup { width: 340px; }
+.popup main { padding: 12px 14px 14px; }
+.popup header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.popup header button { padding: 3px 8px; border: none; background: transparent; font-size: 16px; color: var(--muted); }
+.popup .url { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 4px 0 0; direction: ltr; text-align: start; }
+.popup .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.popup .message { margin: 10px 0 0; }
+
+/* The settings page */
+body.options { padding: 32px 16px; }
+.options main { max-width: 620px; margin: 0 auto; }
+.options h1 { font-size: 22px; margin: 0 0 6px; }
+.options section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px 18px 18px; margin-top: 18px; }
+.options section h2 { font-size: 15px; margin: 16px 0 0; }
+.options .actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.options footer { margin-top: 18px; font-size: 13px; color: var(--muted); }
+.options footer a { margin-inline-end: 14px; }
+input.key { direction: ltr; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+input[type="url"] { direction: ltr; }

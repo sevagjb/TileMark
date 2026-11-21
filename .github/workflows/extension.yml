@@ -1,0 +1,43 @@
+name: Browser extension
+
+# Checks the extension on every change to it, and on an "ext-v1.2.3" tag packs the zip
+# and attaches it to a GitHub release (the file that is uploaded to Edge Add-ons).
+on:
+  push:
+    branches: [main]
+    paths: ["extension/**", "scripts/build_extension.py"]
+    tags: ["ext-v*"]
+  pull_request:
+    paths: ["extension/**", "scripts/build_extension.py"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check that the tag matches manifest.json
+        if: startsWith(github.ref, 'refs/tags/ext-v')
+        run: |
+          want="${GITHUB_REF_NAME#ext-v}"
+          have="$(python -c 'import json; print(json.load(open("extension/manifest.json"))["version"])')"
+          [ "$want" = "$have" ] || { echo "Tag says $want, extension/manifest.json says $have"; exit 1; }
+      - run: python scripts/build_extension.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tilemark-extension
+          path: dist/*.zip
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/ext-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "Browser extension ${GITHUB_REF_NAME#ext-v}" \
+                 --notes "TileMark browser extension ${GITHUB_REF_NAME#ext-v}. To install by hand: unzip, open edge://extensions, turn on Developer mode, Load unpacked. See https://sevagjb.github.io/TileMark/browser-extension.html"
+          gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber

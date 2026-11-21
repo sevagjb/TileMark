@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.10.0
+
+The TileMark browser extension, starting with Microsoft Edge. Nothing needs to be done after updating TileMark itself.
+
+### New
+- **Browser extension** (version 1.0.0, in the `extension/` folder). A **Save to TileMark** button in the toolbar: the page's title, a group (the one you used last is already chosen, or make a new one), a note, **Save**. **Save page / Save link to TileMark** in the right-click menu saves straight away, and **Alt+Shift+S** opens the window. It says when a page is already in TileMark and in which group. It uses your **API key** (Your account → Save from anywhere), asks the browser for access to your TileMark's address only, and keeps the address and key in that browser only. In English, Dutch, German, French, Spanish and Arabic. See the new guide page **Browser extension** and its **privacy policy**.
+- `scripts/build_extension.py` checks the extension (manifest, all six languages complete, every text present) and packs the zip for the store; the tests run the same checks.
+
+### Changed
+- **A request with an API key is judged by the key alone.** For the two things a key may do (add a link, read group names), TileMark now checks only the key when one is sent: the sign-in cookie is never used for it, and a wrong key gets *not valid* instead of falling back to the cookie. Such a request also no longer goes through the check for requests from other websites, which it doesn't need (a website can't send a key it doesn't know). Scripts and Shortcuts work as before.
+
 ## 2.9.1
 
 ### New

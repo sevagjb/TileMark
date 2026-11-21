@@ -26,6 +26,7 @@ PAGES = [
     ("links-and-groups.md", "Links and groups"),
     ("import-export.md", "Import and export"),
     ("save-from-anywhere.md", "Save from anywhere"),
+    ("browser-extension.md", "Browser extension"),
     ("broken-links.md", "Broken links"),
     ("accounts-and-security.md", "Accounts and security"),
     ("backups.md", "Backups"),
@@ -33,6 +34,7 @@ PAGES = [
     ("settings.md", "Settings"),
     ("faq.md", "Questions and troubleshooting"),
     ("translating.md", "Translating TileMark"),
+    ("extension-privacy.md", "Extension privacy"),
 ]
 EXTRA = [("CHANGELOG.md", "changelog.md", "Changelog"), ("ROADMAP.md", "roadmap.md", "Roadmap")]  # from the repository root
 

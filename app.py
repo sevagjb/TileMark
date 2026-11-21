@@ -1802,13 +1802,23 @@ def too_large(e):
 def require_login():
     if request.endpoint in UPLOAD_LIMITS:
         request.max_content_length = UPLOAD_LIMITS[request.endpoint]
+    # A request that carries an API key (the browser extension, a Shortcut, a script) is
+    # judged by that key alone: the sign-in cookie is never looked at, so the cross-site
+    # check below has nothing to protect. A browser never adds an Authorization header by
+    # itself, so another website cannot send one it doesn't know. Edge and Chrome label the
+    # browser extension's requests "Sec-Fetch-Site: none" already; this keeps the extension
+    # working whatever a browser calls them, and a request with a key never falls back to
+    # the cookie when the key is wrong.
+    if request.endpoint in KEY_ENDPOINTS and request.headers.get("Authorization", "").startswith("Bearer "):
+        g.user = key_user()
+        if g.user is None:
+            return jsonify(error="This API key is not valid. Create a new one in Your account → Save from anywhere."), 401
+        return None
     if _foreign_request():
         return jsonify(error="This request came from another website and was refused."), 403
     g.user = current_user()
     if request.endpoint in OPEN_ENDPOINTS:
         return None
-    if g.user is None and request.endpoint in KEY_ENDPOINTS:
-        g.user = key_user()
     if g.user is None:
         if request.path.startswith("/api/"):
             return jsonify(error="Please sign in.", setup=setup_needed()), 401

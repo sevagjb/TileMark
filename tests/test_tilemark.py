@@ -1895,6 +1895,36 @@ def test_api_key_works_without_browser_headers(two):
     assert r.status_code == 201
 
 
+EXT = {"Origin": "chrome-extension://abcdefghijklmnopabcdefghijklmnop", "Sec-Fetch-Site": "cross-site"}
+
+
+def test_browser_extension_can_use_the_api_key(two):
+    """2.10: the browser extension calls from its own origin; a valid key is enough."""
+    A, admin, bob, ga, gb, *_ = two
+    key = bob.post("/api/apikey").get_json()["key"]
+    ext = A.app.test_client()
+    h = dict(EXT, Authorization="Bearer " + key)
+    groups = ext.get("/api/groups", headers=h)
+    assert groups.status_code == 200 and [g["name"] for g in groups.get_json()["groups"]] == ["Shared name"]
+    r = ext.post("/api/links", json={"url": "https://from-extension.example", "group_id": gb, "note": "n"}, headers=h)
+    assert r.status_code == 201, r.get_json()
+    dup = ext.post("/api/links", json={"url": "https://from-extension.example"}, headers=h)
+    assert dup.status_code == 409 and dup.get_json()["existing"]["group"] == "Shared name"
+    assert ext.get("/api/state", headers=h).status_code == 401  # still only the two key endpoints
+
+
+def test_key_request_never_falls_back_to_the_cookie(two):
+    """A signed-in browser sending a wrong key from another site gets nothing: the key is
+    the only thing that counts, so the cookie can't be ridden along."""
+    A, admin, *_ = two
+    r = admin.post("/api/links", json={"url": "https://csrf.example"}, headers=dict(EXT, Authorization="Bearer wrong"))
+    assert r.status_code == 401
+    r = admin.post("/api/links", json={"url": "https://csrf.example"}, headers=EXT)  # no key: cross-site check as before
+    assert r.status_code == 403
+    r = admin.post("/api/groups", json={"name": "x"}, headers=dict(EXT, Authorization="Bearer wrong"))
+    assert r.status_code == 403  # other endpoints ignore a key and stay protected
+
+
 def _wrong(A, n, peer, name="admin", xff=None):
     for i in range(n):
         h = {"X-Forwarded-For": xff.format(i)} if xff else {}

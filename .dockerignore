@@ -7,3 +7,5 @@ docs
 tests
 homeassistant-addon
 repository.yaml
+extension
+dist

@@ -4,12 +4,13 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Next (medium)
 
+- [ ] **Browser extension in more stores:** Chrome Web Store, then Firefox Add-ons (Edge first, see 2.10.0). Safari waits for an Apple developer account.
 - [ ] **Shared groups, later steps** (after testing 2.9.0): a "may change" level next to view only (the database already has room for it), your own order for groups shared with you, and whether notes on shared links stay visible.
 
 ## Parked (larger)
 
 - [ ] **Tags on links**, next to groups.
-- [ ] **Wider reach:** listings for Unraid, CasaOS and a Proxmox helper script, and a real browser extension with a toolbar icon.
+- [ ] **Wider reach:** listings for Unraid, CasaOS and a Proxmox helper script.
 
 ## Other ideas, not planned
 
@@ -19,6 +20,9 @@ What is planned next, and what each release brought. Changes per version in deta
 - Sync between two installations (for example the add-on and a Docker one), one-way mirror first. For now: use one installation from everywhere (the add-on's own port), or move links with Backup or Export and Import.
 
 ## Done
+
+### 2.10.0
+- [x] Browser extension for Microsoft Edge: toolbar window with group and note, right-click menu, keyboard shortcut, six languages; API-key requests are judged by the key alone.
 
 ### 2.9.1
 - [x] Sharing: admins pick the username from a list; an admin setting shows the list to everyone (off by default).

@@ -1,12 +1,13 @@
 # Save from anywhere
 
-You don't have to open TileMark to save a link. There are three ways to send a page to it from wherever you are.
+You don't have to open TileMark to save a link. There are three ways to send a page to it from wherever you are, plus the [browser extension](browser-extension.md) for Edge.
 
 | Way | Best for | Needs |
 | --- | --- | --- |
 | [Browser button](#browser-button) | Your computer | Being signed in to TileMark in that browser |
 | [Phone app](#phone) | Android, from any app's Share menu | TileMark on an HTTPS address |
 | [API key](#api-key) | Scripts, iPhone Shortcuts, automations | An API key from Settings |
+| [Browser extension](browser-extension.md) | Edge: toolbar button, right-click menu, shortcut | An API key |
 
 All three are found in **👤 Your account → Save from anywhere**. Links saved this way show up in an open TileMark tab as soon as you switch back to it.
 
@@ -42,7 +43,7 @@ An API key lets a script, a Shortcut or an automation add links to **your** acco
 2. **Copy it now**: it is shown only once. If you lose it, press **Replace API key** for a new one (the old one stops working).
 3. **Remove API key** switches it off.
 
-Every account has its own key, and links sent with it go to that account.
+Every account has its own key, and links sent with it go to that account. The [browser extension](browser-extension.md) uses this key too.
 
 ### Adding a link
 

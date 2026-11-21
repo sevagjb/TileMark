@@ -103,9 +103,10 @@ def test_upgrade_from_v1_with_login(tmp_path):
     p = next(l for l in s["links"] if l["id"] == 1)
     assert (p["note"], p["pinned"], p["group_id"]) == ("hypervisor", 1, 1)
     assert c.get("/thumbs/1-1.webp").status_code == 200
-    # the old API key keeps working, now as this user's key
+    # the old API key keeps working, now as this user's first key
     r = A.app.test_client().post("/api/links", json={"url": "https://ha.io"}, headers={"Authorization": "Bearer lb_oldkey"})
     assert r.status_code == 201
+    assert [k["name"] for k in c.get("/api/apikeys").get_json()["keys"]] == ["Default"]
     con = sqlite3.connect(os.path.join(tmp_path, "tilemark.db"))
     keys = {r[0] for r in con.execute("SELECT key FROM settings")}
     assert not keys & {"auth_user", "auth_hash", "auth_ver", "api_key_hash"}
@@ -216,7 +217,7 @@ def test_users_cannot_touch_each_other(two):
 
 def test_api_key_is_per_user(two):
     A, admin, bob, *_ = two
-    key = bob.post("/api/apikey").get_json()["key"]
+    key = bob.post("/api/apikeys", json={"name": "Shortcut"}).get_json()["key"]
     anon = A.app.test_client()
     h = {"Authorization": "Bearer " + key}
     assert anon.post("/api/links", json={"url": "https://via-key.example"}, headers=h).status_code == 201
@@ -224,6 +225,96 @@ def test_api_key_is_per_user(two):
     assert len(bob.get("/api/state").get_json()["links"]) == 2
     assert len(admin.get("/api/state").get_json()["links"]) == 1
     assert anon.post("/api/links", json={"url": "https://y.example"}, headers={"Authorization": "Bearer nope"}).status_code == 401
+
+
+# ------------------------------------------------------------- 2.11: several API keys
+def _key(client, name):
+    r = client.post("/api/apikeys", json={"name": name})
+    assert r.status_code == 200, r.get_json()
+    return r.get_json()
+
+
+def test_several_api_keys_work_side_by_side(two):
+    A, admin, bob, ga, gb, *_ = two
+    phone, edge = _key(bob, "iPhone Shortcut"), _key(bob, "Edge laptop")
+    assert phone["key"] != edge["key"] and phone["key"].startswith("tm_")
+    anon = A.app.test_client()
+    for i, k in enumerate((phone, edge)):
+        r = anon.post("/api/links", json={"url": f"https://k{i}.example"}, headers={"Authorization": "Bearer " + k["key"]})
+        assert r.status_code == 201
+    keys = bob.get("/api/apikeys").get_json()["keys"]
+    assert [k["name"] for k in keys] == ["iPhone Shortcut", "Edge laptop"]
+    assert all(k["last_used"] > 0 for k in keys) and keys[0]["prefix"] == phone["key"][:7]
+    assert all("hash" not in k and "key" not in k for k in keys)  # a key is never shown again
+    a = bob.get("/api/auth").get_json()
+    assert a["has_key"] is True and a["api_keys"] == 2
+    # removing one key stops only that one
+    assert bob.delete(f"/api/apikeys/{phone['id']}").status_code == 200
+    assert anon.post("/api/links", json={"url": "https://k2.example"}, headers={"Authorization": "Bearer " + phone["key"]}).status_code == 401
+    assert anon.post("/api/links", json={"url": "https://k3.example"}, headers={"Authorization": "Bearer " + edge["key"]}).status_code == 201
+    assert len(bob.get("/api/state").get_json()["links"]) == 4
+    # only the hash is in the database
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM api_keys WHERE hash=?", (edge["key"],)).fetchone()[0] == 0
+
+
+def test_api_key_names_and_limits(two):
+    A, admin, bob, *_ = two
+    assert bob.post("/api/apikeys", json={"name": "  "}).status_code == 400
+    assert bob.post("/api/apikeys", json={}).status_code == 400
+    k = _key(bob, "iPhone")
+    assert bob.post("/api/apikeys", json={"name": "IPHONE"}).status_code == 409
+    other = _key(bob, "Edge")
+    assert bob.patch(f"/api/apikeys/{other['id']}", json={"name": "iphone"}).status_code == 409
+    assert bob.patch(f"/api/apikeys/{other['id']}", json={"name": "Edge   work\n"}).status_code == 200
+    assert bob.patch(f"/api/apikeys/{k['id']}", json={"name": "iPhone"}).status_code == 200  # its own name again
+    assert [x["name"] for x in bob.get("/api/apikeys").get_json()["keys"]] == ["iPhone", "Edge work"]
+    for i in range(A.MAX_API_KEYS - 2):
+        _key(bob, f"key {i}")
+    assert bob.post("/api/apikeys", json={"name": "one too many"}).status_code == 400
+    assert bob.get("/api/apikeys").get_json()["max"] == A.MAX_API_KEYS
+
+
+def test_api_keys_are_private_per_account(two):
+    A, admin, bob, *_ = two
+    k = _key(bob, "Bob's phone")
+    assert admin.get("/api/apikeys").get_json()["keys"] == []
+    assert admin.patch(f"/api/apikeys/{k['id']}", json={"name": "taken"}).status_code == 404
+    assert admin.delete(f"/api/apikeys/{k['id']}").status_code == 404
+    assert A.app.test_client().get("/api/apikeys").status_code == 401
+    assert A.app.test_client().get("/api/apikeys", headers={"Authorization": "Bearer " + k["key"]}).status_code == 401
+    _key(admin, "Bob's phone")  # the same name in another account is fine
+    assert [x["name"] for x in bob.get("/api/apikeys").get_json()["keys"]] == ["Bob's phone"]
+
+
+def test_single_key_of_2_10_becomes_the_first_key(two):
+    """A 2.10 database (or an older installation backup being restored) has the key in
+    users.api_key_hash; starting 2.11 moves it into api_keys and it keeps working."""
+    import hashlib
+    A, admin, bob, *_ = two
+    with A.db() as c:
+        c.execute("UPDATE users SET api_key_hash=? WHERE username='bob'", (hashlib.sha256(b"tm_old").hexdigest(),))
+    A.init_db()
+    A.init_db()  # twice: nothing doubles
+    keys = bob.get("/api/apikeys").get_json()["keys"]
+    assert [(k["name"], k["prefix"]) for k in keys] == [("Default", "")]
+    r = A.app.test_client().post("/api/links", json={"url": "https://old-key.example"}, headers={"Authorization": "Bearer tm_old"})
+    assert r.status_code == 201
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM users WHERE api_key_hash != ''").fetchone()[0] == 0
+
+
+def test_api_keys_go_with_their_account(two):
+    A, admin, bob, *_ = two
+    k = _key(bob, "phone")
+    bob_id = next(u["id"] for u in admin.get("/api/users").get_json()["users"] if u["username"] == "bob")
+    assert admin.delete(f"/api/users/{bob_id}").status_code == 200
+    assert A.app.test_client().post("/api/links", json={"url": "https://gone.example"},
+                                    headers={"Authorization": "Bearer " + k["key"]}).status_code == 401
+    _key(admin, "mine")
+    A.wipe_installation()
+    with A.db() as c:
+        assert c.execute("SELECT COUNT(*) FROM api_keys").fetchone()[0] == 0
 
 
 def test_admin_only_endpoints(two):
@@ -1889,7 +1980,7 @@ def test_sign_in_from_another_site_is_refused(fresh):
 
 def test_api_key_works_without_browser_headers(two):
     A, admin, bob, *_ = two
-    key = bob.post("/api/apikey").get_json()["key"]
+    key = bob.post("/api/apikeys", json={"name": "Shortcut"}).get_json()["key"]
     r = A.app.test_client().post("/api/links", data=json.dumps({"url": "https://shortcut.example"}),
                                  headers={"Authorization": "Bearer " + key})  # no content type, no Origin
     assert r.status_code == 201
@@ -1901,7 +1992,7 @@ EXT = {"Origin": "chrome-extension://abcdefghijklmnopabcdefghijklmnop", "Sec-Fet
 def test_browser_extension_can_use_the_api_key(two):
     """2.10: the browser extension calls from its own origin; a valid key is enough."""
     A, admin, bob, ga, gb, *_ = two
-    key = bob.post("/api/apikey").get_json()["key"]
+    key = bob.post("/api/apikeys", json={"name": "Shortcut"}).get_json()["key"]
     ext = A.app.test_client()
     h = dict(EXT, Authorization="Bearer " + key)
     groups = ext.get("/api/groups", headers=h)

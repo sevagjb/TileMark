@@ -21,6 +21,9 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.11.0
+- [x] Several API keys per account (one per device or app), each with a name, last used, rename and remove; the old single key becomes "Default".
+
 ### 2.10.0
 - [x] Browser extension for Microsoft Edge: toolbar window with group and note, right-click menu, keyboard shortcut, six languages; API-key requests are judged by the key alone.
 

@@ -6,7 +6,7 @@ You don't have to open TileMark to save a link. There are three ways to send a p
 | --- | --- | --- |
 | [Browser button](#browser-button) | Your computer | Being signed in to TileMark in that browser |
 | [Phone app](#phone) | Android, from any app's Share menu | TileMark on an HTTPS address |
-| [API key](#api-key) | Scripts, iPhone Shortcuts, automations | An API key from Settings |
+| [API key](#api-key) | Scripts, iPhone Shortcuts, automations | An API key from Your account |
 | [Browser extension](browser-extension.md) | Edge: toolbar button, right-click menu, shortcut | An API key |
 
 All three are found in **👤 Your account → Save from anywhere**. Links saved this way show up in an open TileMark tab as soon as you switch back to it.
@@ -39,11 +39,23 @@ TileMark then opens full-screen from its own icon, like an app.
 
 An API key lets a script, a Shortcut or an automation add links to **your** account. It can only **add links** and **read your group names**: it cannot read, change or delete your links.
 
-1. In **👤 Your account → Save from anywhere**, press **Create API key**.
-2. **Copy it now**: it is shown only once. If you lose it, press **Replace API key** for a new one (the old one stops working).
-3. **Remove API key** switches it off.
+You can have **several keys**, one for each thing that saves links: the iPhone Shortcut, the browser extension on each computer, a script. They all work the same way, at the same address. The difference is that each one can be removed on its own: when you lose your phone, remove its key and the extension keeps working.
 
-Every account has its own key, and links sent with it go to that account. The [browser extension](browser-extension.md) uses this key too.
+1. In **👤 Your account → Save from anywhere**, press **Create API key**.
+2. Give it a **name** that says where it will be used, for example *iPhone Shortcut* or *Edge on the laptop*.
+3. **Copy it now**: it is shown only once. Paste it into the Shortcut, the extension or the script.
+
+The list under **API keys** shows each key with its name, the first characters of the key, when it was **last used** and when it was made.
+
+- **Rename** changes only the name; the key itself stays the same.
+- **Remove** switches that one key off. Whatever uses it gets *not valid*; your other keys keep working.
+- **Lost a key?** It can't be shown again. Create a new one, paste it where the old one was, and remove the old one.
+
+An account can have up to 20 keys. Keys belong to their account: links sent with a key go to that account, nobody else sees your keys (an admin neither), and removing an account removes its keys. Keys are not in your own backup; a backup of the whole installation brings them back with the accounts.
+
+> **Upgrading from 2.10 or earlier:** the one key you had becomes the first key in the list, named **Default**. It keeps working, so nothing needs to change in your Shortcut or extension. Its first characters aren't known, so the list shows *made before 2.11* instead. Rename it to where you use it, or give each device its own key and remove **Default** once nothing uses it any more.
+
+The [browser extension](browser-extension.md) uses an API key too: make it its own.
 
 ### Adding a link
 

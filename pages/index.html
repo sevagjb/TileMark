@@ -576,11 +576,12 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
     <p class="hint"><b>Browser button:</b> drag this to your favorites bar, then click it on any page to save that page.</p>
     <div class="row" style="justify-content:flex-start;margin-top:8px"><a class="btn" id="bmLink" href="#" style="text-decoration:none;cursor:grab">🔖 Save to TileMark</a></div>
     <p class="hint" id="pwaHint"></p>
-    <p class="hint"><b>API key</b> for scripts and phone shortcuts. It can only add links and read group names.</p>
-    <div id="keyShow" hidden><input class="keybox" id="keyVal" type="text" readonly>
+    <p class="hint"><b>API keys</b> for the browser extension, phone shortcuts and scripts. They can only add links and read group names. Make one key for each device or app, so you can remove one without breaking the others.</p>
+    <div id="keyList"></div>
+    <div id="keyShow" hidden><p class="hint" id="keyFor"></p><input class="keybox" id="keyVal" type="text" readonly>
     <p class="hint">Copy it now; it is shown only this once. Send it as the header <span class="keybox">Authorization: Bearer &lt;key&gt;</span> with a POST to <span class="keybox">/api/links</span>.</p></div>
     <div class="row" style="justify-content:flex-start;margin-top:8px">
-    <button class="btn" type="button" id="keyNew">Create API key</button><button class="btn danger" type="button" id="keyDel" hidden>Remove API key</button></div>
+    <button class="btn" type="button" id="keyNew">Create API key</button></div>
   </div></details>
   <details class="sec" data-k="check"><summary><span class="st">Link check</span><span class="sum" id="sum-check"></span></summary><div class="secb">
     <p class="hint">Finds links that no longer work and lists them under "Broken links". A link counts as broken when its address cannot be reached twice in a row, or the site says the page is gone.</p>
@@ -1439,12 +1440,12 @@ async function refreshAuth() {
   $("settingsBtn").hidden = !a.is_admin;
   if (!a.is_admin && drawer === $("settingsDlg")) closeDrawer();
   setSum("account", a.username + (a.is_admin ? " · " + t("admin") : ""));
-  setSum("save", a.has_key ? t("API key active") : "");
+  setSum("save", a.api_keys ? (a.api_keys === 1 ? t("{n} API key", { n: 1 }) : t("{n} API keys", { n: a.api_keys })) : "");
   showBackupHow(a);
   showTf(a); refreshSessions(); refreshPasskeys(a); showReset(a);
   if (a.is_admin) { refreshUsers(); refreshBackups(); refreshMqtt(); }
   $("appVersion").textContent = "TileMark " + (a.version || "");
-  $("keyDel").hidden = !a.has_key; $("keyNew").textContent = a.has_key ? t("Replace API key") : t("Create API key"); $("keyShow").hidden = true;
+  $("keyShow").hidden = true; refreshKeys();
   const base = new URL(".", location.href).href.replace(/\/$/, "");  // works at / and under a path prefix
   $("bmLink").href = "javascript:(function(){window.open('" + base + "/save?u='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'tilemark-save','width=480,height=600')})()";
   $("pwaHint").replaceChildren(el("b", { textContent: t("Phone:") + " " }), window.isSecureContext && location.protocol === "https:"
@@ -1457,11 +1458,31 @@ async function refreshAuth() {
     t("the browser button and the phone app need TileMark's own address. Turn on the port in Home Assistant under Settings → Apps → TileMark → Configuration → Network, open http://<your-home-assistant>:<that port>, sign in there (set a password above first) and set them up from that page. The API key works through that port as well."));
 }
 $("bmLink").onclick = e => { e.preventDefault(); toast(t("Drag this button to your favorites bar; don't click it here.")); };
+// API keys: one per device or app; each can be renamed or removed on its own.
+async function refreshKeys() {
+  let r; try { r = await api("GET", "api/apikeys"); } catch (e) { return; }
+  const btn = (label, fn, cls = "btn") => { const b = el("button", { className: cls, type: "button", textContent: label }); b.onclick = fn; return b; };
+  $("keyNew").disabled = r.keys.length >= r.max;
+  $("keyList").replaceChildren(...r.keys.map(k => el("div", { className: "sess" },
+    el("div", {}, el("b", { textContent: k.name }),
+      el("small", { textContent: [k.prefix ? k.prefix + "…" : t("made before 2.11"),
+        k.last_used ? t("last used {when}", { when: ago(k.last_used) }) : t("not used yet"),
+        t("made {date}", { date: fmtDate(k.created_at) })].join(" · ") })),
+    btn(t("Rename"), async () => {
+      const name = prompt(t("New name for this API key:"), k.name); if (name === null || !name.trim()) return;
+      try { await api("PATCH", "api/apikeys/" + k.id, { name }); refreshKeys(); } catch (e) { toast(e.message); }
+    }),
+    btn(t("Remove"), async () => {
+      if (!confirm(t("Remove the API key “{name}”? Whatever uses it stops working; your other keys keep working.", { name: k.name }))) return;
+      try { await api("DELETE", "api/apikeys/" + k.id); $("keyShow").hidden = true; toast(t("API key removed.")); refreshAuth(); } catch (e) { toast(e.message); }
+    }, "btn danger"))));
+}
 $("keyNew").onclick = async () => {
-  if (!$("keyDel").hidden && !confirm(t("Replace the API key? The current key stops working."))) return;
-  try { const r = await api("POST", "api/apikey"); await refreshAuth(); $("keyVal").value = r.key; $("keyShow").hidden = false; $("keyVal").select(); } catch (e) { toast(e.message); }
+  const name = prompt(t("A name for this key, so you know where it is used (for example iPhone Shortcut or Edge on the laptop):"), "");
+  if (name === null || !name.trim()) return;
+  try { const r = await api("POST", "api/apikeys", { name }); await refreshAuth();
+        $("keyFor").textContent = t("New key “{name}”:", { name: r.name }); $("keyVal").value = r.key; $("keyShow").hidden = false; $("keyVal").select(); } catch (e) { toast(e.message); }
 };
-$("keyDel").onclick = async () => { if (!confirm(t("Remove the API key?"))) return; try { await api("DELETE", "api/apikey"); refreshAuth(); toast(t("API key removed.")); } catch (e) { toast(e.message); } };
 $("auSave").onclick = async () => {
   if (!$("auCur").value && !$("auCurWrap").hidden) return toast(t("Enter your current password to save changes."));
   const newPw = !!$("auPass").value;

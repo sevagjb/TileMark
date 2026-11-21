@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.11.0
+
+Several API keys per account: one for each thing that saves links. Nothing needs to be done after updating; your current key keeps working.
+
+### New
+- **More than one API key.** **👤 Your account → Save from anywhere** now lists your API keys, and **Create API key** adds one next to the others instead of replacing it. Give each device or app its own key, for example *iPhone Shortcut* and *Edge on the laptop*. Every key does the same two things as before (add a link, read group names), at the same address with the same `Authorization: Bearer` header, so Shortcuts, scripts and the browser extension need no change.
+- **Each key has a name, the first characters of the key, *last used* and the date it was made**, so you can see which ones are still in use. **Rename** changes the name; **Remove** switches off that one key, and the others keep working. Lost your phone? Remove its key and nothing else breaks.
+- Up to 20 keys per account. A name is required and unique within your account.
+
+### Changed
+- **Your current key becomes the first key in the list, named *Default*.** It keeps working everywhere you use it. Because only a fingerprint of a key was ever stored, its first characters aren't known: the list shows *made before 2.11* for it. Rename it, or give each device a new key of its own and remove *Default* when nothing uses it any more. An installation backup made with an older version is upgraded the same way when it is restored.
+- **Replace API key** and **Remove API key** are gone: create a new key and remove the old one instead.
+- The API endpoints for managing keys are now `GET/POST /api/apikeys` and `PATCH/DELETE /api/apikeys/<id>` (used by TileMark's own page; the old `/api/apikey` is removed). Adding links and reading groups with a key are unchanged.
+- The guide (**Save from anywhere**, **Browser extension**, **Settings**) explains several keys and suggests one key per browser for the extension.
+
 ## 2.10.0
 
 The TileMark browser extension, starting with Microsoft Edge. Nothing needs to be done after updating TileMark itself.

@@ -105,9 +105,10 @@ Lists every browser signed in to your account: browser and system, address, when
 | --- | --- |
 | **🔖 Save to TileMark** | A button to **drag** to your browser's favorites bar. Click it on any page to save that page. |
 | **Phone** | How to install TileMark as an app on your phone (needs HTTPS). |
-| **Create API key** | Makes a key for scripts and Shortcuts. It is shown once. |
-| **Replace API key** | Makes a new key; the old one stops working. |
-| **Remove API key** | Switches the key off. |
+| **API keys** | Your keys for the browser extension, Shortcuts and scripts, one per device or app: name, first characters, last used, made. |
+| **Rename** | Changes a key's name; the key itself stays the same. |
+| **Remove** | Switches that key off; your other keys keep working. |
+| **Create API key** | Makes a new key next to the others, with a name you choose. It is shown once. |
 
 Details and examples: [Save from anywhere](save-from-anywhere.md).
 

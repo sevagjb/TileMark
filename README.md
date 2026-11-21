@@ -56,7 +56,7 @@
 - Duplicates are listed for review, never dropped silently
 - Export to a TileMark file or a browser bookmarks file
 - Browser button, Android Share menu, and API keys (one per device or app)
-- Browser extension for Microsoft Edge: toolbar button, right-click menu and keyboard shortcut
+- [Browser extension for Microsoft Edge](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi): toolbar button, right-click menu and keyboard shortcut
 - Recently added and recently opened lists
 
 </td>

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.9.0
+
+Shared groups: show a group to someone else on the same TileMark. Nothing needs to be done after updating; nothing is shared until you share it.
+
+### New
+- **Share a group.** Press **✎** next to a group, type the **exact username** of another account under **Share with** and press **Share**. They see the group under **Shared with me**, with your name next to it; your group shows **⇄**. **Stop sharing** in the same window makes it disappear from their TileMark straight away. Usernames are typed, not picked from a list, so nobody learns the other accounts on the server, and guessing many names is slowed down.
+- **View only.** Someone a group is shared with can open, search and copy its links, but never add, edit, move or delete them: the group and its links stay the owner's. The server checks this on every request.
+- **Your own favourites and Recently opened** on shared links: a ★ you give someone else's link is yours only, and the owner never sees it.
+- **Copy to my links.** **⧉** on a shared card, or **ⓘ → Copy all** on a shared group, copies links into your own groups, with their title, note and picture. A copy is your own link and stays when the sharing ends. A page you already have is not copied twice, and TileMark says how many were left out.
+- **Leave a group** that was shared with you: **ⓘ → Leave this group**.
+
+### Backups and sharing
+- **Your own backup never holds who a group is shared with.** A member's backup leaves out groups shared with them (those links are the owner's); an owner's backup holds the shared group's links, but not the people. A file can be restored on any server and into any account, so it never hands out access by itself.
+- **Restoring your own backup on the same TileMark keeps sharing** for every group that comes back with the same name. Sharing of a group that isn't in the backup ends, and the restore message names those groups.
+- **Restoring the whole installation brings sharing back exactly as it was**, because every account comes back with it.
+- The guide has a new section, **Sharing a group**, and a table in **Backups** that explains each case.
+
 ## 2.8.1
 
 ### Changed

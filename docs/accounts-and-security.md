@@ -7,7 +7,7 @@ TileMark is made for a household: everyone gets their own private links, and not
 - **Every page needs signing in.** There is no open mode and no public sign-up page.
 - The **first account** is made on the welcome screen (protected by the setup code from the container log; see [Getting started](getting-started.md#create-the-first-account)). It is the **admin**.
 - The admin adds everyone else. Each person has their **own links, groups, settings, API key and backups**.
-- **Links are private per person.** Other people never see your links, and TileMark has no screen where an admin can browse them. An admin is still trusted with a lot, though; see [What an admin can do](#what-an-admin-can-do).
+- **Links are private per person.** Other people never see your links unless you [share a group](links-and-groups.md#sharing-a-group) with them, and TileMark has no screen where an admin can browse them. An admin is still trusted with a lot, though; see [What an admin can do](#what-an-admin-can-do).
 - Layout, appearance, language and sort order are saved **with the account**, so every device looks the same.
 
 ### Adding people (admin)

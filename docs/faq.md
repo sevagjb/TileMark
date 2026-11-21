@@ -83,6 +83,12 @@ They lead to the same page; TileMark ignores `www`, `https`, tracking parameters
 **A working link is marked Broken.**
 The site was unreachable twice during the last check. The label clears by itself when the next check (or **↻**) reaches it. If many working links were marked at once, TileMark's own connection was probably the problem (a VPN route or firewall on the machine it runs on); since 2.4.6 TileMark notices that and leaves the links alone. See [When TileMark itself can't get online](broken-links.md#when-tilemark-itself-cant-get-online).
 
+**I can't edit or delete a link in a group someone shared with me.**
+That's on purpose: a shared group stays its owner's, and only they change it. Copy the link to your own links with **⧉** (or **ⓘ → Copy all**); a copy is yours to change. See [Sharing a group](links-and-groups.md#sharing-a-group).
+
+**A group someone shared with me is gone.**
+The owner stopped sharing it, deleted it, or restored a backup without it. Links you copied to your own links are still there.
+
 ## Home Assistant
 
 **The update doesn't show up in Home Assistant.**

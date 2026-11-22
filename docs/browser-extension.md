@@ -15,7 +15,7 @@ It works with your **own** TileMark: the extension stores nothing itself and tal
 
 ## Install
 
-**Microsoft Edge:** install **TileMark** from Microsoft Edge Add-ons. *(The listing link is added here once the store has approved it.)*
+**Microsoft Edge:** install **[TileMark from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi)** and press **Get**. Edge keeps it up to date by itself.
 
 **To try a version before it's in the store:** download `tilemark-extension-<version>.zip` from the [releases on GitHub](https://github.com/sevagjb/TileMark/releases), unzip it, open `edge://extensions`, turn on **Developer mode**, press **Load unpacked** and choose the unzipped folder.
 

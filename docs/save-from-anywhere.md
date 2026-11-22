@@ -1,6 +1,6 @@
 # Save from anywhere
 
-You don't have to open TileMark to save a link. There are three ways to send a page to it from wherever you are, plus the [browser extension](browser-extension.md) for Edge.
+You don't have to open TileMark to save a link. There are three ways to send a page to it from wherever you are, plus the [browser extension](browser-extension.md) for Edge ([get it from Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi)).
 
 | Way | Best for | Needs |
 | --- | --- | --- |

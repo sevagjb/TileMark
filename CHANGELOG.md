@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.12.0 (unreleased)
+## 2.12.0
 
 A new look: a second style, Workshop, a layout made for phones, and room to fit TileMark to your screen. Nothing needs to be done after updating; everything looks as before until you choose otherwise.
 

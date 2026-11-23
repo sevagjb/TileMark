@@ -2642,7 +2642,8 @@ def thumbs(name):
     return resp
 
 
-PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark"), "start": ("empty", "last"),
+PREF_KEYS = {"layout": ("panel", "sections"), "theme": ("system", "light", "dark"), "style": ("classic", "workshop"),
+             "start": ("empty", "last"),
              "thumb": ("xs", "s", "m", "l"), "open": ("new", "same"),
              "lang": ("",) + LANG_CODES}  # "" = follow the browser
 SORT_MODES = ("manual", "newest", "oldest", "name", "site")

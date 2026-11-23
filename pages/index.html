@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#14161b">
+<script>try { var c = JSON.parse(localStorage.getItem("tm.settings") || "{}"), r = document.documentElement; if (c.style === "workshop") r.dataset.style = "workshop"; if (c.theme === "light" || c.theme === "dark") r.dataset.theme = c.theme; } catch (e) {}</script>
 <style>
 :root {
   --bg: #f3f4f7; --panel: #ffffff; --line: #dfe2e8; --text: #1b1f27; --muted: #667085;
@@ -19,6 +20,17 @@
 :root[data-theme="dark"] { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3;
   --accent: #6ea0ff; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
+/* Text on the accent colour, and the colour of focus rings. Classic: white text, rings in the accent. */
+:root { --on-accent: #fff; --ring: var(--accent); }
+/* The Workshop style (Your account → Appearance → Style): cream and warm charcoal, orange buttons
+   with dark text, teal for focus rings and the selected group. The logo stays blue in every style. */
+:root[data-style="workshop"] { --bg: #edebe4; --panel: #faf9f5; --line: #d9d4c7; --text: #2a2622; --muted: #6e675d;
+  --accent: #ef791b; --on-accent: #2a2622; --ring: #2cc1b2; --sel: #2cc1b2; --danger: #c8412f;
+  --shadow: 0 1px 2px rgba(60,45,25,.07), 0 6px 18px rgba(60,45,25,.07); color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-style="workshop"]:not([data-theme="light"]) { --bg: #1b1a17; --panel: #25231f; --line: #3a362f;
+  --text: #eeeae0; --muted: #a39c8f; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); color-scheme: dark; } }
+:root[data-style="workshop"][data-theme="dark"] { --bg: #1b1a17; --panel: #25231f; --line: #3a362f;
+  --text: #eeeae0; --muted: #a39c8f; --danger: #f0736b; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25); color-scheme: dark; }
 * { box-sizing: border-box; } [hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--text);
        font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -34,12 +46,12 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
 .brand .ver:empty { display: none; }
 .add { flex: 2 1 280px; max-width: 520px; display: flex; background: var(--panel); border: 1px solid var(--line);
        border-radius: 10px; overflow: hidden; }
-.add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.add:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent); }
 .add input { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 12px; outline: none; }
 .add select { border: 0; border-inline-start: 1px solid var(--line); background-color: var(--panel); padding: 0 8px; max-width: 170px; outline: none; cursor: pointer; }
-.add button { border: 0; background: var(--accent); color: #fff; padding: 0 16px; font-weight: 600; cursor: pointer; }
+.add button { border: 0; background: var(--accent); color: var(--on-accent); padding: 0 16px; font-weight: 600; cursor: pointer; }
 .search { flex: 3 1 240px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; }
-.search:focus { border-color: var(--accent); }
+.search:focus { border-color: var(--ring); }
 #searchBtn, .iowrap { display: none; }
 .iowrap { position: relative; }
 .iomenu { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 8; min-width: 150px; padding: 5px; background: var(--panel);
@@ -49,7 +61,7 @@ header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, va
 .iomenu button:hover, .iomenu button:focus-visible { background: color-mix(in srgb, var(--accent) 14%, transparent); outline: none; }
 .btn { color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 13px; cursor: pointer; white-space: nowrap; }
 .btn:hover { border-color: var(--muted); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .btn.danger { color: var(--danger); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; max-width: 1500px; margin: 10px auto 0; align-items: center; }
 .chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--panel);
@@ -71,7 +83,7 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
         border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit; box-shadow: var(--shadow);
         transition: transform .12s ease, border-color .12s ease; }
 .card:hover { transform: translateY(-2px); border-color: var(--c, var(--accent)); }
-.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
 .thumb { aspect-ratio: 16 / 9; background: color-mix(in srgb, var(--c, var(--muted)) 18%, var(--panel));
          display: grid; place-items: center; overflow: hidden; border-bottom: 1px solid var(--line); }
 .thumb img.full { width: 100%; height: 100%; object-fit: cover; }
@@ -94,7 +106,7 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .sec-head { display: flex; align-items: center; gap: 9px; padding: 7px 6px; margin-bottom: 12px; cursor: pointer; user-select: none;
             border-bottom: 2px solid color-mix(in srgb, var(--c) 55%, var(--line)); border-radius: 6px 6px 0 0; }
 .sec-head:hover { background: color-mix(in srgb, var(--c) 8%, transparent); }
-.sec-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sec-head:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .sec-head.drop { outline: 2px dashed var(--c); outline-offset: 2px; }
 .sec-head .chev { display: inline-block; width: 14px; color: var(--muted); transition: transform .15s; }
 .sec-head .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); }
@@ -104,14 +116,17 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .sec-head .open:hover { color: var(--text); background: color-mix(in srgb, var(--c) 16%, transparent); }
 .section.collapsed .chev { transform: rotate(-90deg); }
 .section.collapsed .grid { display: none; }
+.section { scroll-margin-top: calc(var(--hdr) + 8px); }
 .section.collapsed { margin-bottom: 8px; }
 .section.collapsed .sec-head { margin-bottom: 0; }
 .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
 .side { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-block: 2px; padding-inline: 2px 4px; }
 .gitem { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 9px; cursor: pointer; user-select: none; border: 1px solid transparent; }
 .gitem:hover { background: color-mix(in srgb, var(--c, var(--accent)) 10%, transparent); }
-.gitem:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.gitem.on { background: color-mix(in srgb, var(--c, var(--accent)) 18%, var(--panel)); border-color: color-mix(in srgb, var(--c, var(--accent)) 60%, var(--line)); font-weight: 600; }
+.gitem:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.gitem.on { background: color-mix(in srgb, var(--sel, var(--c, var(--accent))) 18%, var(--panel)); border-color: color-mix(in srgb, var(--sel, var(--c, var(--accent))) 60%, var(--line)); font-weight: 600;
+           box-shadow: inset 3px 0 0 var(--c, var(--accent)); }
+[dir=rtl] .gitem.on { box-shadow: inset -3px 0 0 var(--c, var(--accent)); }
 .gitem.drop { outline: 2px dashed var(--c, var(--accent)); outline-offset: -2px; }
 .gitem .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
 .gitem .gname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -134,9 +149,13 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .list .thumb { flex: 0 0 150px; border-bottom: 0; border-inline-end: 1px solid var(--line); }
 .list .thumb .letter { font-size: 30px; }
 .list .thumb img.icon { width: 40px; height: 40px; }
-.list .body { flex: 1; padding-block: 9px; padding-inline: 14px 186px; display: flex; flex-direction: column; justify-content: center; }
+.list .body { flex: 1; padding-block: 9px; padding-inline: 14px; display: flex; flex-direction: column; justify-content: center; }
 .list .title { -webkit-line-clamp: 1; }
-.list .actions { top: 50%; inset-inline-end: 10px; transform: translateY(-50%); }
+.list .actions { top: 50%; inset-inline-end: 10px; transform: translateY(-50%); padding-inline-start: 26px;
+                 background: linear-gradient(to right, transparent, var(--panel) 22px); }
+[dir=rtl] .list .actions { background: linear-gradient(to left, transparent, var(--panel) 22px); }
+/* touch screens wider than a phone show the buttons all the time: keep room for them there */
+@media (hover: none) and (min-width: 761px) { .list .body { padding-inline-end: 186px; } .list .actions { background: none; padding: 0; } }
 .desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* phones: two rows instead of three. Row 1 is the name and four small icon buttons (search,
    import/export as one menu, guide, settings), row 2 the add field. Search opens as its own row
@@ -149,21 +168,19 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
   #importBtn, #exportBtn { display: none; }
   #searchBtn, .iowrap { display: inline-flex; }
   .bar.searching #searchBtn { border-color: var(--accent); color: var(--accent); }
-  .add { order: 10; flex: 1 1 100%; max-width: none; }
+  .add { display: none; }  /* phones add links with the round + button at the bottom */
   .search { order: 11; flex: 1 1 100%; display: none; }
   .bar.searching .search { display: block; }
   .tools { flex-wrap: wrap; row-gap: 8px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .side { position: static; flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 6px; }
-  .side hr, .slabel { display: none; }
-  .gitem { flex: none; } .gitem.ghost { margin-top: 0; }
+  .side { display: none; }  /* phones: the Groups button opens the groups as a sheet from the bottom */
   .list .thumb { flex-basis: 104px; }
 }
 /* phones: the card buttons are always shown there, so put them in a row under the text
    instead of beside it, and give the title the full width */
 @media (hover: none) and (max-width: 760px) {
   .list .body { padding-inline-end: 12px; padding-bottom: 46px; }
-  .list .actions { top: auto; bottom: 8px; inset-inline-end: 8px; transform: none; }
+  .list .actions { top: auto; bottom: 8px; inset-inline-end: 8px; transform: none; background: none; padding: 0; }
   .actions button { width: 34px; height: 34px; }
 }
 @media (max-width: 380px) {  /* narrow phones: slightly smaller buttons so row 1 still fits */
@@ -173,6 +190,24 @@ body.thumb-s .list .thumb { flex-basis: 96px; } body.thumb-l .list .thumb { flex
 .lay-sections .layout { grid-template-columns: minmax(0, 1fr); }
 .lay-sections .side, .lay-sections #ptitle, .lay-sections #openAll, .lay-sections #sortSel { display: none; }
 .lay-panel .only-sections { display: none; }
+/* Full width (Your account → Cards and tile size, per device): no 1500 px limit, the page fills the screen */
+body.wide .bar, body.wide .chips, body.wide main { max-width: none; }
+/* Compact (per device): less space around groups, cards and rows; the text keeps its size */
+body.compact main { padding-top: 12px; }
+body.compact .tools { margin-bottom: 10px; }
+body.compact .side { gap: 1px; }
+body.compact .gitem { padding-block: 4px; }
+body.compact .grid { gap: 10px; }
+body.compact .list { gap: 6px; }
+body.compact .body { padding: 7px 10px 9px; }
+body.compact .list .body { padding-block: 5px; }
+@media (hover: none) and (max-width: 760px) { body.compact .list .body { padding-top: 6px; padding-bottom: 46px; } }  /* phones: room for the card buttons under the text */
+body.compact .section:not(.collapsed) .sec-head { margin-bottom: 8px; }
+body.compact.thumb-xs .list, body.compact.thumb-xs .grid { gap: 3px; }
+body.compact.thumb-xs .list .card { min-height: 32px; }
+body.compact.thumb-xs .grid .card { min-height: 36px; }
+/* slim scrollbars in the style's colours, instead of the system's wide ones with arrows */
+html, .side, .dbody, dialog, .sheet-list { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
 .sec-head .edit { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; opacity: 0; }
 .sec-head:hover .edit, .sec-head .edit:focus-visible { opacity: 1; }
 /* Settings: one card per section, opened by clicking its title */
@@ -182,7 +217,7 @@ details.sec > summary::-webkit-details-marker { display: none; }
 details.sec > summary::after { content: ""; margin-inline-start: 4px; width: 7px; height: 7px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .15s; flex: none; }
 details.sec[open] > summary::after { transform: rotate(-135deg); }
 details.sec > summary:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
-details.sec > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+details.sec > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 details.sec .st { font-size: 15px; font-weight: 650; color: var(--text); }
 details.sec.danger-zone { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
 details.sec.danger-zone .st { color: var(--danger); }
@@ -197,11 +232,11 @@ dialog h4.sub { margin: 18px 0 4px; font-size: 14px; font-weight: 650; color: va
 .choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .choice input { margin-top: 3px; }
 .choice b { display: block; } .choice span { color: var(--muted); font-size: 13px; }
-.card.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card.sel { outline: 2px solid var(--ring); outline-offset: 1px; }
 .tick { position: absolute; top: 8px; inset-inline-start: 8px; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #fff; background: rgba(15,18,25,.55);
         display: none; place-items: center; color: #fff; font-size: 14px; line-height: 1; z-index: 2; }
 .selecting .tick { display: grid; } .selecting .actions { display: none; } .selecting .card { cursor: pointer; }
-.card.sel .tick { background: var(--accent); border-color: var(--accent); }
+.card.sel .tick { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .list .card.ins-before { box-shadow: 0 -4px 0 -1px var(--accent); } .list .card.ins-after { box-shadow: 0 4px 0 -1px var(--accent); }
 .grid .card.ins-before { box-shadow: -5px 0 0 -1px var(--accent); } .grid .card.ins-after { box-shadow: 5px 0 0 -1px var(--accent); }
 [dir=rtl] .grid .card.ins-before { box-shadow: 5px 0 0 -1px var(--accent); } [dir=rtl] .grid .card.ins-after { box-shadow: -5px 0 0 -1px var(--accent); }
@@ -239,7 +274,7 @@ dialog input.bad { border-color: var(--danger) !important; box-shadow: 0 0 0 3px
 .pw .peek:hover { color: var(--text); background: var(--line); }
 .pw .peek svg { width: 18px; height: 18px; }
 dialog textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
-dialog :is(input, select, textarea):focus { border-color: var(--accent); }
+dialog :is(input, select, textarea):focus { border-color: var(--ring); }
 .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; align-items: center; }
 .row .left { margin-inline-end: auto; }
 .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -287,7 +322,7 @@ dialog.drawer.instant { transition: none; }
 .dclose { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px;
   background: var(--bg); color: var(--text); cursor: pointer; flex: none; }
 .dclose:hover { background: var(--line); }
-.dclose:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dclose:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .dbody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 22px; }
 .dbody > .hint:first-child { margin-top: 12px; }
 .dfoot { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
@@ -304,7 +339,7 @@ dialog .seg label { position: relative; margin: 0; display: flex; flex-direction
 .seg .sz { width: var(--s); height: var(--s); border-radius: 3px; background: var(--muted); }
 dialog .seg label:has(input:checked) { background: var(--panel); box-shadow: var(--shadow); font-weight: 600; }
 .seg label:has(input:checked) .sz { background: var(--accent); }
-.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: -2px; }
 dialog .lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 0; }
 
 /* the start screen: no group open yet */
@@ -317,6 +352,41 @@ dialog .lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px
 .home .home-stats { color: var(--muted); font-size: 13px; letter-spacing: .01em; }
 .at-home .tools { display: none; }
 @media (max-width: 760px) { .home { min-height: 46vh; } .home .wm { width: min(180px, 46vw); } }
+
+/* Phones: the Groups button, the sheets that slide up from the bottom (groups, add a link) and
+   the round + button. All hidden on larger screens. */
+.gbtn { display: none; align-items: center; gap: 9px; width: 100%; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 11px; background: var(--panel); color: var(--text); cursor: pointer; text-align: start; }
+.gbtn .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
+.gbtn .gb-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gbtn .gb-n { color: var(--muted); font-size: 12.5px; }
+.gbtn .gb-all { margin-inline-start: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.gbtn .chev { width: 8px; height: 8px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-2px, -2px); flex: none; margin-inline-start: 4px; }
+dialog.sheet { position: fixed; inset: auto 0 0 0; margin: 0; width: 100%; max-width: 100vw; max-height: 82vh; padding: 0; border: 0; border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0; box-shadow: 0 -12px 34px rgba(10,12,18,.18); flex-direction: column; overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom); animation: sheetUp .26s cubic-bezier(.2,.8,.2,1); }
+dialog.sheet[open] { display: flex; }
+dialog.sheet::backdrop { background: rgba(10,12,18,.42); }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { dialog.sheet { animation: none; } }
+.grab { flex: none; padding: 9px 0 4px; touch-action: none; cursor: grab; }
+.grab::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto; }
+.sheet h2 { margin: 2px 18px 8px; font-size: 16px; }
+.sheet-list { overflow-y: auto; overscroll-behavior: contain; padding: 0 10px 14px; display: flex; flex-direction: column; gap: 3px; }
+.sheet-list .gitem { padding-block: 11px; }
+body.compact .sheet-list .gitem { padding-block: 7px; }
+.sheet-list hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.sheet .addsheet { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.sheet .addsheet input, .sheet .addsheet select { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; outline: none; font-size: 16px; }
+.sheet .addsheet input:focus, .sheet .addsheet select:focus { border-color: var(--ring); }
+.sheet .addsheet .btn.primary { padding: 11px; font-size: 16px; }
+.fab { display: none; position: fixed; z-index: 4; inset-inline-end: 16px; bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px)); width: 56px; height: 56px;
+  place-items: center; border: 0; border-radius: 18px; background: var(--accent); color: var(--on-accent); cursor: pointer;
+  box-shadow: 0 6px 18px rgba(10,12,18,.24); }
+.fab svg { width: 26px; height: 26px; }
+.fab:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+body:has(dialog[open]) .fab, .selecting .fab { display: none !important; }
+@media (max-width: 760px) { .gbtn { display: flex; } .fab { display: grid; } .lay-panel #ptitle, .lay-panel #count, .lay-panel .tools .spacer { display: none; } main { padding-bottom: 96px; } }  /* room for the + button under the last card */
 
 /* Extra small. Sections layout: a dense grid of small tiles. Side panel layout: a slim list,
    one link per row: favicon, title, and the address (and group, in mixed lists) on the right. */
@@ -385,6 +455,7 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
   <div class="layout">
     <nav class="side" id="side" aria-label="Groups"></nav>
     <section>
+      <button class="gbtn" id="groupsBtn" type="button" aria-haspopup="dialog" aria-controls="groupsSheet"><span class="dot"></span><span class="gb-name" id="gbName"></span><span class="gb-n" id="gbN"></span><span class="gb-all" id="gbAll"></span><span class="chev" aria-hidden="true"></span></button>
       <div class="tools"><span class="ptitle" id="ptitle"></span><span id="count"></span><span class="spacer"></span>
         <span class="bulk"><b id="selCount">0 selected</b>
           <select id="selMove" aria-label="Move selected links to a group"></select>
@@ -405,7 +476,7 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
       <div id="board"></div>
       <div class="empty" id="empty" hidden></div>
       <div class="home" id="home" hidden>
-        <svg class="wm" viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" rx="28" fill="currentColor"/><g fill="var(--bg)"><rect x="22" y="22" width="35" height="35" rx="9"/><rect x="63" y="22" width="35" height="35" rx="9"/><rect x="22" y="63" width="35" height="35" rx="9"/><rect x="63" y="63" width="35" height="35" rx="9"/></g></svg>
+        <svg class="wm" viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" rx="28" fill="currentColor"/><g fill="var(--bg)"><rect x="22" y="22" width="35" height="35" rx="9"/><rect x="63" y="22" width="35" height="35" rx="9"/><rect x="22" y="63" width="35" height="35" rx="9"/><rect x="63" y="63" width="35" height="35" rx="9"/></g><path d="M77 57h14v26l-7-6-7 6z" fill="currentColor"/></svg>
         <p class="home-hint" id="homeHint"></p>
         <p class="home-stats" id="homeStats"></p>
       </div>
@@ -519,7 +590,8 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
     <label class="choice"><input type="radio" name="layout" value="sections"><div><b>Sections</b><span>All groups on one page as collapsible sections with large cards.</span></div></label>
   </div></details>
   <details class="sec" data-k="appearance"><summary><span class="st">Appearance</span><span class="sum" id="sum-appearance"></span></summary><div class="secb">
-    <select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+    <label for="setStyle">Style</label><select id="setStyle"><option value="classic">Classic</option><option value="workshop">Workshop</option></select>
+    <label for="setTheme">Mode</label><select id="setTheme"><option value="system">Follow my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
     <label for="setLang">Language</label><select id="setLang"><option value="">Follow my browser</option></select>
     <p class="hint">The page reloads in the chosen language. Saved with your account.</p>
   </div></details>
@@ -532,7 +604,11 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
       <label><input type="radio" name="thumb" value="l"><span class="sz" style="--s:15px"></span><span>Large</span></label>
     </div>
     <p class="hint" id="thumbHelp"></p>
-    <p class="hint">The tile size is remembered on each device, so a phone and a computer can each have their own. A new device starts with the size you chose last.</p>
+    <label class="check"><input id="setWide" type="checkbox"> Full width</label>
+    <p class="hint">Use the whole width of the screen instead of a centred page. Has no effect on phones.</p>
+    <label class="check"><input id="setCompact" type="checkbox"> Compact</label>
+    <p class="hint">Less space around groups, cards and rows. The text keeps its size.</p>
+    <p class="hint">The tile size, Full width and Compact are remembered on each device, so a phone and a computer can each have their own. A new device starts with the size you chose last.</p>
     <label for="setOpen">Clicking a link opens it</label><select id="setOpen"><option value="new">In a new tab</option><option value="same">In this tab</option></select>
     <label for="setDefGroup">New links go to</label><select id="setDefGroup"></select>
     <p class="hint">Layout, appearance, the start screen and the other card choices are saved with your account, so all your devices look the same.</p>
@@ -692,13 +768,29 @@ body.thumb-xs .list .actions { top: 50%; transform: translateY(-50%); inset-inli
 </form></dialog>
 <div id="toast" role="status" popover="manual"></div>
 
+<dialog id="groupsSheet" class="sheet" aria-labelledby="groupsHead">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="groupsHead">Groups</h2>
+  <nav class="sheet-list" id="sheetList" aria-label="Groups"></nav>
+</dialog>
+<dialog id="addSheet" class="sheet" aria-labelledby="addHead">
+  <div class="grab" aria-hidden="true"></div>
+  <h2 id="addHead">Add a link</h2>
+  <form class="addsheet" id="addSheetForm" novalidate>
+    <input id="sheetUrl" type="text" inputmode="url" dir="auto" placeholder="Paste a link" autocomplete="off" aria-label="Link to add">
+    <select id="sheetGroup" aria-label="Group"></select>
+    <button class="btn primary" type="submit">Add</button>
+  </form>
+</dialog>
+<button class="fab" id="fab" type="button" title="Add a link" aria-label="Add a link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+
 <script src="i18n.js"></script>
 <script src="passkey.js"></script>
 <script>
 const COLORS = ["#4c8bf5","#2aa7b8","#1f9e8a","#3fa55a","#8bb33a","#e0a31b","#e8793a","#e5534b","#d6589f","#b455c9","#8e6ad8","#5b63d6","#a0714f","#7d8590","#4a5568","#c9a227"];
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
-let cfg = { layout: "panel", theme: "system", thumb: "m", open: "new", defgroup: "", start: "empty" };
+let cfg = { layout: "panel", theme: "system", style: "classic", thumb: "m", open: "new", defgroup: "", start: "empty" };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("tm.settings") || "{}")); } catch {}
 if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
 // The tile size is remembered per device (a phone and a computer can differ). The account
@@ -706,12 +798,29 @@ if (!["panel", "sections"].includes(cfg.layout)) cfg.layout = "panel";
 const THUMBS = ["xs", "s", "m", "l"];
 let devThumb = ""; try { devThumb = localStorage.getItem("tm.thumbDevice") || ""; } catch {}
 const thumbNow = () => THUMBS.includes(devThumb) ? devThumb : THUMBS.includes(cfg.thumb) ? cfg.thumb : "m";
+// Full width and Compact are kept on this device only (not with the account): a big screen
+// and a phone usually want different ones.
+let devWide = false, devCompact = false;
+try { devWide = localStorage.getItem("tm.wide") === "1"; devCompact = localStorage.getItem("tm.compact") === "1"; } catch {}
+const isPhone = () => matchMedia("(max-width: 760px)").matches;
+// the colour the phone gives its status bar (and the browser its toolbar): the page's background
+function statusColor() {
+  const m = document.querySelector('meta[name="theme-color"]'), bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  if (m && bg) m.setAttribute("content", bg);
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", statusColor);
 function applySettings() {
   try { localStorage.setItem("tm.settings", JSON.stringify(cfg)); } catch {}
   document.body.classList.remove("lay-panel", "lay-sections", "thumb-xs", "thumb-s", "thumb-m", "thumb-l");
   document.body.classList.add("lay-" + cfg.layout, "thumb-" + thumbNow());
-  if (cfg.theme === "light" || cfg.theme === "dark") document.documentElement.dataset.theme = cfg.theme;
-  else delete document.documentElement.dataset.theme;
+  document.body.classList.toggle("wide", devWide);
+  document.body.classList.toggle("compact", devCompact);
+  const root = document.documentElement;
+  if (cfg.theme === "light" || cfg.theme === "dark") root.dataset.theme = cfg.theme;
+  else delete root.dataset.theme;
+  if (cfg.style === "workshop") root.dataset.style = "workshop";
+  else delete root.dataset.style;
+  statusColor();
 }
 let expanded = new Set();  // sections layout: groups start collapsed; only the opened ones are remembered
 try { expanded = new Set(JSON.parse(localStorage.getItem("tm.expanded") || "[]")); } catch {}
@@ -754,13 +863,14 @@ const allLinks = () => S.links.concat(S.shared_links || []);
 let prefsLoaded = false, prefsTimer = null;
 function savePrefs() {
   clearTimeout(prefsTimer);
-  prefsTimer = setTimeout(() => api("PUT", "api/prefs", { layout: cfg.layout, theme: cfg.theme, thumb: cfg.thumb, open: cfg.open, defgroup: cfg.defgroup, start: cfg.start, sorts }).catch(() => {}), 400);
+  prefsTimer = setTimeout(() => api("PUT", "api/prefs", { layout: cfg.layout, theme: cfg.theme, style: cfg.style, thumb: cfg.thumb, open: cfg.open, defgroup: cfg.defgroup, start: cfg.start, sorts }).catch(() => {}), 400);
 }
 function takePrefs(p) {
   prefsLoaded = true;
   if (!p || !Object.keys(p).length) { savePrefs(); return; }
   if (p.layout) cfg.layout = p.layout;
   if (p.theme) cfg.theme = p.theme;
+  cfg.style = p.style === "workshop" ? "workshop" : "classic";
   for (const k of ["thumb", "open", "defgroup", "start"]) if (k in p) cfg[k] = p[k];
   if (p.sorts) { sorts = p.sorts; try { localStorage.setItem("tm.sort", JSON.stringify(sorts)); } catch {} }
   applySettings();
@@ -998,7 +1108,7 @@ function card(l) {
 
 function section(key, name, color, links, g) {
   const k = String(key), isC = !expanded.has(k) && !q.trim();
-  const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color);
+  const sec = el("section", { className: "section" + (isC ? " collapsed" : "") }); sec.style.setProperty("--c", color); sec.dataset.key = k;
   const head = el("div", { className: "sec-head", tabIndex: 0, role: "button", title: isC ? t("Expand") : t("Collapse") },
     el("span", { className: "chev", textContent: "▾" }), el("span", { className: "dot" }),
     el("span", { className: "sec-name", textContent: name }));
@@ -1036,7 +1146,7 @@ function renderSections(list) {
   $("unfoldAll").onclick = () => { for (const k of keys) expanded.add(k); saveExpanded(); render(); };
   $("count").textContent = (list.length === 1 ? t("{n} link", {n: list.length}) : t("{n} links", {n: list.length}));
   const empty = $("empty"); empty.hidden = list.length > 0 || S.groups.length > 0 || S.shared_groups.length > 0;
-  if (!empty.hidden) empty.replaceChildren(el("b", { textContent: t("No links yet") }), t("Paste a link above, or use Import to bring in your bookmarks all at once."));
+  if (!empty.hidden) empty.replaceChildren(el("b", { textContent: t("No links yet") }), addHint());
 }
 function renderSelection() {
   const known = new Set(S.links.map(l => l.id)); for (const id of [...selected]) if (!known.has(id)) selected.delete(id);
@@ -1050,7 +1160,7 @@ function renderSelection() {
 // The start screen of the Side panel layout: the logo as a watermark, a hint and a short overview
 function renderHome() {
   const hint = $("homeHint"), n = allLinks().length;
-  if (!n) hint.replaceChildren(el("b", { textContent: t("No links yet") }), t("Paste a link above, or use Import to bring in your bookmarks all at once."));
+  if (!n) hint.replaceChildren(el("b", { textContent: t("No links yet") }), addHint());
   else if (matchMedia("(hover: none)").matches) hint.replaceChildren(t("Choose a group to see its links."));
   else { const [a, b] = t("Choose a group, or press {key} to search.").split("{key}");
          hint.replaceChildren(a, el("kbd", { textContent: "/" }), b || ""); }
@@ -1064,35 +1174,16 @@ function render() {
   showDupCount();
   const home = cfg.layout === "panel" && !filter && !q.trim();
   $("home").hidden = !home; document.body.classList.toggle("at-home", home);
+  groupsButton();
   if (cfg.layout === "sections") {
     fillSelect($("addGroup"), addGroupValue(null), t("No group"));
     return renderSections(visible());
   }
-  const side = $("side"), ungrouped = S.links.filter(l => l.group_id === null).length, searching = !!q.trim();
-  side.replaceChildren();
-  for (const g of S.groups) side.append(sideItem(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
-  if (ungrouped && (S.groups.length || S.shared_groups.length)) side.append(sideItem(t("Ungrouped"), "none", "#9aa3b2", ungrouped));
-  if (S.shared_groups.length) {
-    side.append(el("div", { className: "slabel", textContent: t("Shared with me") }));
-    for (const g of S.shared_groups) side.append(sideItem(g.name, g.id, g.color, S.shared_links.filter(l => l.group_id === g.id).length, g));
-  }
-  if (S.groups.length || S.shared_groups.length) side.append(el("hr"));
-  const every = allLinks(), favs = every.filter(l => l.pinned).length, opened = every.filter(l => l.opened_at).length;
-  const broken = every.filter(l => l.broken).length;
-  if (broken) side.append(sideItem(t(SPECIAL.broken), "broken", "#e5534b", broken));
-  const dups = dupSets().length;
-  if (dups) { const d = sideItem(t("Duplicates"), "dups", "#e0a31b", dups); d.onclick = () => $("dupBtn").click(); d.onkeydown = e => { if (e.key === "Enter") $("dupBtn").click(); }; side.append(d); }
-  if (favs) side.append(sideItem(t(SPECIAL.fav), "fav", "#f5b83d", favs));
-  side.append(sideItem(t(SPECIAL.all), "all", null, every.length));
-  if (every.length) side.append(sideItem(t(SPECIAL.recent), "recent", null, Math.min(30, every.length)));
-  side.append(sideItem(t(SPECIAL.opened), "opened", null, Math.min(30, opened)));
-  const add = el("div", { className: "gitem ghost", textContent: t("+ New group"), tabIndex: 0, role: "button" });
-  add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
-  side.append(add);
+  const searching = !!q.trim(), every = allLinks();
+  $("side").replaceChildren(...sideItems());
 
   fillSelect($("addGroup"), addGroupValue(ownGroup(+filter) ? filter : null), t("No group"));
   if (home) { $("board").replaceChildren(); $("empty").hidden = true; renderHome(); return; }
-
   const list = visible(), g = group(+filter), pt = $("ptitle");
   pt.replaceChildren();
   if (searching) pt.append(t("Search results"));
@@ -1108,9 +1199,102 @@ function render() {
   const empty = $("empty"); empty.hidden = list.length > 0;
   if (!list.length) empty.replaceChildren(el("b", { textContent: every.length ? t("Nothing here") : t("No links yet") }),
     searching ? t("No link matches your search.") : g && g.owner ? t("This shared group is empty.") : filter === "broken" ? t("No broken links.") : filter === "fav" ? t("No favourites yet. Use the ☆ on a card.")
-      : filter === "opened" ? t("Links you open will be listed here.") : every.length ? t("This group is empty. Paste a link above, or drag a card onto the group.")
-      : t("Paste a link above, or use Import to bring in your bookmarks all at once."));
+      : filter === "opened" ? t("Links you open will be listed here.") : every.length ? (isPhone() ? t("This group is empty. Tap + to add a link.") : t("This group is empty. Paste a link above, or drag a card onto the group."))
+      : addHint());
 }
+
+function sideItems() {
+  const side = [], ungrouped = S.links.filter(l => l.group_id === null).length;
+  for (const g of S.groups) side.push(sideItem(g.name, g.id, g.color, S.links.filter(l => l.group_id === g.id).length, g));
+  if (ungrouped && (S.groups.length || S.shared_groups.length)) side.push(sideItem(t("Ungrouped"), "none", "#9aa3b2", ungrouped));
+  if (S.shared_groups.length) {
+    side.push(el("div", { className: "slabel", textContent: t("Shared with me") }));
+    for (const g of S.shared_groups) side.push(sideItem(g.name, g.id, g.color, S.shared_links.filter(l => l.group_id === g.id).length, g));
+  }
+  if (S.groups.length || S.shared_groups.length) side.push(el("hr"));
+  const every = allLinks(), favs = every.filter(l => l.pinned).length, opened = every.filter(l => l.opened_at).length;
+  const broken = every.filter(l => l.broken).length;
+  if (broken) side.push(sideItem(t(SPECIAL.broken), "broken", "#e5534b", broken));
+  const dups = dupSets().length;
+  if (dups) { const d = sideItem(t("Duplicates"), "dups", "#e0a31b", dups); d.onclick = () => $("dupBtn").click(); d.onkeydown = e => { if (e.key === "Enter") $("dupBtn").click(); }; side.push(d); }
+  if (favs) side.push(sideItem(t(SPECIAL.fav), "fav", "#f5b83d", favs));
+  side.push(sideItem(t(SPECIAL.all), "all", null, every.length));
+  if (every.length) side.push(sideItem(t(SPECIAL.recent), "recent", null, Math.min(30, every.length)));
+  side.push(sideItem(t(SPECIAL.opened), "opened", null, Math.min(30, opened)));
+  const add = el("div", { className: "gitem ghost", textContent: t("+ New group"), tabIndex: 0, role: "button" });
+  add.onclick = () => openGroup(null); add.onkeydown = e => { if (e.key === "Enter") openGroup(null); };
+  side.push(add);
+  return side;
+}
+
+const addHint = () => isPhone() ? t("Tap + to add a link, or use Import to bring in your bookmarks all at once.")
+  : t("Paste a link above, or use Import to bring in your bookmarks all at once.");
+
+// Phones: the Groups button shows the open group; it opens all groups as a sheet from the
+// bottom. In the Sections layout it jumps to a group's section and unfolds it.
+function linkCount(key) {
+  const every = allLinks();
+  if (key === "all") return every.length;
+  if (key === "fav") return every.filter(l => l.pinned).length;
+  if (key === "broken") return every.filter(l => l.broken).length;
+  if (key === "recent") return Math.min(30, every.length);
+  if (key === "opened") return Math.min(30, every.filter(l => l.opened_at).length);
+  if (key === "none") return S.links.filter(l => l.group_id === null).length;
+  return every.filter(l => l.group_id === +key).length;
+}
+function groupsButton() {
+  const b = $("groupsBtn"), n = S.groups.length + S.shared_groups.length, g = group(+filter);
+  const sections = cfg.layout === "sections", none = sections || !filter || !!q.trim();
+  b.style.setProperty("--c", !none && g ? g.color : "");
+  b.querySelector(".dot").hidden = none;
+  const searching = !sections && !!q.trim();
+  $("gbName").textContent = sections ? t("Jump to a group") : searching ? t("Search results") : none ? t("Choose a group") : g ? g.name : t(SPECIAL[filter] || "All links");
+  $("gbN").textContent = searching ? visible().length : none ? "" : linkCount(filter);
+  $("gbAll").textContent = n ? (n === 1 ? t("{n} group", { n }) : t("{n} groups", { n })) : "";
+}
+function jumpTo(key) {
+  const k = String(key); expanded.add(k); saveExpanded(); render();
+  const sec = [...document.querySelectorAll("#board .section")].find(x => x.dataset.key === k);
+  if (sec) sec.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+}
+function openGroupsSheet() {
+  const list = $("sheetList");
+  if (cfg.layout === "sections") {
+    const items = S.groups.map(g => [g.name, g.id, g.color, g]);
+    if (S.links.some(l => l.group_id === null) && (S.groups.length || S.shared_groups.length)) items.push([t("Ungrouped"), "none", "#9aa3b2"]);
+    const shared = S.shared_groups.map(g => [g.name, g.id, g.color, g]);
+    const item = ([name, key, color, g]) => { const c = sideItem(name, key, color, linkCount(key), g); c.classList.remove("on");
+      c.onclick = () => { $("groupsSheet").close(); jumpTo(key); };
+      c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); c.onclick(); } }; return c; };
+    list.replaceChildren(...items.map(item), ...(shared.length ? [el("div", { className: "slabel", textContent: t("Shared with me") }), ...shared.map(item)] : []));
+  } else list.replaceChildren(...sideItems());
+  $("groupsSheet").showModal();
+  const on = list.querySelector(".gitem.on"); if (on) on.scrollIntoView({ block: "nearest" });
+}
+$("groupsBtn").onclick = openGroupsSheet;
+// choosing a group (or a list) closes the sheet; the ✎ / ⓘ buttons open their window over it
+$("sheetList").addEventListener("click", e => { const it = e.target.closest(".gitem"); if (it && !e.target.closest(".edit")) $("groupsSheet").close(); });
+// Sheets close with a tap beside them, Esc, or a swipe down on the handle at the top
+for (const sh of document.querySelectorAll("dialog.sheet")) {
+  sh.addEventListener("click", e => { if (e.target === sh) sh.close(); });
+  const grab = sh.querySelector(".grab"); let y0 = null, dy = 0;
+  grab.addEventListener("pointerdown", e => { y0 = e.clientY; dy = 0; grab.setPointerCapture(e.pointerId); sh.style.transition = "none"; });
+  grab.addEventListener("pointermove", e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); sh.style.transform = dy ? "translateY(" + dy + "px)" : ""; });
+  const end = () => { if (y0 === null) return; y0 = null; sh.style.transition = ""; sh.style.transform = ""; if (dy > 70) sh.close(); };
+  grab.addEventListener("pointerup", end); grab.addEventListener("pointercancel", end);
+}
+// Phones: the round + button opens a small sheet with the link field and the group
+$("fab").onclick = () => {
+  fillSelect($("sheetGroup"), addGroupValue(ownGroup(+filter) ? filter : null), t("No group"));
+  $("sheetUrl").value = ""; $("addSheet").showModal(); $("sheetUrl").focus();
+};
+$("sheetGroup").addEventListener("change", e => { if (!ownGroup(+filter)) addGroupPicked = e.target.value; });
+$("addSheetForm").onsubmit = async e => {
+  e.preventDefault();
+  const url = $("sheetUrl").value.trim(); if (!url) return $("sheetUrl").focus();
+  try { await api("POST", "api/links", { url, group_id: +$("sheetGroup").value || null }); $("addSheet").close(); load(); }
+  catch (err) { toast(err.message); }
+};
 
 async function removeLink(l) {
   if (!confirm(t("Delete this link?") + "\n" + (l.title || l.url))) return;
@@ -1337,8 +1521,8 @@ const setSum = (k, text) => { const n = $("sum-" + k); if (n) n.textContent = te
 const optText = id => { const o = $(id).selectedOptions[0]; return o ? o.textContent : ""; };
 function sumPrefs() {
   setSum("layout", cfg.layout === "sections" ? t("Sections") : t("Side panel"));
-  setSum("appearance", optText("setTheme") + " · " + TM_LANGS[tmLang()]);  // the language in use, also when following the browser
-  setSum("cards", t(SIZE_NAMES[thumbNow()]) + " · " + optText("setOpen"));
+  setSum("appearance", optText("setStyle") + " · " + optText("setTheme") + " · " + TM_LANGS[tmLang()]);  // the language in use, also when following the browser
+  setSum("cards", [t(SIZE_NAMES[thumbNow()]), devWide ? t("Full width") : "", devCompact ? t("Compact") : "", optText("setOpen")].filter(Boolean).join(" · "));
   setSum("start", cfg.start === "last" ? t("Last group") : t("Clean"));
 }
 const SIZE_NAMES = { xs: "Extra small", s: "Small", m: "Medium", l: "Large" };
@@ -1407,6 +1591,11 @@ document.addEventListener("keydown", e => {  // first, before the other Esc uses
 $("accountBtn").onclick = () => {
   for (const r of document.querySelectorAll('input[name="layout"]')) { r.checked = r.value === cfg.layout; r.onchange = () => { cfg.layout = r.value; applySettings(); savePrefs(); render(); sumPrefs(); }; }
   $("setTheme").value = cfg.theme; $("setTheme").onchange = e => { cfg.theme = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
+  $("setStyle").value = cfg.style; $("setStyle").onchange = e => { cfg.style = e.target.value; applySettings(); savePrefs(); sumPrefs(); };
+  const perDevice = (id, key, set) => { const b = $(id); b.checked = set();
+    b.onchange = () => { set(b.checked); try { localStorage.setItem(key, b.checked ? "1" : "0"); } catch {} applySettings(); sumPrefs(); }; };
+  perDevice("setWide", "tm.wide", v => v === undefined ? devWide : (devWide = v));
+  perDevice("setCompact", "tm.compact", v => v === undefined ? devCompact : (devCompact = v));
   const showSize = () => { $("thumbHelp").textContent = t(SIZE_HELP[thumbNow()]); };
   for (const r of document.querySelectorAll('input[name="thumb"]')) { r.checked = r.value === thumbNow(); r.onchange = () => {
     devThumb = cfg.thumb = r.value; try { localStorage.setItem("tm.thumbDevice", devThumb); } catch {}
@@ -1742,7 +1931,7 @@ document.addEventListener("keydown", e => {
   }
   if (typing) return;
   if (e.key === "/") { e.preventDefault(); $("search").focus(); $("search").select(); }
-  else if (e.key === "n") { e.preventDefault(); $("addUrl").focus(); }
+  else if (e.key === "n") { e.preventDefault(); if (isPhone()) $("fab").click(); else $("addUrl").focus(); }
 });
 
 // ---------------------------------------------------------------- signed-in devices
@@ -2003,6 +2192,10 @@ $("iGo").onclick = async () => {
 $("addUrl").onpaste = e => {
   const t = (e.clipboardData || window.clipboardData).getData("text");
   if (t.trim().split(/\s*\n\s*/).length > 1) { e.preventDefault(); $("importBtn").click(); $("iText").value = t; }
+};
+$("sheetUrl").onpaste = e => {  // the same on a phone's add sheet
+  const t = (e.clipboardData || window.clipboardData).getData("text");
+  if (t.trim().split(/\s*\n\s*/).length > 1) { e.preventDefault(); $("addSheet").close(); $("importBtn").click(); $("iText").value = t; }
 };
 load();
 </script>

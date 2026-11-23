@@ -41,7 +41,8 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 
 | Option | What it does |
 | --- | --- |
-| **Follow my device / Light / Dark** | The colour scheme. *Follow my device* switches with your computer's or phone's dark mode. |
+| **Style** | **Classic** (cool greys, blue buttons) or **Workshop** (cream and warm charcoal, orange buttons, teal for the selected group). The logo stays blue in both. |
+| **Mode** | **Follow my device**, **Light** or **Dark**. *Follow my device* switches with your computer's or phone's dark mode, for either style. |
 | **Language** | **Follow my browser** (the default), **English**, **Nederlands**, **Deutsch**, **Français**, **Español** or **العربية**. Arabic is shown right to left. The page reloads in the chosen language. |
 
 ![TileMark in Arabic](images/arabic.webp)
@@ -52,9 +53,13 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 | --- | --- |
 | **Tile size** | **Extra small**, **Small**, **Medium** or **Large**. Extra small is for long lists: in the **Side panel** layout a slim list with one link per line (the site's icon, the title, and the address on the right), in **Sections** a dense grid of small tiles with only the icon and the title. On a phone, and in the Sections grid, its only card button is **✎**, whose window has favourite, group and delete. **Remembered on each device**, so your phone and your computer can each have their own size. A new device starts with the size you chose last. |
 | **Clicking a link opens it** | **In a new tab** (the default) or **In this tab**. |
+| **Full width** | Use the whole width of the screen instead of a centred page of at most 1500 pixels. No effect on phones. **Remembered on each device.** |
+| **Compact** | Less space around groups, cards and rows; the text keeps its size. **Remembered on each device.** |
 | **New links go to** | The group that new links go to when you aren't looking at a group. **No group** leaves them ungrouped. |
 
-The keyboard shortcuts are listed here too: `/` search, `n` add a link, `Esc` clear the search, leave a field, or close a panel or the open group.
+The style, mode, layout and the other choices are saved with your account, so they follow you to every device. The tile size, Full width and Compact are kept per device, because a big screen and a phone usually want different ones.
+
+The card also lists the main keyboard shortcuts; all of them are in [Links and groups](links-and-groups.md#keyboard-shortcuts).
 
 ## Start screen
 

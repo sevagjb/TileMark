@@ -9,7 +9,7 @@ Everything you do day to day happens on one page. This guide walks through it fr
 | Part | What it does |
 | --- | --- |
 | **TileMark** (top left) | The version you are running is shown under the name. |
-| **Paste a link and press Enter** | Saves a link. The list next to it chooses the group it goes to. |
+| **Paste a link and press Enter** | Saves a link. The list next to it chooses the group it goes to. On a phone this is the round **+** button at the bottom instead (see [On a phone](#on-a-phone)). |
 | **Add** | Same as pressing Enter. |
 | **Search** | Finds links by title, address, description, note or group name, across all your groups. |
 | **Import** | Brings in browser bookmarks, a list of links or a TileMark file. See [Import and export](import-export.md). |
@@ -173,18 +173,65 @@ On a phone, tap the magnifier next to the name to open the search field. It clos
 
 ## Keyboard shortcuts
 
+TileMark can be used without a mouse. The shortcuts work on a computer with a keyboard; a phone has none.
+
+**Anywhere on the page**
+
 | Key | What it does |
 | --- | --- |
-| `/` | Jump to the search field |
-| `n` | Jump to the field for adding a link |
-| `Esc` | Clear the search, leave a field, close a window or panel, or close the open group |
+| `/` | Jump to the search field and select what's in it. |
+| `n` | Jump to the field for adding a link. |
+| `Esc` | Does the first of these that applies: close a menu (such as Import and export), close a window or the 👤 / ⚙ panel, stop selecting links, clear the search, leave the field you're typing in, or close the open group and go back to the start screen. |
+
+**In a field**
+
+| Key | Where | What it does |
+| --- | --- | --- |
+| `Enter` | The field for adding a link | Saves the link. Pasting several links at once (one per line) opens **Import** with them instead. |
+| `Enter` | **Search** | Nothing extra: results show while you type. `Esc` clears it. |
+| `Enter` | A group's **Name**, **Share with**, a two-factor code | Saves, shares or confirms, the same as the button next to it. |
+
+**Moving around**
+
+| Key | What it does |
+| --- | --- |
+| `Tab` / `Shift+Tab` | Move between the fields, buttons, groups and cards. The one you're on gets a coloured ring. |
+| `Enter` or `Space` | On a group: open it, or close it when it's already open. On a section's title (Sections layout): fold or unfold it. |
+| `Enter` | On a card: open the link. |
+
+**When they don't work:** while a window is open in the middle of the screen, while you're typing in a field (only `Esc` works there), and while you hold `Ctrl`, `Alt` or `⌘`, so the browser's own shortcuts (such as `Ctrl+F`) keep working.
+
+**Browser extension:** `Alt+Shift+S` opens its window on any page, and `Ctrl+Enter` in the note saves. See [Browser extension](browser-extension.md#saving).
+
+**On a phone:** no keyboard shortcuts. To save from other apps, use the Share menu (Android) or an [iPhone Shortcut](save-from-anywhere.md#iphone-shortcut).
 
 ## Light, dark and languages
 
-**👤 Your account → Appearance** chooses light, dark, or **Follow my device**, and the language: English, Nederlands (Dutch), Deutsch (German), Français (French), Español (Spanish) or العربية (Arabic, shown right to left). By default TileMark follows your browser's language. See [Settings](settings.md#appearance).
+**👤 Your account → Appearance** has two choices for the colours:
+
+- **Style:** **Classic** (cool greys with blue buttons) or **Workshop** (cream and warm charcoal, with orange buttons and teal for the selected group). The TileMark logo stays blue in both.
+- **Mode:** **Light**, **Dark**, or **Follow my device**, which switches with your computer's or phone's dark mode. This works for both styles.
+
+![The Workshop style, light, with Full width on](images/workshop.webp)
+
+The same card chooses the language: English, Nederlands (Dutch), Deutsch (German), Français (French), Español (Spanish) or العربية (Arabic, shown right to left). By default TileMark follows your browser's language. See [Settings](settings.md#appearance).
+
+## Width and spacing
+
+Two switches in **👤 Your account → Cards and tile size**, remembered on each device, like the tile size:
+
+- **Full width:** on a big screen, TileMark is a centred page at most 1500 pixels wide, with empty space on both sides. Full width lets it use the whole screen. It has no effect on phones, which always use the whole screen.
+- **Compact:** less space around groups, cards and rows, so more fits on the screen. The text stays the same size.
 
 ## On a phone
 
-TileMark works in any phone browser: the groups become a row you can swipe, and the card buttons sit under each link. With HTTPS you can also install it as an app and share links to it from other apps; see [Save from anywhere](save-from-anywhere.md#phone).
+TileMark works in any phone browser, laid out for a small screen:
 
-<img src="images/phone.webp" width="300" alt="TileMark on a phone">
+- **Groups button:** at the top it shows the open group, how many links it has, and how many groups you have. Tap it to see all your groups, Favourites, All links and the other lists as a sheet from the bottom of the screen; tap one to open it. Close the sheet by tapping beside it or swiping its handle down. In the **Sections** layout the same button is called **Jump to a group**: it scrolls straight to that group's section and unfolds it.
+- **Round + button:** bottom right (bottom left in Arabic). It opens a small sheet with the link field and the group; tap **Add**. Pasting several links at once opens **Import** with them.
+- **Card buttons** sit under each link, so they're easy to tap.
+- **Status bar:** the phone's status bar and the browser's toolbar take the colour of your style and mode.
+
+<img src="images/phone.webp" width="300" alt="TileMark on a phone, Workshop style"> <img src="images/phone-groups.webp" width="300" alt="The groups sheet on a phone">
+
+With HTTPS you can also install TileMark as an app and share links to it from other apps; see [Save from anywhere](save-from-anywhere.md#phone).

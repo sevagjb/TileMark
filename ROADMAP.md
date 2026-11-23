@@ -4,8 +4,8 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Next (medium)
 
-- [ ] **Browser extension in more stores:** Chrome Web Store, then Firefox Add-ons (Edge first, see 2.10.0). Safari waits for an Apple developer account.
-- [ ] **Shared groups, later steps** (after testing 2.9.0): a "may change" level next to view only (the database already has room for it), your own order for groups shared with you, and whether notes on shared links stay visible.
+- [ ] **Browser extension in more stores:** Chrome Web Store, then Firefox Add-ons. Edge is live on [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi) (see 2.10.0). Safari waits for an Apple developer account.
+- [ ] **Shared groups, later steps** (after testing 2.9.0): a "may change" level next to view only (the database already has room for it), your own order for groups shared with you, and whether stopping a share should still remove its links from the other person straight away. (Notes on shared links stay visible to members, as decided in 2.9.0.)
 
 ## Parked (larger)
 
@@ -21,6 +21,13 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Done
 
+### 2.12.0
+- [x] Workshop style next to Classic, each light, dark or following the device (Style + Mode); the logo stays blue.
+- [x] Full width and Compact, remembered per device.
+- [x] Phones: a Groups button with a sheet from the bottom (in Sections it jumps to a group), a round + button to add links, and the status bar in the style's colour.
+- [x] Selected group marked with a bar in its colour, slim scrollbars, list rows with the full width for the title.
+- [x] Complete keyboard shortcuts in the guide; README, website and roadmap brought up to date.
+
 ### 2.11.0
 - [x] Several API keys per account (one per device or app), each with a name, last used, rename and remove; the old single key becomes "Default".
 
@@ -32,6 +39,12 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ### 2.9.0
 - [x] Shared groups: share a group with another account by username, view only. Copy to my links, leave, personal favourites and Recently opened; sharing kept or left out of backups as explained in the guide.
+
+### 2.8.1
+- [x] Extra small as a slim list, one link per line, in the Side panel layout.
+
+### 2.8.0
+- [x] A clean start screen with the logo, close the open group by clicking it again; Your account and Settings as side panels; Extra small tiles; tile size per device.
 
 ### 2.7.1
 - [x] Hardening: runs as a normal user instead of root, browser security rules (CSP, frames, `nosniff`), upload limits, web picture formats only, NAT64/6to4 addresses checked by their IPv4 address, and honest wording about what an admin can do.
@@ -49,6 +62,14 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ### 2.5.0
 - [x] German as a fourth interface language, with English shown for any text not translated yet.
+
+### 2.4.1 to 2.4.6
+- [x] YouTube links open from the Home Assistant sidebar; passwords hidden while typing (2.4.1).
+- [x] The version under the name, a guide button, Sign out always at hand (2.4.2).
+- [x] Two-row top bar on phones, the light-bulb guide button (2.4.3).
+- [x] "App" instead of "add-on" and the current Home Assistant app standards (2.4.4).
+- [x] Last backup and Backup encryption entities in Home Assistant (2.4.5).
+- [x] An admin's Check now checks every account (2.4.6).
 
 ### 2.4.0
 - [x] Encrypted backups, unlocked with your login password: personal backups by default, daily backups when an admin turns it on, with a recovery key.

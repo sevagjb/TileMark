@@ -55,7 +55,7 @@
 - Import bookmarks from Edge, Chrome, Firefox, Brave or Safari
 - Duplicates are listed for review, never dropped silently
 - Export to a TileMark file or a browser bookmarks file
-- Browser button, Android Share menu, and API keys (one per device or app)
+- Browser button, Android Share menu, iPhone Shortcut, and API keys (one per device or app)
 - [Browser extension for Microsoft Edge](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi): toolbar button, right-click menu and keyboard shortcut
 - Recently added and recently opened lists
 
@@ -71,16 +71,18 @@
 - Encrypted backups, unlocked with your login password or a recovery key
 - Never visits addresses inside your network unless you allow it
 - Hardened: runs as a normal user, not root, with strict browser security rules and upload limits
+- Delete all your own links, or (admin) reset the whole installation, with a safety copy first
 
 </td>
 <td valign="top">
 
 **Pleasant to use**
-- Two layouts: side panel or large picture sections
-- Light and dark, following your device
+- Two layouts: side panel or large picture sections, with a calm start screen
+- Two styles, Classic and Workshop, each light, dark or following your device
+- Four tile sizes, Full width and Compact, remembered per device
 - English, Dutch, German, French, Spanish and Arabic (right to left)
-- Works on phones; installs as an app over HTTPS
-- Keyboard shortcuts: `/` search, `n` add, `Esc` clear
+- Made for phones too: a groups sheet and a round + button; installs as an app over HTTPS
+- [Keyboard shortcuts](docs/links-and-groups.md#keyboard-shortcuts): `/` search, `n` add, `Esc` close or go back
 
 </td>
 </tr>

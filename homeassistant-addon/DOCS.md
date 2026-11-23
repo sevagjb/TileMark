@@ -70,7 +70,9 @@ Below your groups, TileMark keeps lists for you: **Ungrouped**, **Favourites**, 
 
 ![The Sections layout in dark mode](https://raw.githubusercontent.com/sevagjb/tilemark/v2.3.3/docs/images/sections-dark.webp)
 
-**Keyboard shortcuts:** `/` search, `n` add a link, `Esc` clear the search or close a window.
+**Keyboard shortcuts:** `/` search, `n` add a link, `Esc` close a menu, window or panel, clear the search, or close the open group. All of them: <https://sevagjb.github.io/TileMark/links-and-groups.html#keyboard-shortcuts>
+
+**On a phone:** a **Groups** button at the top opens your groups as a sheet from the bottom, and a round **+** button adds a link.
 
 ## Importing bookmarks
 
@@ -111,14 +113,14 @@ Links you already have are **never added twice and never thrown away silently**.
 
 ![The Settings window](https://raw.githubusercontent.com/sevagjb/tilemark/v2.3.3/docs/images/settings.webp)
 
-Two panels open from the top right and slide in from the side: **👤 Your account** for everyone, and **⚙ Settings** for admins. Each section is a card: click its title to open it, and a closed card shows a short status. Your own choices are saved with your account, so all your devices look the same; only the tile size is remembered per device.
+Two panels open from the top right and slide in from the side: **👤 Your account** for everyone, and **⚙ Settings** for admins. Each section is a card: click its title to open it, and a closed card shows a short status. Your own choices are saved with your account, so all your devices look the same; only the tile size, **Full width** and **Compact** are remembered per device.
 
 | Card | What you set there |
 | --- | --- |
 | **Username and password** | A password, needed only for **TileMark's own address**. |
 | **Layout** | Side panel or Sections. |
-| **Appearance** | Light, dark or follow your device; language: English, Nederlands, Deutsch, Français, Español or العربية. |
-| **Cards and tile size** | Extra small (a slim list in Side panel, small tiles in Sections), Small, Medium or Large (per device), open links in a new tab or this tab, the group new links go to. |
+| **Appearance** | Style (**Classic** or **Workshop**), mode (light, dark or follow your device), and the language: English, Nederlands, Deutsch, Français, Español or العربية. |
+| **Cards and tile size** | Extra small (a slim list in Side panel, small tiles in Sections), Small, Medium or Large; **Full width** (use the whole screen) and **Compact** (less space); all three per device. Open links in a new tab or this tab, the group new links go to. |
 | **Start screen** | Start with no group open (the clean screen with the logo), or reopen the last group. |
 | **Signed-in devices** | See and sign out the browsers signed in on TileMark's own address. |
 | **Save from anywhere** | The browser button, the phone app and your API keys. |

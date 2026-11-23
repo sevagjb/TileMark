@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.12.0 (unreleased)
+
+A new look: a second style, Workshop, a layout made for phones, and room to fit TileMark to your screen. Nothing needs to be done after updating; everything looks as before until you choose otherwise.
+
+### New
+- **Workshop style.** **👤 Your account → Appearance** now has **Style** (**Classic** or **Workshop**) and **Mode** (**Light**, **Dark** or **Follow my device**). Workshop is cream with warm charcoal in dark mode, orange buttons with dark text, and teal for the selected group and focus rings. *Follow my device* works for both styles. The TileMark logo stays blue in every style. The style is saved with your account.
+- **Full width.** **👤 Your account → Cards and tile size → Full width** lets TileMark use the whole screen instead of a centred page of at most 1500 pixels. Remembered on each device.
+- **Compact.** In the same card: less space around groups, cards and rows, so more fits on the screen; the text keeps its size. Remembered on each device.
+- **Phones: a Groups button.** It replaces the row of groups you had to swipe. It shows the open group, its number of links and how many groups you have; tap it for all your groups and lists in a sheet from the bottom of the screen. Close it by tapping beside it or swiping its handle down. In the **Sections** layout, where phones had no group list at all, it's called **Jump to a group**: it scrolls straight to that group's section and unfolds it.
+- **Phones: a round + button** at the bottom right (bottom left in Arabic) opens a small sheet with the link field and the group. The add field no longer takes a row at the top of the screen.
+
+### Changed
+- **The phone's status bar follows the style and mode.** It was always dark charcoal, even in light mode.
+- **The selected group** has a bar in its own colour along its edge, so it's easier to spot.
+- **Slim scrollbars** in the style's colours, instead of the system's wide ones with arrow buttons.
+- **List rows in the Side panel layout** use their full width for the title. The card buttons appear over the end of the row when you point at it; before, 186 pixels at the end of every row were kept free for them. Touch screens wider than a phone, which show the buttons all the time, keep that room.
+- **The page loads in your style straight away**, without a flash of the default colours first.
+- **The `n` key on a phone with a keyboard** opens the + sheet.
+
+### Fixed
+- **The bookmark ribbon is back in the start screen's watermark logo.** It was left out by mistake in 2.8.0.
+
+### Documentation
+- **Keyboard shortcuts** in **Links and groups** are complete now: keys that work anywhere, keys in fields, moving around without a mouse, when the keys don't work, and the browser extension's keys.
+- New sections **Width and spacing** and a rewritten **On a phone**, the new options in **Settings**, and two new questions in **Questions and troubleshooting** (the space beside the page, and the styles).
+- The README now mentions the start screen, the four tile sizes, the iPhone Shortcut, and Delete all my links / Reset TileMark. The website's front page lists all six languages (French and Spanish were missing) and the backup sensor. The Home Assistant app's Documentation tab describes the keys and the phone layout fully.
+- The roadmap lists every release again, including 2.4.1 to 2.4.6, 2.8.0 and 2.8.1.
+- Since 2.11.0: clearer wording about API keys on the front page and in the own-address sections, and a link to **TileMark on Microsoft Edge Add-ons** in the guide and README.
+
 ## 2.11.0
 
 Several API keys per account: one for each thing that saves links. Nothing needs to be done after updating; your current key keeps working.

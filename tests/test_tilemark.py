@@ -681,6 +681,15 @@ def test_daily_backup_default_off_in_addon(tmp_path):
     assert A.daily_backup_on() is False
 
 
+def test_prefs_style(two):
+    """The Workshop style (2.12): kept per account next to the mode, unknown styles ignored."""
+    A, admin, bob, *_ = two
+    assert bob.put("/api/prefs", json={"style": "workshop", "theme": "system"}).get_json()["prefs"] == {"style": "workshop", "theme": "system"}
+    bob.put("/api/prefs", json={"style": "neon"})
+    assert bob.get("/api/state").get_json()["prefs"]["style"] == "workshop"
+    assert bob.put("/api/prefs", json={"style": "classic"}).get_json()["prefs"]["style"] == "classic"
+
+
 def test_card_prefs(two):
     A, admin, bob, ga, gb, la, lb = two
     bob.put("/api/prefs", json={"thumb": "l", "open": "same", "defgroup": gb})

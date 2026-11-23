@@ -15,7 +15,13 @@ Your links have pictures, live in coloured groups, work in every browser and on 
 Yes. The admin adds each person in **⚙ Settings → People**. Everyone gets their own private links. See [Accounts and security](accounts-and-security.md).
 
 **Does it work on my phone?**
-Yes, in any phone browser. With HTTPS you can also install it as an app, and on Android share links to it from other apps. See [Save from anywhere](save-from-anywhere.md#phone).
+Yes, in any phone browser, with a Groups button that opens your groups from the bottom of the screen and a round + button to add links (see [On a phone](links-and-groups.md#on-a-phone)). With HTTPS you can also install it as an app, and on Android share links to it from other apps. See [Save from anywhere](save-from-anywhere.md#phone).
+
+**There's empty space on both sides of the page on my big screen.**
+That's on purpose: on a wide screen TileMark is a centred page at most 1500 pixels wide, so lines don't get too long. To use the whole screen, turn on **👤 Your account → Cards and tile size → Full width**. It's remembered on that device only.
+
+**Can TileMark look different?**
+Yes: **👤 Your account → Appearance → Style** has **Classic** and **Workshop**, each in light, dark or following your device. **Compact** (in Cards and tile size) fits more on the screen. See [Light, dark and languages](links-and-groups.md#light-dark-and-languages).
 
 **Which languages?**
 English, Dutch, German, French, Spanish and Arabic. Want to add yours? See [Translating TileMark](translating.md). TileMark follows your browser's language; you can choose another in **👤 Your account → Appearance**.

@@ -2820,3 +2820,15 @@ def test_account_list_for_sharing(shared):
     assert bob.get("/api/share/accounts").get_json()["accounts"] == ["admin", "carol"]
     admin.post("/api/settings", json={"share_list": False})
     assert bob.get("/api/share/accounts").status_code == 403
+
+
+# ------------------------------------------------------------- sign-in page in the device's style
+def test_signin_and_save_pages_use_the_devices_style(fresh):
+    c = fresh.app.test_client()
+    for path in ("/login", "/save"):
+        html_ = c.get(path).get_data(as_text=True)
+        head = html_.split("</head>", 1)[0]
+        # the style and mode are set in <head>, before the page is drawn, so there is no flash of other colours
+        assert 'c.style === "workshop"' in head and "r.dataset.theme = c.theme" in head, path
+        assert ':root[data-style="workshop"]' in head and "--on-accent: #2a2622" in head, path
+        assert '<meta name="theme-color"' in head, path

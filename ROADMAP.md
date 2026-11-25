@@ -4,7 +4,7 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Next (medium)
 
-- [ ] **Browser extension in more stores:** Chrome Web Store, then Firefox Add-ons. Edge is live on [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi) (see 2.10.0). Safari waits for an Apple developer account.
+- [ ] **Browser extension in more stores:** Chrome Web Store (listing ready in `extension/STORE-CHROME.md`; until then it installs from the zip in Chrome, Brave and Vivaldi), then Firefox Add-ons. Edge is live on [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi) (see 2.10.0). Safari waits for an Apple developer account.
 - [ ] **Shared groups, later steps** (after testing 2.9.0): a "may change" level next to view only (the database already has room for it), your own order for groups shared with you, and whether stopping a share should still remove its links from the other person straight away. (Notes on shared links stay visible to members, as decided in 2.9.0.)
 
 ## Parked (larger)
@@ -20,6 +20,10 @@ What is planned next, and what each release brought. Changes per version in deta
 - Sync between two installations (for example the add-on and a Docker one), one-way mirror first. For now: use one installation from everywhere (the add-on's own port), or move links with Backup or Export and Import.
 
 ## Done
+
+### 2.12.1
+- [x] Phones: Select stays on the first row (icons for Open all, Collapse all and Expand all).
+- [x] The sign-in page and the Save to TileMark window use the device's style and mode.
 
 ### 2.12.0
 - [x] Workshop style next to Classic, each light, dark or following the device (Style + Mode); the logo stays blue.

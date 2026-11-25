@@ -101,6 +101,8 @@ $("language").addEventListener("change", async () => {
 
 $("shortcuts").addEventListener("click", (e) => {
   e.preventDefault();
+  // Firefox has no shortcuts page to link to, but opens its own setting (about:addons) for us
+  if (chrome.commands?.openShortcutSettings) return void chrome.commands.openShortcutSettings();
   const edge = navigator.userAgent.includes("Edg/");
   chrome.tabs.create({ url: edge ? "edge://extensions/shortcuts" : "chrome://extensions/shortcuts" });
 });

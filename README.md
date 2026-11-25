@@ -56,7 +56,7 @@
 - Duplicates are listed for review, never dropped silently
 - Export to a TileMark file or a browser bookmarks file
 - Browser button, Android Share menu, iPhone Shortcut, and API keys (one per device or app)
-- [Browser extension for Microsoft Edge](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi): toolbar button, right-click menu and keyboard shortcut
+- [Browser extension for Microsoft Edge](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi): toolbar button, right-click menu and keyboard shortcut. It also works in Chrome, Brave, Vivaldi and Firefox; see the [guide](docs/browser-extension.md#install)
 - Recently added and recently opened lists
 
 </td>
@@ -138,7 +138,7 @@ Add the repository, install **TileMark**, turn on **Show in sidebar** and start 
 | [Links and groups](docs/links-and-groups.md) | Everything on the main page, and sharing a group |
 | [Import and export](docs/import-export.md) | Bookmarks in, files out, duplicates |
 | [Save from anywhere](docs/save-from-anywhere.md) | Browser button, phone, API keys |
-| [Browser extension](docs/browser-extension.md) | Toolbar button and right-click menu for Edge |
+| [Browser extension](docs/browser-extension.md) | Toolbar button and right-click menu for Edge, Chrome and Firefox |
 | [Broken links](docs/broken-links.md) | The weekly check |
 | [Accounts and security](docs/accounts-and-security.md) | People, what an admin can do, two-factor sign-in, passkeys, devices, passwords, reset, uploads, container user |
 | [Backups](docs/backups.md) | Your own, daily, restoring, and what happens to shared groups |

@@ -1,7 +1,8 @@
 name: Browser extension
 
 # Checks the extension on every change to it, and on an "ext-v1.2.3" tag packs the zip
-# and attaches it to a GitHub release (the file that is uploaded to Edge Add-ons).
+# and attaches both zips to a GitHub release: tilemark-extension-<v>.zip for Edge and Chrome,
+# tilemark-extension-<v>-firefox.zip for Firefox Add-ons.
 on:
   push:
     branches: [main]
@@ -39,5 +40,5 @@ jobs:
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --title "Browser extension ${GITHUB_REF_NAME#ext-v}" \
-                 --notes "TileMark browser extension ${GITHUB_REF_NAME#ext-v}. To install by hand: unzip, open edge://extensions, turn on Developer mode, Load unpacked. See https://sevagjb.github.io/TileMark/browser-extension.html"
+                 --notes "TileMark browser extension ${GITHUB_REF_NAME#ext-v}. tilemark-extension-*.zip is for Edge, Chrome, Brave and Vivaldi (unzip, open the extensions page, turn on Developer mode, Load unpacked); tilemark-extension-*-firefox.zip is for Firefox. See https://sevagjb.github.io/TileMark/browser-extension.html"
           gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber

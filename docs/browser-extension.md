@@ -6,7 +6,7 @@ It works with your **own** TileMark: the extension stores nothing itself and tal
 
 | | |
 | --- | --- |
-| Browsers | Microsoft Edge from its store; Chrome, Brave and Vivaldi from the zip for now (Chrome Web Store coming); Firefox later |
+| Browsers | Microsoft Edge from its store; Chrome, Brave and Vivaldi from the zip for now (Chrome Web Store coming); Firefox 140 or later (Firefox Add-ons coming) |
 | Needs | A TileMark you can reach from that browser, and an [API key](save-from-anywhere.md#api-key) |
 | Languages | English, Nederlands, Deutsch, Français, Español, العربية |
 | Privacy | See [Extension privacy](extension-privacy.md) |
@@ -19,7 +19,9 @@ It works with your **own** TileMark: the extension stores nothing itself and tal
 
 **Chrome, Brave, Vivaldi and other Chromium browsers:** the extension works there too; it is on its way to the Chrome Web Store. Until then, install it from the zip as below. A browser doesn't update an extension loaded this way, so load the new zip again after a new release.
 
-**From the zip** (any of these browsers, or to try a version before it's in the store): download `tilemark-extension-<version>.zip` from the [releases on GitHub](https://github.com/sevagjb/TileMark/releases) and unzip it. Open the extensions page (`edge://extensions` in Edge, `chrome://extensions` in Chrome, `brave://extensions` in Brave, `vivaldi:extensions` in Vivaldi), turn on **Developer mode**, press **Load unpacked** and choose the unzipped folder.
+**Firefox:** the extension is on its way to Firefox Add-ons. Firefox only keeps add-ons that Mozilla has signed, so until it's in the store you can only try it until Firefox restarts: download `tilemark-extension-<version>-firefox.zip` from the [releases on GitHub](https://github.com/sevagjb/TileMark/releases), open `about:debugging#/runtime/this-firefox`, press **Load Temporary Add-on…** and choose the zip. When installing, Firefox lists what the extension sends: your API key and the pages you save, both only to your own TileMark (see [Extension privacy](extension-privacy.md)).
+
+**From the zip** (Edge, Chrome, Brave, Vivaldi, or to try a version before it's in the store): download `tilemark-extension-<version>.zip` (not the `-firefox` one) from the [releases on GitHub](https://github.com/sevagjb/TileMark/releases) and unzip it. Open the extensions page (`edge://extensions` in Edge, `chrome://extensions` in Chrome, `brave://extensions` in Brave, `vivaldi:extensions` in Vivaldi), turn on **Developer mode**, press **Load unpacked** and choose the unzipped folder.
 
 ## Connect it to your TileMark
 
@@ -41,7 +43,7 @@ The settings page opens by itself after installing. Later you find it with **⚙
 - **Right-click** on a page → **Save page to TileMark**, or on a link → **Save link to TileMark**. This saves straight away, without the window, to the group set under **Right-click saves to** (by default the group you last used in the window). A mark on the toolbar icon shows how it went: **✓** saved, **=** already in TileMark, **!** something went wrong (hover over the icon to read what).
 - **Already saved?** TileMark never keeps the same page twice. The window then says which group it is in. If the address only *looks* the same (another tracking code, `http` instead of `https`), **Save anyway** keeps both.
 
-To change the keyboard shortcut, use **Change it** in the extension's settings (or open `edge://extensions/shortcuts`, or `chrome://extensions/shortcuts` in Chrome).
+To change the keyboard shortcut, use **Change it** in the extension's settings (or open `edge://extensions/shortcuts`, or `chrome://extensions/shortcuts` in Chrome). In Firefox, **Change it** opens **Manage Extension Shortcuts** in `about:addons`.
 
 ## Settings
 
@@ -63,4 +65,4 @@ To change the keyboard shortcut, use **Change it** in the extension's settings (
 | That address answered, but not like TileMark | The address points at something else. Use the address you open TileMark at. |
 | TileMark refused this request | A proxy or firewall rule blocks the request, or the TileMark version is old. Let `/api/` through, or update TileMark. |
 | The extension may not reach … yet | Open the settings and press **Save and test**, then allow access when the browser asks. |
-| This page can't be saved | Only web pages (`http` and `https`) can be saved, not the browser's own pages such as `edge://`, `chrome://` or the new-tab page. |
+| This page can't be saved | Only web pages (`http` and `https`) can be saved, not the browser's own pages such as `edge://`, `chrome://`, `about:` or the new-tab page. |

@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14161b">
+<script>try { var c = JSON.parse(localStorage.getItem("tm.settings") || "{}"), r = document.documentElement; if (c.style === "workshop") r.dataset.style = "workshop"; if (c.theme === "light" || c.theme === "dark") r.dataset.theme = c.theme; } catch (e) {}</script>
 <title>Sign in - TileMark</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='28' fill='%232f6fe4'/><rect x='22' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='22' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='22' y='63' width='35' height='35' rx='9' fill='%23fff' opacity='.55'/><rect x='63' y='63' width='35' height='35' rx='9' fill='%23fff'/><path d='M77 57h14v26l-7-6-7 6z' fill='%23f5b83d'/></svg>">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -11,6 +13,15 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3; --accent: #6ea0ff; --danger: #f0736b; color-scheme: dark; } }
 :root[data-theme="dark"] { --bg: #14161b; --panel: #1d2028; --line: #2c313c; --text: #e8eaf0; --muted: #98a1b3; --accent: #6ea0ff; --danger: #f0736b; color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
+/* The style and mode last used on this device (Your account → Appearance), so this page doesn't
+   jump to other colours. The same values as in index.html; the logo stays blue in every style. */
+:root { --on-accent: #fff; --ring: var(--accent); }
+:root[data-style="workshop"] { --bg: #edebe4; --panel: #faf9f5; --line: #d9d4c7; --text: #2a2622; --muted: #6e675d;
+  --accent: #ef791b; --on-accent: #2a2622; --ring: #2cc1b2; --danger: #c8412f; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-style="workshop"]:not([data-theme="light"]) { --bg: #1b1a17; --panel: #25231f; --line: #3a362f;
+  --text: #eeeae0; --muted: #a39c8f; --danger: #f0736b; color-scheme: dark; } }
+:root[data-style="workshop"][data-theme="dark"] { --bg: #1b1a17; --panel: #25231f; --line: #3a362f;
+  --text: #eeeae0; --muted: #a39c8f; --danger: #f0736b; color-scheme: dark; }
 * { box-sizing: border-box; } [hidden] { display: none !important; }
 body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; background: var(--bg); color: var(--text);
        font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -18,14 +29,14 @@ form { width: min(360px, 100%); background: var(--panel); border: 1px solid var(
 h1 { margin: 0 0 4px; font-size: 20px; } p { margin: 0 0 18px; color: var(--muted); }
 label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
 input[type=text], input[type=password] { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 10px 11px; outline: none; }
-input:focus { border-color: var(--accent); }
+input:focus { border-color: var(--ring); }
 .remember { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; color: var(--text); font-size: 14px; }
-button { width: 100%; margin-top: 18px; font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 10px; padding: 11px; cursor: pointer; }
+button { width: 100%; margin-top: 18px; font: inherit; font-weight: 600; color: var(--on-accent); background: var(--accent); border: 0; border-radius: 10px; padding: 11px; cursor: pointer; }
 button:disabled { opacity: .6; cursor: default; }
 .small { font-size: 13px; color: var(--muted); margin: 6px 0 0; } code { font-size: 12.5px; }
 #err { color: var(--danger); font-size: 14px; min-height: 20px; margin: 12px 0 0; }
 button.alt { margin-top: 10px; color: var(--text); background: transparent; border: 1px solid var(--line); font-weight: 500; }
-button.alt:hover { border-color: var(--accent); }
+button.alt:hover { border-color: var(--ring); }
 </style>
 </head>
 <body>
@@ -48,7 +59,8 @@ button.alt:hover { border-color: var(--accent); }
 <script src="i18n.js"></script>
 <script src="passkey.js"></script>
 <script>
-try { const th0 = JSON.parse(localStorage.getItem("tm.settings") || "{}").theme; if (th0 === "light" || th0 === "dark") document.documentElement.dataset.theme = th0; } catch {}
+// the phone's status bar in the page's background colour, as in the app itself
+{ const m = document.querySelector('meta[name="theme-color"]'), bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(); if (m && bg) m.setAttribute("content", bg); }
 const $ = id => document.getElementById(id);
 let setup = false, second = false;
 const goOn = () => { const n = new URLSearchParams(location.search).get("next") || ""; location.href = n.startsWith("/save") ? n.slice(1) : "./"; };

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.12.1
+
+Small fixes after 2.12.0. Nothing needs to be done after updating.
+
+### Fixed
+- **Phones: Select stays on the first row.** The row above the cards no longer wraps onto a second line, in both layouts and in all six languages. To make room, **Open all in tabs**, **Collapse all** and **Expand all** are icons on a phone (on a computer they keep their names), the link count is left out on phones in the **Sections** layout as it already was in **Side panel**, and a long sort name (German) is shortened in its list.
+- **The sign-in page uses your style.** The sign-in page and the **Save to TileMark** window now use the style and mode last used on that device, including Workshop, instead of always showing Classic. The phone's status bar takes the same colour there too.
+
+### Documentation
+- **Browser extension:** how to install it from the zip in Chrome, Brave and Vivaldi until it is in the Chrome Web Store, and the Chrome addresses for the extensions and shortcuts pages.
+- For the maintainer: `extension/STORE-CHROME.md` has everything the Chrome Web Store asks for, plus a store icon in the size Google wants. The extension works in Chromium as it is; the same zip is used for both stores.
+
 ## 2.12.0
 
 A new look: a second style, Workshop, a layout made for phones, and room to fit TileMark to your screen. Nothing needs to be done after updating; everything looks as before until you choose otherwise.

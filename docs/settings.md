@@ -57,7 +57,7 @@ More in [Links and groups](links-and-groups.md#two-layouts).
 | **Compact** | Less space around groups, cards and rows; the text keeps its size. **Remembered on each device.** |
 | **New links go to** | The group that new links go to when you aren't looking at a group. **No group** leaves them ungrouped. |
 
-The style, mode, layout and the other choices are saved with your account, so they follow you to every device. The tile size, Full width and Compact are kept per device, because a big screen and a phone usually want different ones.
+The style, mode, layout and the other choices are saved with your account, so they follow you to every device. The sign-in page and the **Save to TileMark** window use the style and mode last used on that device, so they don't switch colours when you sign in. The tile size, Full width and Compact are kept per device, because a big screen and a phone usually want different ones.
 
 The card also lists the main keyboard shortcuts; all of them are in [Links and groups](links-and-groups.md#keyboard-shortcuts).
 

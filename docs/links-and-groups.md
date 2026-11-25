@@ -229,6 +229,7 @@ TileMark works in any phone browser, laid out for a small screen:
 
 - **Groups button:** at the top it shows the open group, how many links it has, and how many groups you have. Tap it to see all your groups, Favourites, All links and the other lists as a sheet from the bottom of the screen; tap one to open it. Close the sheet by tapping beside it or swiping its handle down. In the **Sections** layout the same button is called **Jump to a group**: it scrolls straight to that group's section and unfolds it.
 - **Round + button:** bottom right (bottom left in Arabic). It opens a small sheet with the link field and the group; tap **Add**. Pasting several links at once opens **Import** with them.
+- **Buttons above the cards:** **Open all in tabs**, **Collapse all** and **Expand all** are icons on a phone (two overlapping squares, and arrows pointing in or out), so they fit on one row with the sort list and **Select**.
 - **Card buttons** sit under each link, so they're easy to tap.
 - **Status bar:** the phone's status bar and the browser's toolbar take the colour of your style and mode.
 

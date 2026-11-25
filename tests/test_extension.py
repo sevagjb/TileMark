@@ -16,4 +16,4 @@ def test_extension_zip_has_manifest_at_top(tmp_path, monkeypatch):
     out = build_extension.build()
     names = zipfile.ZipFile(out).namelist()
     assert "manifest.json" in names and "_locales/ar/messages.json" in names
-    assert not any(n.endswith(("STORE.md", "README.md")) or n.startswith("store/") for n in names)
+    assert not any(n.endswith(("STORE.md", "STORE-CHROME.md", "README.md")) or n.startswith("store/") for n in names)

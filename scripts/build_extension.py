@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 EXT = ROOT / "extension"
 DIST = ROOT / "dist"
-SKIP = {"README.md", "STORE.md"}  # notes for people, not part of the extension
+SKIP = {"README.md", "STORE.md", "STORE-CHROME.md"}  # notes for people, not part of the extension
 SKIP_DIRS = {"store"}  # store pictures (logo, screenshots) are uploaded separately
 
 

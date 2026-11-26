@@ -1,9 +1,13 @@
 """Check and pack the TileMark browser extension.
 
-    python scripts/build_extension.py          # checks, then writes dist/tilemark-extension-<version>.zip
+    python scripts/build_extension.py          # checks, then writes the two zips below
     python scripts/build_extension.py --check  # only the checks (also run by the tests)
 
-The zip is what gets uploaded to Microsoft Edge Add-ons (and later the Chrome Web Store).
+dist/tilemark-extension-<version>.zip          Microsoft Edge Add-ons and the Chrome Web Store
+dist/tilemark-extension-<version>-firefox.zip  Firefox Add-ons (addons.mozilla.org)
+
+Both hold the same code. Only manifest.json differs: Firefox gets its add-on ID, the data it
+transmits (data_collection_permissions), and background.scripts instead of a service worker.
 Checks:
   - manifest.json is valid and every file it names exists;
   - every language has exactly the keys English has, and no text is empty;
@@ -20,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 EXT = ROOT / "extension"
 DIST = ROOT / "dist"
-SKIP = {"README.md", "STORE.md", "STORE-CHROME.md"}  # notes for people, not part of the extension
+SKIP = {"README.md", "STORE.md", "STORE-CHROME.md", "STORE-FIREFOX.md"}  # notes for people, not part of the extension
 SKIP_DIRS = {"store"}  # store pictures (logo, screenshots) are uploaded separately
 
 
@@ -77,16 +81,53 @@ def check():
     return problems
 
 
-def build():
-    version = json.loads((EXT / "manifest.json").read_text(encoding="utf-8"))["version"]
-    DIST.mkdir(exist_ok=True)
-    out = DIST / f"tilemark-extension-{version}.zip"
+# Firefox. The ID is permanent: Firefox Add-ons ties the listing and every update to it.
+FIREFOX_ID = "tilemark@sevagjb.github.io"
+# What leaves the browser, in Mozilla's words: the API key (authenticationInfo) and the address
+# and title of the page the user saves (browsingActivity). It goes only to the user's own
+# TileMark, but Mozilla counts anything that leaves the browser. Same as the Chrome listing.
+FIREFOX_DATA = ["authenticationInfo", "browsingActivity"]
+FIREFOX_MIN = "140.0"  # the first version that knows data_collection_permissions (also the 140 ESR)
+FIREFOX_ANDROID_MIN = "142.0"  # the same on Android came two versions later
+FIREFOX_SHORTCUT = "Ctrl+Shift+L"  # opens the Save window (Command+Shift+L on a Mac)
+
+
+def firefox_manifest(manifest):
+    """manifest.json for Firefox, made from the Edge/Chrome one."""
+    m = json.loads(json.dumps(manifest))
+    m.pop("minimum_chrome_version", None)
+    bg = m.pop("background")
+    m["background"] = {"scripts": [bg["service_worker"]], "type": bg.get("type", "classic")}
+    # Alt+Shift+S opens Firefox's History menu (Alt+S, "Hi_s_tory") instead of the Save window,
+    # so Firefox gets a Ctrl+Shift key that Firefox itself doesn't use.
+    m["commands"]["_execute_action"]["suggested_key"] = {"default": FIREFOX_SHORTCUT}
+    m["browser_specific_settings"] = {"gecko": {
+        "id": FIREFOX_ID, "strict_min_version": FIREFOX_MIN,
+        "data_collection_permissions": {"required": FIREFOX_DATA}},
+        "gecko_android": {"strict_min_version": FIREFOX_ANDROID_MIN}}
+    return m
+
+
+def _pack(out, manifest_text):
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("manifest.json", manifest_text)  # manifest.json at the top of the zip
         for path in sorted(EXT.rglob("*")):
             rel = path.relative_to(EXT)
-            if path.is_file() and path.name not in SKIP and not path.name.startswith(".") and rel.parts[0] not in SKIP_DIRS:
-                z.write(path, rel.as_posix())  # manifest.json at the top of the zip
+            if (path.is_file() and path.name not in SKIP and path.name != "manifest.json"
+                    and not path.name.startswith(".") and rel.parts[0] not in SKIP_DIRS):
+                z.write(path, rel.as_posix())
     return out
+
+
+def build():
+    """Writes both zips; returns [Edge/Chrome zip, Firefox zip]."""
+    text = (EXT / "manifest.json").read_text(encoding="utf-8")
+    manifest = json.loads(text)
+    DIST.mkdir(exist_ok=True)
+    version = manifest["version"]
+    return [_pack(DIST / f"tilemark-extension-{version}.zip", text),
+            _pack(DIST / f"tilemark-extension-{version}-firefox.zip",
+                  json.dumps(firefox_manifest(manifest), indent=2, ensure_ascii=False) + "\n")]
 
 
 if __name__ == "__main__":
@@ -97,4 +138,5 @@ if __name__ == "__main__":
         sys.exit(1)
     print("✓ extension checks passed")
     if "--check" not in sys.argv:
-        print("✓ wrote", build().relative_to(ROOT))
+        for out in build():
+            print("✓ wrote", out.relative_to(ROOT))

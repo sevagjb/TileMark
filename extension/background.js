@@ -5,6 +5,7 @@ import { errorText, loadLanguage, t } from "./lib/i18n.js";
 import { getSettings } from "./lib/settings.js";
 
 async function buildMenus() {
+  if (!chrome.contextMenus) return;  // Firefox for Android has no right-click menu
   const settings = await getSettings();
   await loadLanguage(settings.language);
   await chrome.contextMenus.removeAll();
@@ -36,7 +37,7 @@ function badge(tabId, text, color, title) {
   }, 6000);
 }
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   const settings = await getSettings();
   await loadLanguage(settings.language);
   if (!settings.server || !settings.apiKey) {

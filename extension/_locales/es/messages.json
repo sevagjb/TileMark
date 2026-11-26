@@ -114,7 +114,7 @@
     "message": "Clave API"
   },
   "apiKeyHint": {
-    "message": "En TileMark: Tu cuenta → Guardar desde cualquier lugar → Crear clave API. Cada cuenta tiene una clave: Sustituir clave API en TileMark desactiva la antigua en todas partes, también en un atajo del iPhone."
+    "message": "En TileMark: Tu cuenta → Guardar desde cualquier lugar → Crear clave API. Da a este navegador su propia clave: podrás quitarla más tarde sin que tus otros dispositivos dejen de funcionar."
   },
   "show": {
     "message": "Mostrar"
@@ -159,7 +159,16 @@
     "message": "Atajo de teclado"
   },
   "shortcutHint": {
-    "message": "Alt+Mayús+S abre la ventana Guardar."
+    "message": "{keys} abre la ventana Guardar."
+  },
+  "shortcutNone": {
+    "message": "No hay ningún atajo de teclado para la ventana Guardar."
+  },
+  "keyShift": {
+    "message": "Mayús"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Cambiarlo"

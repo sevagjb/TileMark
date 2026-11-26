@@ -114,7 +114,7 @@
     "message": "Clé API"
   },
   "apiKeyHint": {
-    "message": "Dans TileMark : Votre compte → Enregistrer depuis n'importe où → Créer une clé API. Chaque compte a une seule clé : Remplacer la clé API dans TileMark désactive l'ancienne partout, y compris dans un raccourci iPhone."
+    "message": "Dans TileMark : Votre compte → Enregistrer depuis n'importe où → Créer une clé API. Donnez à ce navigateur sa propre clé : vous pourrez la supprimer plus tard sans couper vos autres appareils."
   },
   "show": {
     "message": "Afficher"
@@ -159,7 +159,16 @@
     "message": "Raccourci clavier"
   },
   "shortcutHint": {
-    "message": "Alt+Maj+S ouvre la fenêtre Enregistrer."
+    "message": "{keys} ouvre la fenêtre Enregistrer."
+  },
+  "shortcutNone": {
+    "message": "Aucun raccourci clavier n'est défini pour la fenêtre Enregistrer."
+  },
+  "keyShift": {
+    "message": "Maj"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Le modifier"

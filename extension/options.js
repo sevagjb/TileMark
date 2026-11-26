@@ -37,11 +37,26 @@ function fillLanguages() {
   sel.value = settings.language;
 }
 
+// The shortcut the browser really uses for the Save window: the default differs per browser
+// (Alt+Shift+S in Edge and Chrome, Ctrl+Shift+L in Firefox, where Alt+S opens the History
+// menu), and people can change it. Key names in the chosen language ("Umschalt", "Maj"…).
+async function showShortcut() {
+  let keys = "";
+  try {
+    const commands = await chrome.commands.getAll();
+    keys = commands.find((c) => c.name === "_execute_action")?.shortcut || "";
+  } catch { /* no commands API: say nothing is set */ }
+  const names = { Shift: t("keyShift"), Ctrl: t("keyCtrl") };
+  keys = keys.split("+").map((k) => names[k] || k).join("+");
+  $("shortcutText").textContent = keys ? t("shortcutHint", { keys }) : t("shortcutNone");
+}
+
 async function render() {
   await loadLanguage(settings.language);
   translatePage();
   fillMenuGroups();
   fillLanguages();
+  await showShortcut();
   $("showKey").textContent = $("apiKey").type === "password" ? t("show") : t("hide");
 }
 
@@ -101,6 +116,8 @@ $("language").addEventListener("change", async () => {
 
 $("shortcuts").addEventListener("click", (e) => {
   e.preventDefault();
+  // Firefox has no shortcuts page to link to, but opens its own setting (about:addons) for us
+  if (chrome.commands?.openShortcutSettings) return void chrome.commands.openShortcutSettings();
   const edge = navigator.userAgent.includes("Edg/");
   chrome.tabs.create({ url: edge ? "edge://extensions/shortcuts" : "chrome://extensions/shortcuts" });
 });

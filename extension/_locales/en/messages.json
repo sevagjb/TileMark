@@ -116,7 +116,7 @@
     "message": "API key"
   },
   "apiKeyHint": {
-    "message": "In TileMark: Your account → Save from anywhere → Create API key. Every account has one key: Replace API key in TileMark stops the old key everywhere, also in an iPhone Shortcut."
+    "message": "In TileMark: Your account → Save from anywhere → Create API key. Give this browser its own key: you can remove it later without stopping your other devices."
   },
   "show": {
     "message": "Show"
@@ -161,7 +161,16 @@
     "message": "Keyboard shortcut"
   },
   "shortcutHint": {
-    "message": "Alt+Shift+S opens the Save window."
+    "message": "{keys} opens the Save window."
+  },
+  "shortcutNone": {
+    "message": "No keyboard shortcut is set for the Save window."
+  },
+  "keyShift": {
+    "message": "Shift"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Change it"

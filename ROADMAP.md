@@ -4,7 +4,7 @@ What is planned next, and what each release brought. Changes per version in deta
 
 ## Next (medium)
 
-- [ ] **Browser extension in more stores:** Chrome Web Store (listing ready in `extension/STORE-CHROME.md`; until then it installs from the zip in Chrome, Brave and Vivaldi), then Firefox Add-ons. Edge is live on [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi) (see 2.10.0). Safari waits for an Apple developer account.
+- [ ] **Browser extension in more stores:** Chrome Web Store (submitted for review; listing in `extension/STORE-CHROME.md`; until then it installs from the zip in Chrome, Brave and Vivaldi) and Firefox Add-ons (extension 1.1.0 has a Firefox build; listing ready in `extension/STORE-FIREFOX.md`). Edge is live on [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tilemark/eaffnfpceclklbengpeihgembfgjbghi) (see 2.10.0). Safari waits for an Apple developer account.
 - [ ] **Shared groups, later steps** (after testing 2.9.0): a "may change" level next to view only (the database already has room for it), your own order for groups shared with you, and whether stopping a share should still remove its links from the other person straight away. (Notes on shared links stay visible to members, as decided in 2.9.0.)
 
 ## Parked (larger)

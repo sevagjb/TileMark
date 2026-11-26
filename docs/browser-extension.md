@@ -39,11 +39,11 @@ The settings page opens by itself after installing. Later you find it with **⚙
 
 ## Saving
 
-- **Toolbar button** (or **Alt+Shift+S**): the window shows the page's title (you can change it), its address, a **Group** list with the group you used last already chosen, and a **Note**. Choose **+ New group…** to make a group on the spot. **Ctrl+Enter** in the note saves.
+- **Toolbar button** (or **Alt+Shift+S**; in Firefox **Ctrl+Shift+L**): the window shows the page's title (you can change it), its address, a **Group** list with the group you used last already chosen, and a **Note**. Choose **+ New group…** to make a group on the spot. **Ctrl+Enter** in the note saves.
 - **Right-click** on a page → **Save page to TileMark**, or on a link → **Save link to TileMark**. This saves straight away, without the window, to the group set under **Right-click saves to** (by default the group you last used in the window). A mark on the toolbar icon shows how it went: **✓** saved, **=** already in TileMark, **!** something went wrong (hover over the icon to read what).
 - **Already saved?** TileMark never keeps the same page twice. The window then says which group it is in. If the address only *looks* the same (another tracking code, `http` instead of `https`), **Save anyway** keeps both.
 
-To change the keyboard shortcut, use **Change it** in the extension's settings (or open `edge://extensions/shortcuts`, or `chrome://extensions/shortcuts` in Chrome). In Firefox, **Change it** opens **Manage Extension Shortcuts** in `about:addons`.
+The extension's settings show the shortcut your browser uses: **Alt+Shift+S** in Edge and Chrome, **Ctrl+Shift+L** in Firefox (where Alt+S opens the History menu). To change the keyboard shortcut, use **Change it** in the extension's settings (or open `edge://extensions/shortcuts`, or `chrome://extensions/shortcuts` in Chrome). In Firefox, **Change it** opens **Manage Extension Shortcuts** in `about:addons`.
 
 ## Settings
 

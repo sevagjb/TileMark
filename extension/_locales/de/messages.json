@@ -159,7 +159,16 @@
     "message": "Tastenkürzel"
   },
   "shortcutHint": {
-    "message": "Alt+Umschalt+S öffnet das Speichern-Fenster."
+    "message": "{keys} öffnet das Speichern-Fenster."
+  },
+  "shortcutNone": {
+    "message": "Für das Speichern-Fenster ist kein Tastenkürzel festgelegt."
+  },
+  "keyShift": {
+    "message": "Umschalt"
+  },
+  "keyCtrl": {
+    "message": "Strg"
   },
   "shortcutChange": {
     "message": "Ändern"

@@ -159,7 +159,16 @@
     "message": "Sneltoets"
   },
   "shortcutHint": {
-    "message": "Alt+Shift+S opent het Opslaan-venster."
+    "message": "{keys} opent het Opslaan-venster."
+  },
+  "shortcutNone": {
+    "message": "Er is geen sneltoets ingesteld voor het Opslaan-venster."
+  },
+  "keyShift": {
+    "message": "Shift"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Wijzigen"

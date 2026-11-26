@@ -201,7 +201,7 @@ TileMark can be used without a mouse. The shortcuts work on a computer with a ke
 
 **When they don't work:** while a window is open in the middle of the screen, while you're typing in a field (only `Esc` works there), and while you hold `Ctrl`, `Alt` or `⌘`, so the browser's own shortcuts (such as `Ctrl+F`) keep working.
 
-**Browser extension:** `Alt+Shift+S` opens its window on any page, and `Ctrl+Enter` in the note saves. See [Browser extension](browser-extension.md#saving).
+**Browser extension:** `Alt+Shift+S` (in Firefox `Ctrl+Shift+L`) opens its window on any page, and `Ctrl+Enter` in the note saves. See [Browser extension](browser-extension.md#saving).
 
 **On a phone:** no keyboard shortcuts. To save from other apps, use the Share menu (Android) or an [iPhone Shortcut](save-from-anywhere.md#iphone-shortcut).
 

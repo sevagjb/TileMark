@@ -89,6 +89,7 @@ FIREFOX_ID = "tilemark@sevagjb.github.io"
 FIREFOX_DATA = ["authenticationInfo", "browsingActivity"]
 FIREFOX_MIN = "140.0"  # the first version that knows data_collection_permissions (also the 140 ESR)
 FIREFOX_ANDROID_MIN = "142.0"  # the same on Android came two versions later
+FIREFOX_SHORTCUT = "Ctrl+Shift+L"  # opens the Save window (Command+Shift+L on a Mac)
 
 
 def firefox_manifest(manifest):
@@ -97,6 +98,9 @@ def firefox_manifest(manifest):
     m.pop("minimum_chrome_version", None)
     bg = m.pop("background")
     m["background"] = {"scripts": [bg["service_worker"]], "type": bg.get("type", "classic")}
+    # Alt+Shift+S opens Firefox's History menu (Alt+S, "Hi_s_tory") instead of the Save window,
+    # so Firefox gets a Ctrl+Shift key that Firefox itself doesn't use.
+    m["commands"]["_execute_action"]["suggested_key"] = {"default": FIREFOX_SHORTCUT}
     m["browser_specific_settings"] = {"gecko": {
         "id": FIREFOX_ID, "strict_min_version": FIREFOX_MIN,
         "data_collection_permissions": {"required": FIREFOX_DATA}},

@@ -159,7 +159,16 @@
     "message": "اختصار لوحة المفاتيح"
   },
   "shortcutHint": {
-    "message": "‏Alt+Shift+S يفتح نافذة الحفظ."
+    "message": "‏{keys} يفتح نافذة الحفظ."
+  },
+  "shortcutNone": {
+    "message": "لم يتم تعيين اختصار لوحة مفاتيح لنافذة الحفظ."
+  },
+  "keyShift": {
+    "message": "Shift"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "تغييره"

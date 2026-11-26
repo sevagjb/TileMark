@@ -37,6 +37,10 @@ def test_firefox_zip_has_its_own_manifest(tmp_path, monkeypatch):
     assert gecko["id"] == "tilemark@sevagjb.github.io"
     assert gecko["data_collection_permissions"] == {"required": ["authenticationInfo", "browsingActivity"]}
     assert "minimum_chrome_version" not in fx
+    # Alt+Shift+S opens the History menu in Firefox, so Firefox has its own default shortcut
+    assert plain["commands"]["_execute_action"]["suggested_key"] == {"default": "Alt+Shift+S"}
+    assert fx["commands"]["_execute_action"]["suggested_key"] == {"default": "Ctrl+Shift+L"}
     # everything else is the same, so the two stores get the same extension
-    for key in ("version", "permissions", "optional_host_permissions", "action", "commands", "options_ui", "icons"):
+    assert fx["commands"]["_execute_action"]["description"] == plain["commands"]["_execute_action"]["description"]
+    for key in ("version", "permissions", "optional_host_permissions", "action", "options_ui", "icons"):
         assert fx[key] == plain[key], key

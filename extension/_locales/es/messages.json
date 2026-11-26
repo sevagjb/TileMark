@@ -159,7 +159,16 @@
     "message": "Atajo de teclado"
   },
   "shortcutHint": {
-    "message": "Alt+Mayús+S abre la ventana Guardar."
+    "message": "{keys} abre la ventana Guardar."
+  },
+  "shortcutNone": {
+    "message": "No hay ningún atajo de teclado para la ventana Guardar."
+  },
+  "keyShift": {
+    "message": "Mayús"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Cambiarlo"

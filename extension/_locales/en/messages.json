@@ -161,7 +161,16 @@
     "message": "Keyboard shortcut"
   },
   "shortcutHint": {
-    "message": "Alt+Shift+S opens the Save window."
+    "message": "{keys} opens the Save window."
+  },
+  "shortcutNone": {
+    "message": "No keyboard shortcut is set for the Save window."
+  },
+  "keyShift": {
+    "message": "Shift"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Change it"

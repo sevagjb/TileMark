@@ -159,7 +159,16 @@
     "message": "Raccourci clavier"
   },
   "shortcutHint": {
-    "message": "Alt+Maj+S ouvre la fenêtre Enregistrer."
+    "message": "{keys} ouvre la fenêtre Enregistrer."
+  },
+  "shortcutNone": {
+    "message": "Aucun raccourci clavier n'est défini pour la fenêtre Enregistrer."
+  },
+  "keyShift": {
+    "message": "Maj"
+  },
+  "keyCtrl": {
+    "message": "Ctrl"
   },
   "shortcutChange": {
     "message": "Le modifier"

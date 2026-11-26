@@ -7,6 +7,7 @@ Firefox gets its **own zip**: `dist/tilemark-extension-<version>-firefox.zip` fr
 - **Add-on ID** `tilemark@sevagjb.github.io`. Firefox ties the listing and every update to it, so it never changes.
 - **Data it sends**, declared for Firefox's install prompt (`data_collection_permissions`): *authentication information* (the API key) and *browsing activity* (the address and title of a page you save). It goes only to your own TileMark, but Mozilla counts anything that leaves the browser, so `none` would be wrong. This matches the Chrome listing.
 - **Firefox 140 or later** (Android 142 or later); `background.scripts` instead of Chrome's service worker.
+- **Ctrl+Shift+L** as the keyboard shortcut instead of Alt+Shift+S, which opens Firefox's History menu (Alt+S). The settings page shows whichever shortcut the browser really uses.
 
 Mozilla's linter (`addons-linter`, the check AMO runs on upload) reports 0 errors and 0 warnings for this zip.
 
@@ -15,7 +16,7 @@ Mozilla's linter (`addons-linter`, the check AMO runs on upload) reports 0 error
 1. Open `about:debugging#/runtime/this-firefox` and press **Load Temporary Add-on…**.
 2. Choose the Firefox zip (no need to unzip). The settings page opens.
 3. Enter your TileMark address and an API key, press **Save and test**, and allow access when Firefox asks.
-4. Try the toolbar button, the right-click menu, **Alt+Shift+S**, and **Change it** in the settings (it should open Firefox's shortcut settings in `about:addons`).
+4. Try the toolbar button, the right-click menu, **Ctrl+Shift+L**, and **Change it** in the settings (it should open Firefox's shortcut settings in `about:addons`).
 
 A temporary add-on stays until Firefox restarts. Installing it for good only works once AMO has signed it.
 
@@ -52,7 +53,7 @@ TileMark is a free, open-source, self-hosted links app: all your saved pages liv
 
 • Toolbar button: the page's title, a group (the one you used last is already chosen, or make a new one), an optional note, Save.
 • Right-click a page or a link: "Save page to TileMark" or "Save link to TileMark" saves straight away.
-• Keyboard shortcut: Alt+Shift+S opens the Save window.
+• Keyboard shortcut: Ctrl+Shift+L opens the Save window.
 • Already saved? It tells you in which group, instead of saving the page twice.
 • In English, Nederlands, Deutsch, Français, Español and العربية (right to left).
 

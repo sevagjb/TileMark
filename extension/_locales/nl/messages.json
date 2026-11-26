@@ -114,7 +114,7 @@
     "message": "API-sleutel"
   },
   "apiKeyHint": {
-    "message": "In TileMark: Je account → Overal vandaan opslaan → API-sleutel maken. Elk account heeft één sleutel: API-sleutel vervangen in TileMark zet de oude overal uit, ook in een iPhone-opdracht."
+    "message": "In TileMark: Je account → Overal vandaan opslaan → API-sleutel maken. Geef deze browser een eigen sleutel: die kun je later verwijderen zonder dat je andere apparaten ophouden te werken."
   },
   "show": {
     "message": "Tonen"
